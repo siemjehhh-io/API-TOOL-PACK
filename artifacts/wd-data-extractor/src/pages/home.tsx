@@ -237,8 +237,20 @@ export default function Home() {
     else if (markMode === "end") { setEndRow(n); if (n < startRow) setStartRow(n); setMarkMode(null); }
   };
 
-  const handleStartInput = (val: string) => { const c = clamp(parseInt(val, 10) || 1, 1, totalRows); setStartRow(c); if (c > endRow) setEndRow(c); };
-  const handleEndInput = (val: string) => { const c = clamp(parseInt(val, 10) || 1, 1, totalRows); setEndRow(c); if (c < startRow) setStartRow(c); };
+  const handleStartInput = (val: string) => {
+    const n = parseInt(val, 10);
+    if (isNaN(n)) return;
+    const c = clamp(n, 1, totalRows);
+    setStartRow(c);
+    if (c > endRow) setEndRow(c);
+  };
+  const handleEndInput = (val: string) => {
+    const n = parseInt(val, 10);
+    if (isNaN(n)) return;
+    const c = clamp(n, 1, totalRows);
+    setEndRow(c);
+    if (c < startRow) setStartRow(c);
+  };
 
   const copyToClipboard = async () => {
     if (!filteredData.length) return;
