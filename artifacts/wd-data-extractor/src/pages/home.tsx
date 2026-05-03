@@ -3,7 +3,8 @@ import * as XLSX from "xlsx";
 import {
   Upload, FileSpreadsheet, X, Clipboard, Check, AlertCircle,
   ChevronDown, ChevronsUpDown, Flag, FlagOff, Search, Hash,
-  Layers, Banknote, ListOrdered,
+  Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
+  TableProperties,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,8 +28,7 @@ interface ExtractedRow {
   saldoAkhir: string;
   jamInput: string;
   inputKodeBank: string;
-  // internal only — not in TSV output
-  _paymentMethod: string;
+  _paymentMethod: string; // internal
 }
 
 const OUTPUT_HEADERS = [
@@ -37,12 +37,12 @@ const OUTPUT_HEADERS = [
   "KODE BANK", "SALDO AKHIR", "JAM INPUT WD", "INPUT KODE BANK",
 ];
 
-function rowToTsv(row: ExtractedRow): string {
+function rowToArr(row: ExtractedRow): string[] {
   return [
     row.nama, row.nomorRekening, row.userId, row.sub, row.kodeTransaksi,
     row.deposit, row.withdrawal, row.dpPulsa, row.keterangan,
     row.kodeBank, row.saldoAkhir, row.jamInput, row.inputKodeBank,
-  ].join("\t");
+  ];
 }
 
 const formatExcelDate = (dateVal: unknown): string => {
@@ -52,8 +52,8 @@ const formatExcelDate = (dateVal: unknown): string => {
     return date.toISOString().substr(11, 8);
   }
   if (typeof dateVal === "string") {
-    const timeMatch = dateVal.match(/(\d{2}:\d{2}:\d{2})/);
-    if (timeMatch) return timeMatch[1];
+    const m = dateVal.match(/(\d{2}:\d{2}:\d{2})/);
+    if (m) return m[1];
   }
   return "";
 };
@@ -81,17 +81,10 @@ function transformData(rawData: Record<string, unknown>[], profile: WebProfile):
   return result;
 }
 
-function clamp(val: number, min: number, max: number) {
-  return Math.min(Math.max(val, min), max);
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString("id-ID");
-}
-
-function parseAmount(val: string): number {
-  const cleaned = val.replace(/[^0-9.,-]/g, "").replace(",", ".");
-  const n = parseFloat(cleaned);
+function clamp(val: number, min: number, max: number) { return Math.min(Math.max(val, min), max); }
+function formatNumber(n: number) { return n.toLocaleString("id-ID"); }
+function parseAmount(val: string) {
+  const n = parseFloat(val.replace(/[^0-9.,-]/g, "").replace(",", "."));
   return isNaN(n) ? 0 : n;
 }
 
@@ -108,7 +101,12 @@ export default function Home() {
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Row range (1-indexed, inclusive)
+  // Sheet selection
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>("");
+  const rawWorkbookRef = useRef<XLSX.WorkBook | null>(null);
+
+  // Row range
   const [startRow, setStartRow] = useState(1);
   const [endRow, setEndRow] = useState(1);
   const [markMode, setMarkMode] = useState<"start" | "end" | null>(null);
@@ -118,38 +116,84 @@ export default function Home() {
   const [idSearchResult, setIdSearchResult] = useState<{ row: number; id: string } | null>(null);
   const [idSearchError, setIdSearchError] = useState<string | null>(null);
 
+  // Table quick filter
+  const [tableFilter, setTableFilter] = useState("");
+
   const totalRows = data?.length ?? 0;
 
   useEffect(() => {
-    if (data) { setStartRow(1); setEndRow(data.length); setMarkMode(null); setIdSearch(""); setIdSearchResult(null); setIdSearchError(null); }
+    if (data) {
+      setStartRow(1); setEndRow(data.length);
+      setMarkMode(null); setIdSearch(""); setIdSearchResult(null);
+      setIdSearchError(null); setTableFilter("");
+    }
   }, [data]);
 
-  const filteredData = useMemo(() => data ? data.slice(startRow - 1, endRow) : [], [data, startRow, endRow]);
+  // Range-sliced data
+  const rangeData = useMemo(() => data ? data.slice(startRow - 1, endRow) : [], [data, startRow, endRow]);
 
-  // Stats computed from filteredData
+  // After table filter
+  const filteredData = useMemo(() => {
+    const q = tableFilter.trim().toLowerCase();
+    if (!q) return rangeData;
+    return rangeData.filter((r) =>
+      r.nama.toLowerCase().includes(q) ||
+      r.userId.toLowerCase().includes(q) ||
+      r.nomorRekening.toLowerCase().includes(q) ||
+      r.withdrawal.toLowerCase().includes(q)
+    );
+  }, [rangeData, tableFilter]);
+
+  // Duplicate userId detection within rangeData
+  const duplicateUserIds = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of rangeData) if (r.userId) counts[r.userId] = (counts[r.userId] ?? 0) + 1;
+    return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
+  }, [rangeData]);
+
   const stats = useMemo(() => {
     if (!filteredData.length) return null;
     const totalNominal = filteredData.reduce((acc, r) => acc + parseAmount(r.withdrawal), 0);
-    return { count: filteredData.length, totalNominal };
-  }, [filteredData]);
+    const dupCount = filteredData.filter((r) => duplicateUserIds.has(r.userId)).length;
+    return { count: filteredData.length, totalNominal, dupCount };
+  }, [filteredData, duplicateUserIds]);
+
+  // ── Process a sheet by name ──
+  const processSheet = (wb: XLSX.WorkBook, sheetName: string, profile: WebProfile) => {
+    const sheet = wb.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+    if (rawData.length === 0) throw new Error(`Sheet "${sheetName}" kosong.`);
+    const expectedCols = [profile.colAccountName, profile.colPaymentMethod, profile.colAccountNumber,
+      profile.colTransactionId, profile.colTotalAmount, profile.colFinishedDate];
+    const missing = expectedCols.filter((col) => !(col in rawData[0]));
+    if (missing.length > 0) throw new Error(`Kolom tidak ditemukan: ${missing.join(", ")}. Periksa mapping kolom di Pengaturan.`);
+    return transformData(rawData, profile);
+  };
 
   const processFile = async (selectedFile: File, profile: WebProfile) => {
-    setFile(selectedFile); setError(null); setData(null); setIsParsing(true);
+    setFile(selectedFile); setError(null); setData(null);
+    setSheetNames([]); setSelectedSheet(""); rawWorkbookRef.current = null;
+    setIsParsing(true);
     try {
       const buffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
-      if (!workbook.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawData = XLSX.utils.sheet_to_json(firstSheet) as Record<string, unknown>[];
-      if (rawData.length === 0) throw new Error("Sheet yang dipilih kosong.");
-      const expectedCols = [profile.colAccountName, profile.colPaymentMethod,
-        profile.colAccountNumber, profile.colTransactionId, profile.colTotalAmount, profile.colFinishedDate];
-      const missingColumns = expectedCols.filter((col) => !(col in rawData[0]));
-      if (missingColumns.length > 0) throw new Error(`Kolom tidak ditemukan di profil "${profile.name}": ${missingColumns.join(", ")}. Periksa mapping kolom di Pengaturan.`);
-      setData(transformData(rawData, profile));
+      const wb = XLSX.read(buffer, { type: "array" });
+      rawWorkbookRef.current = wb;
+      if (!wb.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
+      setSheetNames(wb.SheetNames);
+      const firstSheet = wb.SheetNames[0];
+      setSelectedSheet(firstSheet);
+      setData(processSheet(wb, firstSheet, profile));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal membaca file Excel.");
     } finally { setIsParsing(false); }
+  };
+
+  const handleSheetChange = (sheetName: string) => {
+    if (!rawWorkbookRef.current) return;
+    setSelectedSheet(sheetName);
+    setError(null); setData(null);
+    try { setData(processSheet(rawWorkbookRef.current, sheetName, activeProfile)); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : "Gagal membaca sheet."); }
   };
 
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
@@ -168,64 +212,38 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const resetState = () => { setFile(null); setData(null); setError(null); setIsCopied(false); setMarkMode(null); setIdSearch(""); setIdSearchResult(null); setIdSearchError(null); };
+  const resetState = () => {
+    setFile(null); setData(null); setError(null); setIsCopied(false);
+    setMarkMode(null); setIdSearch(""); setIdSearchResult(null); setIdSearchError(null);
+    setTableFilter(""); setSheetNames([]); setSelectedSheet(""); rawWorkbookRef.current = null;
+  };
 
-  // Search by transaction ID and apply to start/end
   const searchIdAndApply = (target: "start" | "end") => {
     if (!data || !idSearch.trim()) return;
     const q = idSearch.trim().toLowerCase();
     const idx = data.findIndex((r) => r.userId.toLowerCase().includes(q));
-    if (idx === -1) {
-      setIdSearchResult(null);
-      setIdSearchError(`ID "${idSearch.trim()}" tidak ditemukan.`);
-      return;
-    }
+    if (idx === -1) { setIdSearchResult(null); setIdSearchError(`ID "${idSearch.trim()}" tidak ditemukan.`); return; }
     const rowNum = idx + 1;
     setIdSearchError(null);
     setIdSearchResult({ row: rowNum, id: data[idx].userId });
-    if (target === "start") {
-      setStartRow(rowNum);
-      if (rowNum > endRow) setEndRow(rowNum);
-    } else {
-      setEndRow(rowNum);
-      if (rowNum < startRow) setStartRow(rowNum);
-    }
+    if (target === "start") { setStartRow(rowNum); if (rowNum > endRow) setEndRow(rowNum); }
+    else { setEndRow(rowNum); if (rowNum < startRow) setStartRow(rowNum); }
     toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris ${target === "start" ? "awal" : "akhir"}`);
   };
 
-  const handleRowClick = (rowIndex: number) => {
-    const displayNum = rowIndex + 1;
-    if (markMode === "start") {
-      setStartRow(displayNum);
-      if (displayNum > endRow) setEndRow(displayNum);
-      setMarkMode(null);
-    } else if (markMode === "end") {
-      setEndRow(displayNum);
-      if (displayNum < startRow) setStartRow(displayNum);
-      setMarkMode(null);
-    }
+  const handleRowClick = (i: number) => {
+    const n = i + 1;
+    if (markMode === "start") { setStartRow(n); if (n > endRow) setEndRow(n); setMarkMode(null); }
+    else if (markMode === "end") { setEndRow(n); if (n < startRow) setStartRow(n); setMarkMode(null); }
   };
 
-  const handleStartInput = (val: string) => {
-    const n = parseInt(val, 10);
-    if (isNaN(n)) return;
-    const c = clamp(n, 1, totalRows);
-    setStartRow(c);
-    if (c > endRow) setEndRow(c);
-  };
-
-  const handleEndInput = (val: string) => {
-    const n = parseInt(val, 10);
-    if (isNaN(n)) return;
-    const c = clamp(n, 1, totalRows);
-    setEndRow(c);
-    if (c < startRow) setStartRow(c);
-  };
+  const handleStartInput = (val: string) => { const c = clamp(parseInt(val, 10) || 1, 1, totalRows); setStartRow(c); if (c > endRow) setEndRow(c); };
+  const handleEndInput = (val: string) => { const c = clamp(parseInt(val, 10) || 1, 1, totalRows); setEndRow(c); if (c < startRow) setStartRow(c); };
 
   const copyToClipboard = async () => {
     if (!filteredData.length) return;
     try {
-      const tsv = filteredData.map(rowToTsv).join("\n");
+      const tsv = filteredData.map((r) => rowToArr(r).join("\t")).join("\n");
       await navigator.clipboard.writeText(tsv);
       setIsCopied(true);
       toast.success(`Berhasil menyalin ${filteredData.length} baris ke clipboard!`);
@@ -233,11 +251,29 @@ export default function Home() {
     } catch { toast.error("Gagal menyalin ke clipboard."); }
   };
 
+  // Export to Excel (.xlsx)
+  const exportToExcel = () => {
+    if (!filteredData.length) return;
+    try {
+      const rows = filteredData.map(rowToArr);
+      const ws = XLSX.utils.aoa_to_sheet([OUTPUT_HEADERS, ...rows]);
+      // Auto column widths
+      ws["!cols"] = OUTPUT_HEADERS.map((_, i) => ({
+        wch: Math.max(OUTPUT_HEADERS[i].length, ...rows.map((r) => String(r[i] ?? "").length)) + 2,
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Output");
+      const baseName = file?.name.replace(/\.xlsx$/i, "") ?? "output";
+      XLSX.writeFile(wb, `${baseName}_output.xlsx`);
+      toast.success(`File "${baseName}_output.xlsx" berhasil diunduh!`);
+    } catch { toast.error("Gagal mengekspor ke Excel."); }
+  };
+
   const isFullRange = startRow === 1 && endRow === totalRows;
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
-      {/* Header */}
+      {/* ── HEADER ── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -260,14 +296,14 @@ export default function Home() {
                   <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
                     className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
-                    {profiles.map((profile) => (
-                      <button key={profile.id} type="button"
-                        onClick={() => { setActiveProfileId(profile.id); setProfilePickerOpen(false); resetState(); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${profile.id === activeProfileId ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted/50"}`}
-                        data-testid={`option-profile-${profile.id}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${profile.id === activeProfileId ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                        <span className="truncate">{profile.name}</span>
-                        {profile.id === activeProfileId && <Check size={12} className="ml-auto shrink-0" />}
+                    {profiles.map((p) => (
+                      <button key={p.id} type="button"
+                        onClick={() => { setActiveProfileId(p.id); setProfilePickerOpen(false); resetState(); }}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${p.id === activeProfileId ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted/50"}`}
+                        data-testid={`option-profile-${p.id}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === activeProfileId ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                        <span className="truncate">{p.name}</span>
+                        {p.id === activeProfileId && <Check size={12} className="ml-auto shrink-0" />}
                       </button>
                     ))}
                   </motion.div>
@@ -295,11 +331,11 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Upload Zone */}
+        {/* ── UPLOAD ZONE ── */}
         <section>
           <div data-testid="upload-zone"
-            className={`relative group w-full rounded-xl border-2 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center p-12 text-center ${
-              isDragging ? "border-primary bg-primary/10 scale-[1.02]"
+            className={`relative group w-full rounded-xl border-2 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center p-12 text-center
+              ${isDragging ? "border-primary bg-primary/10 scale-[1.02]"
               : file ? "border-border bg-card"
               : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50 cursor-pointer"}`}
             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
@@ -318,14 +354,36 @@ export default function Home() {
                     <h3 className="text-lg font-medium text-foreground">{file.name}</h3>
                     <p className="text-sm text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
+                  {/* Sheet picker (shown only if multiple sheets) */}
+                  {sheetNames.length > 1 && (
+                    <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                      <TableProperties size={14} className="text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Sheet:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sheetNames.map((s) => (
+                          <button key={s} type="button"
+                            onClick={() => handleSheetChange(s)}
+                            className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
+                              s === selectedSheet
+                                ? "bg-primary/20 border-primary/50 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                            }`}
+                            data-testid={`button-sheet-${s}`}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); resetState(); }}
-                    className="mt-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10" data-testid="button-remove-file">
+                    className="mt-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10" data-testid="button-remove-file">
                     <X size={16} className="mr-2" />Hapus file
                   </Button>
                 </motion.div>
               ) : (
                 <motion.div key="upload-prompt" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col items-center gap-4">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300 ${isDragging ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground group-hover:text-primary group-hover:border-primary/30"}`}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300
+                    ${isDragging ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground group-hover:text-primary group-hover:border-primary/30"}`}>
                     <Upload size={28} />
                   </div>
                   <div>
@@ -338,7 +396,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Error State */}
+        {/* ── ERROR STATE ── */}
         <AnimatePresence>
           {error && (
             <motion.div initial={{ opacity: 0, height: 0, y: -10 }} animate={{ opacity: 1, height: "auto", y: 0 }} exit={{ opacity: 0, height: 0, y: -10 }}>
@@ -356,77 +414,77 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Preview & Actions */}
+        {/* ── PREVIEW & ACTIONS ── */}
         <AnimatePresence>
           {data && !error && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="flex flex-col gap-4">
 
-              {/* ── STATS PANEL ── */}
-              <AnimatePresence>
-                {stats && (
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                    className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Baris Dipilih */}
-                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
-                      <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                        <ListOrdered size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Baris Dipilih</p>
-                        <p className="text-xl font-bold text-foreground leading-tight font-mono">
-                          {stats.count}
-                          <span className="text-xs text-muted-foreground font-normal ml-1">/ {totalRows}</span>
-                        </p>
-                      </div>
+              {/* ── STATS ── */}
+              {stats && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                    <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0"><ListOrdered size={16} /></div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Baris Dipilih</p>
+                      <p className="text-xl font-bold text-foreground leading-tight font-mono">
+                        {stats.count}<span className="text-xs text-muted-foreground font-normal ml-1">/ {totalRows}</span>
+                      </p>
                     </div>
-
-                    {/* Total Nominal */}
-                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
-                      <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Banknote size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Nominal</p>
-                        <p className="text-base font-bold text-foreground leading-tight font-mono truncate" title={formatNumber(stats.totalNominal)}>
-                          {formatNumber(stats.totalNominal)}
-                        </p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><Banknote size={16} /></div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Nominal</p>
+                      <p className="text-base font-bold text-foreground leading-tight font-mono truncate" title={formatNumber(stats.totalNominal)}>{formatNumber(stats.totalNominal)}</p>
                     </div>
-
-                    {/* Total File */}
-                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
-                      <div className="w-9 h-9 rounded-lg bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0">
-                        <Layers size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total File</p>
-                        <p className="text-xl font-bold text-foreground leading-tight font-mono">{totalRows}</p>
-                      </div>
+                  </div>
+                  <div className={`flex items-center gap-3 p-4 rounded-xl border bg-card/80 transition-colors ${stats.dupCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border/60"}`}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${stats.dupCount > 0 ? "bg-amber-500/20 text-amber-400" : "bg-violet-500/15 text-violet-400"}`}>
+                      {stats.dupCount > 0 ? <TriangleAlert size={16} /> : <Layers size={16} />}
                     </div>
+                    <div className="min-w-0">
+                      {stats.dupCount > 0 ? (
+                        <>
+                          <p className="text-[10px] uppercase tracking-wider text-amber-400/80 font-medium">ID Duplikat</p>
+                          <p className="text-xl font-bold text-amber-400 leading-tight font-mono">{stats.dupCount} <span className="text-xs font-normal">baris</span></p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total File</p>
+                          <p className="text-xl font-bold text-foreground leading-tight font-mono">{totalRows}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* ── TOP BAR ── */}
-              <div className="flex items-center justify-between">
+              {/* ── TOP BAR: title + actions ── */}
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-medium">Pratinjau Data</h2>
                   <span className="px-2.5 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/20">{totalRows} total</span>
                 </div>
-                <Button onClick={copyToClipboard} disabled={filteredData.length === 0}
-                  className={`transition-all duration-300 ${isCopied ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} data-testid="button-copy-tsv">
-                  {isCopied ? <><Check size={16} className="mr-2" />Tersalin!</> : <><Clipboard size={16} className="mr-2" />Salin sebagai TSV</>}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={exportToExcel} disabled={filteredData.length === 0}
+                    className="gap-2 border-border text-muted-foreground hover:text-foreground" data-testid="button-export-excel">
+                    <Download size={14} />
+                    <span className="hidden sm:inline">Export Excel</span>
+                  </Button>
+                  <Button onClick={copyToClipboard} disabled={filteredData.length === 0}
+                    className={`gap-2 transition-all duration-300 ${isCopied ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} data-testid="button-copy-tsv">
+                    {isCopied ? <><Check size={16} />Tersalin!</> : <><Copy size={16} />Salin TSV</>}
+                  </Button>
+                </div>
               </div>
 
-              {/* ── ROW RANGE SELECTOR ── */}
+              {/* ── ROW RANGE + ID SEARCH ── */}
               <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/60 bg-card/60">
-                {/* Row number controls */}
+                {/* Row numbers */}
                 <div className="flex flex-wrap items-center gap-3">
                   <ChevronsUpDown size={15} className="text-muted-foreground shrink-0" />
                   <span className="text-sm font-medium text-foreground/80 shrink-0">Rentang Baris:</span>
-
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Mulai</span>
                     <input type="number" min={1} max={totalRows} value={startRow} onChange={(e) => handleStartInput(e.target.value)}
@@ -440,80 +498,68 @@ export default function Home() {
                       className="w-16 h-7 px-2 rounded-md border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
                       data-testid="input-end-row" />
                   </div>
-
                   <div className="flex items-center gap-1.5 ml-1">
                     <button type="button" onClick={() => setMarkMode((m) => m === "start" ? null : "start")}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                        markMode === "start" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
-                      data-testid="button-mark-start">
-                      <Flag size={11} />Tandai Awal
-                    </button>
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${markMode === "start" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                      data-testid="button-mark-start"><Flag size={11} />Tandai Awal</button>
                     <button type="button" onClick={() => setMarkMode((m) => m === "end" ? null : "end")}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                        markMode === "end" ? "bg-rose-500/20 border-rose-500/50 text-rose-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
-                      data-testid="button-mark-end">
-                      <FlagOff size={11} />Tandai Akhir
-                    </button>
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${markMode === "end" ? "bg-rose-500/20 border-rose-500/50 text-rose-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                      data-testid="button-mark-end"><FlagOff size={11} />Tandai Akhir</button>
                   </div>
-
                   <div className="flex items-center gap-3 ml-auto">
                     {!isFullRange && (
                       <button type="button" onClick={() => { setStartRow(1); setEndRow(totalRows); setMarkMode(null); }}
-                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors" data-testid="button-reset-range">
-                        Reset
-                      </button>
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors" data-testid="button-reset-range">Reset</button>
                     )}
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
-                      isFullRange ? "bg-muted/40 border-border/50 text-muted-foreground" : "bg-amber-500/15 border-amber-500/30 text-amber-400"}`}>
-                      {filteredData.length} baris dipilih
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${isFullRange ? "bg-muted/40 border-border/50 text-muted-foreground" : "bg-amber-500/15 border-amber-500/30 text-amber-400"}`}>
+                      {rangeData.length} baris dipilih
                     </span>
                   </div>
                 </div>
 
-                {/* Divider */}
                 <div className="border-t border-border/40" />
 
-                {/* ID Transaksi search */}
-                <div className="flex flex-wrap items-center gap-2">
+                {/* ID Transaksi search + Table filter on same row */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* ID search */}
                   <Hash size={14} className="text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium text-foreground/80 shrink-0">Patokan ID Transaksi:</span>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="relative flex-1 max-w-xs">
-                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Cari User ID / Login..."
-                        value={idSearch}
-                        onChange={(e) => { setIdSearch(e.target.value); setIdSearchResult(null); setIdSearchError(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") searchIdAndApply("start"); }}
-                        className="w-full h-7 pl-7 pr-3 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono placeholder:text-muted-foreground/50"
-                        data-testid="input-id-search"
-                      />
-                    </div>
-                    <button type="button" onClick={() => searchIdAndApply("start")} disabled={!idSearch.trim()}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      data-testid="button-id-set-start">
-                      <Flag size={11} />Set Awal
-                    </button>
-                    <button type="button" onClick={() => searchIdAndApply("end")} disabled={!idSearch.trim()}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      data-testid="button-id-set-end">
-                      <FlagOff size={11} />Set Akhir
-                    </button>
+                  <span className="text-sm font-medium text-foreground/80 shrink-0 hidden sm:inline">ID Transaksi:</span>
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input type="text" placeholder="Cari User ID..." value={idSearch}
+                      onChange={(e) => { setIdSearch(e.target.value); setIdSearchResult(null); setIdSearchError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") searchIdAndApply("start"); }}
+                      className="w-40 h-7 pl-7 pr-3 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono placeholder:text-muted-foreground/50"
+                      data-testid="input-id-search" />
                   </div>
+                  <button type="button" onClick={() => searchIdAndApply("start")} disabled={!idSearch.trim()}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="button-id-set-start"><Flag size={11} />Set Awal</button>
+                  <button type="button" onClick={() => searchIdAndApply("end")} disabled={!idSearch.trim()}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="button-id-set-end"><FlagOff size={11} />Set Akhir</button>
+                  {idSearchResult && <span className="text-xs text-emerald-400 flex items-center gap-1"><Check size={11} />Baris {idSearchResult.row}: <span className="font-mono">{idSearchResult.id}</span></span>}
+                  {idSearchError && <span className="text-xs text-destructive flex items-center gap-1"><AlertCircle size={11} />{idSearchError}</span>}
 
-                  {/* Search result feedback */}
-                  {idSearchResult && (
-                    <span className="text-xs text-emerald-400 flex items-center gap-1">
-                      <Check size={11} />
-                      Baris {idSearchResult.row}: <span className="font-mono">{idSearchResult.id}</span>
-                    </span>
-                  )}
-                  {idSearchError && (
-                    <span className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle size={11} />{idSearchError}
-                    </span>
-                  )}
+                  {/* Table filter */}
+                  <div className="ml-auto flex items-center gap-2">
+                    <Search size={13} className="text-muted-foreground shrink-0" />
+                    <div className="relative">
+                      <input type="text" placeholder="Filter tabel..." value={tableFilter}
+                        onChange={(e) => setTableFilter(e.target.value)}
+                        className="w-36 h-7 px-3 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground/50"
+                        data-testid="input-table-filter" />
+                      {tableFilter && (
+                        <button type="button" onClick={() => setTableFilter("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                    {tableFilter && (
+                      <span className="text-xs text-muted-foreground">{filteredData.length} hasil</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -528,7 +574,7 @@ export default function Home() {
                       color: markMode === "start" ? "rgb(52 211 153)" : "rgb(251 113 133)",
                     }}>
                     <Flag size={12} />
-                    Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris (#) di tabel untuk menetapkan posisi.
+                    Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris (#) di tabel.
                     <button type="button" onClick={() => setMarkMode(null)} className="ml-auto opacity-70 hover:opacity-100"><X size={12} /></button>
                   </motion.div>
                 )}
@@ -541,8 +587,8 @@ export default function Home() {
                     <thead className="text-xs uppercase bg-slate-900/50 text-muted-foreground sticky top-0 z-10 shadow-sm backdrop-blur-md">
                       <tr>
                         <th className="px-3 py-4 font-medium border-b border-border/50 text-center w-10 text-muted-foreground/50">#</th>
-                        {OUTPUT_HEADERS.map((header, i) => (
-                          <th key={i} className="px-4 py-4 font-medium whitespace-nowrap border-b border-border/50">{header}</th>
+                        {OUTPUT_HEADERS.map((h, i) => (
+                          <th key={i} className="px-4 py-4 font-medium whitespace-nowrap border-b border-border/50">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -554,28 +600,41 @@ export default function Home() {
                         const isEnd = rowNum === endRow;
                         const isClickable = markMode !== null;
                         const isIdMatch = idSearch.trim() && row.userId.toLowerCase().includes(idSearch.trim().toLowerCase());
+                        const isDup = duplicateUserIds.has(row.userId);
+
+                        // Table filter: hide rows not matching filter (only within range)
+                        if (tableFilter.trim() && isInRange) {
+                          const q = tableFilter.trim().toLowerCase();
+                          const matches = row.nama.toLowerCase().includes(q) ||
+                            row.userId.toLowerCase().includes(q) ||
+                            row.nomorRekening.toLowerCase().includes(q) ||
+                            row.withdrawal.toLowerCase().includes(q);
+                          if (!matches) return null;
+                        }
 
                         return (
                           <tr key={i}
-                            className={`transition-all duration-150 ${isInRange ? "hover:bg-muted/30" : "opacity-30 bg-background/30"}
+                            className={`transition-all duration-150
+                              ${isInRange ? "hover:bg-muted/30" : "opacity-25 bg-background/30"}
                               ${isStart ? "border-t-2 border-t-emerald-500/50" : ""}
                               ${isEnd ? "border-b-2 border-b-rose-500/50" : ""}
-                              ${isIdMatch ? "bg-primary/5" : ""}`}
+                              ${isIdMatch ? "bg-primary/5" : ""}
+                              ${isDup && isInRange ? "bg-amber-500/5" : ""}`}
                             data-testid={`row-data-${i}`}>
                             <td className={`px-3 py-3 text-center align-middle select-none transition-all ${isClickable ? "cursor-pointer" : ""}`}
-                              onClick={() => isClickable && handleRowClick(i)}
-                              title={isClickable ? `Set baris ${markMode === "start" ? "awal" : "akhir"} ke ${rowNum}` : undefined}>
+                              onClick={() => isClickable && handleRowClick(i)}>
                               <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-medium transition-all ${
                                 isStart ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40"
                                 : isEnd ? "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/40"
+                                : isDup && isInRange ? "bg-amber-500/20 text-amber-400"
                                 : isClickable ? "text-muted-foreground/40 hover:bg-primary/20 hover:text-primary"
                                 : "text-muted-foreground/30"}`}>
-                                {rowNum}
+                                {isDup && isInRange ? "!" : rowNum}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-foreground/90">{row.nama}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-primary/90">{row.nomorRekening}</td>
-                            <td className={`px-4 py-3 whitespace-nowrap ${isIdMatch ? "text-primary font-semibold" : ""}`}>{row.userId}</td>
+                            <td className={`px-4 py-3 whitespace-nowrap ${isIdMatch ? "text-primary font-semibold" : isDup && isInRange ? "text-amber-400" : ""}`}>{row.userId}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.sub}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.kodeTransaksi}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.deposit}</td>
