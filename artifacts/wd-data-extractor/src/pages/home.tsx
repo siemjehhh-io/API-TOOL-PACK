@@ -4,13 +4,14 @@ import {
   Upload, FileSpreadsheet, X, Check, AlertCircle,
   ChevronDown, ChevronsUpDown, Flag, FlagOff, Search, Hash,
   Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
-  TableProperties,
+  TableProperties, ArrowDownToLine, ArrowUpFromLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { SettingsModal } from "@/components/settings-modal";
 import { useWebProfiles } from "@/hooks/useWebProfiles";
 import { WebProfile } from "@/types/webProfile";
+import { DpSection } from "@/pages/dp-section";
 
 interface ExtractedRow {
   nama: string; nomorRekening: string; userId: string; sub: string;
@@ -77,6 +78,8 @@ function GlassBtn({ active, activeClass, children, ...props }: React.ButtonHTMLA
 }
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<"wd" | "dp">("wd");
+
   const { profiles, activeProfile, activeProfileId, setActiveProfileId,
     addProfile, updateProfile, deleteProfile } = useWebProfiles();
 
@@ -250,56 +253,84 @@ export default function Home() {
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 glass-strong border-b border-white/8 shadow-lg">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <FileSpreadsheet size={18} className="text-white" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                <FileSpreadsheet size={18} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-base font-semibold leading-none tracking-tight">Data Extractor</h1>
+                <p className="text-[10px] text-white/35 mt-0.5">Internal Operations Tooling</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base font-semibold leading-none tracking-tight">WD Data Extractor</h1>
-              <p className="text-[10px] text-white/35 mt-0.5">Internal Operations Tooling</p>
+
+            {/* Tab switcher */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/8">
+              <button type="button" onClick={() => setActiveTab("wd")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200
+                  ${activeTab === "wd"
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30"
+                    : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}>
+                <ArrowUpFromLine size={12} />WD
+              </button>
+              <button type="button" onClick={() => setActiveTab("dp")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200
+                  ${activeTab === "dp"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/30"
+                    : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}>
+                <ArrowDownToLine size={12} />DP
+              </button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Profile picker */}
-            <div className="relative">
-              <button type="button" onClick={() => setPickerOpen((v) => !v)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
-                data-testid="button-profile-picker">
-                <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
-                <span className="max-w-[140px] truncate text-white/85 font-medium">{activeProfile.name}</span>
-                <ChevronDown size={13} className={`text-white/40 transition-transform duration-200 ${pickerOpen ? "rotate-180" : ""}`} />
-              </button>
-              <AnimatePresence>
-                {pickerOpen && (
-                  <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden">
-                    {profiles.map((p) => (
-                      <button key={p.id} type="button"
-                        onClick={() => { setActiveProfileId(p.id); setPickerOpen(false); reset(); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
-                          ${p.id === activeProfileId ? "bg-violet-500/15 text-violet-200" : "text-white/70 hover:bg-white/6 hover:text-white"}`}
-                        data-testid={`option-profile-${p.id}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === activeProfileId ? "bg-violet-400" : "bg-white/20"}`} />
-                        <span className="truncate">{p.name}</span>
-                        {p.id === activeProfileId && <Check size={12} className="ml-auto text-violet-400 shrink-0" />}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              {pickerOpen && <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />}
-            </div>
+            {/* WD-only: profile picker + settings */}
+            {activeTab === "wd" && (<>
+              <div className="relative">
+                <button type="button" onClick={() => setPickerOpen((v) => !v)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
+                  data-testid="button-profile-picker">
+                  <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
+                  <span className="max-w-[140px] truncate text-white/85 font-medium">{activeProfile.name}</span>
+                  <ChevronDown size={13} className={`text-white/40 transition-transform duration-200 ${pickerOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {pickerOpen && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden">
+                      {profiles.map((p) => (
+                        <button key={p.id} type="button"
+                          onClick={() => { setActiveProfileId(p.id); setPickerOpen(false); reset(); }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
+                            ${p.id === activeProfileId ? "bg-violet-500/15 text-violet-200" : "text-white/70 hover:bg-white/6 hover:text-white"}`}
+                          data-testid={`option-profile-${p.id}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === activeProfileId ? "bg-violet-400" : "bg-white/20"}`} />
+                          <span className="truncate">{p.name}</span>
+                          {p.id === activeProfileId && <Check size={12} className="ml-auto text-violet-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {pickerOpen && <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />}
+              </div>
 
-            <SettingsModal profiles={profiles} activeProfileId={activeProfileId}
-              onSelectProfile={(id) => { setActiveProfileId(id); reset(); }}
-              onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile} />
+              <SettingsModal profiles={profiles} activeProfileId={activeProfileId}
+                onSelectProfile={(id) => { setActiveProfileId(id); reset(); }}
+                onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile} />
+            </>)}
           </div>
         </div>
       </header>
 
       <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-10 flex flex-col gap-6">
+
+        {/* ── DP SECTION ── */}
+        {activeTab === "dp" && <DpSection />}
+
+        {/* ── WD SECTION ── */}
+        {activeTab === "wd" && <>
 
         {/* ── Profile banner ── */}
         <motion.div key={activeProfile.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -645,10 +676,12 @@ export default function Home() {
             </motion.section>
           )}
         </AnimatePresence>
+        </>}
+
       </main>
 
       <footer className="relative z-10 border-t border-white/5 py-5 text-center">
-        <p className="text-[11px] text-white/20">WD Data Extractor &nbsp;·&nbsp; Internal Operations Tooling</p>
+        <p className="text-[11px] text-white/20">Data Extractor &nbsp;·&nbsp; Internal Operations Tooling</p>
       </footer>
     </div>
   );
