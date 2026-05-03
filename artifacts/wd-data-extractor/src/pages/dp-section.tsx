@@ -2,13 +2,11 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
   Upload, FileSpreadsheet, X, Check, AlertCircle,
-  ChevronDown, ChevronsUpDown, Flag, FlagOff, Search, Hash,
+  ChevronsUpDown, Flag, FlagOff, Search, Hash,
   Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { DpSettingsModal } from "@/components/dp-settings-modal";
-import { useDpProfiles } from "@/hooks/useDpProfiles";
 import { DpProfile } from "@/types/dpProfile";
 
 /* ── Types ── */
@@ -99,17 +97,13 @@ function GlassBtn({ active, activeClass, children, ...props }: React.ButtonHTMLA
   );
 }
 
-export function DpSection() {
-  const { profiles, activeProfile, activeProfileId, setActiveProfileId,
-    addProfile, updateProfile, deleteProfile } = useDpProfiles();
-
+export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
   const [isDragging, setIsDragging]       = useState(false);
   const [file, setFile]                   = useState<File | null>(null);
   const [data, setData]                   = useState<DpRow[] | null>(null);
   const [error, setError]                 = useState<string | null>(null);
   const [isParsing, setIsParsing]         = useState(false);
   const [isCopied, setIsCopied]           = useState(false);
-  const [pickerOpen, setPickerOpen]       = useState(false);
   const fileInputRef                      = useRef<HTMLInputElement>(null);
 
   const [sheetNames, setSheetNames]       = useState<string[]>([]);
@@ -260,43 +254,6 @@ export function DpSection() {
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Profile banner + controls */}
-      <div className="flex items-center gap-3">
-        {/* Profile picker */}
-        <div className="relative flex-1 max-w-xs">
-          <button type="button" onClick={() => setPickerOpen((v) => !v)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
-            data-testid="button-dp-profile-picker">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
-            <span className="flex-1 truncate text-white/85 font-medium text-left">{activeProfile.name}</span>
-            <ChevronDown size={13} className={`text-white/40 transition-transform duration-200 ${pickerOpen ? "rotate-180" : ""}`} />
-          </button>
-          <AnimatePresence>
-            {pickerOpen && (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
-                className="absolute left-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden">
-                {profiles.map((p) => (
-                  <button key={p.id} type="button"
-                    onClick={() => { setActiveProfileId(p.id); setPickerOpen(false); reset(); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
-                      ${p.id === activeProfileId ? "bg-emerald-500/15 text-emerald-200" : "text-white/70 hover:bg-white/6 hover:text-white"}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === activeProfileId ? "bg-emerald-400" : "bg-white/20"}`} />
-                    <span className="truncate">{p.name}</span>
-                    {p.id === activeProfileId && <Check size={12} className="ml-auto text-emerald-400 shrink-0" />}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {pickerOpen && <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />}
-        </div>
-
-        <DpSettingsModal profiles={profiles} activeProfileId={activeProfileId}
-          onSelectProfile={(id) => { setActiveProfileId(id); reset(); }}
-          onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile} />
-      </div>
 
       {/* Profile info banner */}
       <motion.div key={activeProfile.id} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}

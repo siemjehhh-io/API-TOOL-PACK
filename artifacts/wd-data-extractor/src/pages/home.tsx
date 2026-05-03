@@ -12,6 +12,8 @@ import { SettingsModal } from "@/components/settings-modal";
 import { useWebProfiles } from "@/hooks/useWebProfiles";
 import { WebProfile } from "@/types/webProfile";
 import { DpSection } from "@/pages/dp-section";
+import { DpSettingsModal } from "@/components/dp-settings-modal";
+import { useDpProfiles } from "@/hooks/useDpProfiles";
 
 interface ExtractedRow {
   nama: string; nomorRekening: string; userId: string; sub: string;
@@ -84,6 +86,12 @@ export default function Home() {
 
   const { profiles, activeProfile, activeProfileId, setActiveProfileId,
     addProfile, updateProfile, deleteProfile } = useWebProfiles();
+
+  const { profiles: dpProfiles, activeProfile: dpActiveProfile, activeProfileId: dpActiveProfileId,
+    setActiveProfileId: setDpActiveProfileId, addProfile: dpAddProfile,
+    updateProfile: dpUpdateProfile, deleteProfile: dpDeleteProfile } = useDpProfiles();
+
+  const [dpPickerOpen, setDpPickerOpen] = useState(false);
 
   const [isDragging, setIsDragging]       = useState(false);
   const [file, setFile]                   = useState<File | null>(null);
@@ -322,6 +330,42 @@ export default function Home() {
                 onSelectProfile={(id) => { setActiveProfileId(id); reset(); }}
                 onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile} />
             </>)}
+
+            {/* DP-only: profile picker + settings */}
+            {activeTab === "dp" && (<>
+              <div className="relative">
+                <button type="button" onClick={() => setDpPickerOpen((v) => !v)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
+                  data-testid="button-dp-profile-picker">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
+                  <span className="max-w-[140px] truncate text-white/85 font-medium">{dpActiveProfile.name}</span>
+                  <ChevronDown size={13} className={`text-white/40 transition-transform duration-200 ${dpPickerOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {dpPickerOpen && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden">
+                      {dpProfiles.map((p) => (
+                        <button key={p.id} type="button"
+                          onClick={() => { setDpActiveProfileId(p.id); setDpPickerOpen(false); }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
+                            ${p.id === dpActiveProfileId ? "bg-emerald-500/15 text-emerald-200" : "text-white/70 hover:bg-white/6 hover:text-white"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === dpActiveProfileId ? "bg-emerald-400" : "bg-white/20"}`} />
+                          <span className="truncate">{p.name}</span>
+                          {p.id === dpActiveProfileId && <Check size={12} className="ml-auto text-emerald-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {dpPickerOpen && <div className="fixed inset-0 z-40" onClick={() => setDpPickerOpen(false)} />}
+              </div>
+
+              <DpSettingsModal profiles={dpProfiles} activeProfileId={dpActiveProfileId}
+                onSelectProfile={(id) => setDpActiveProfileId(id)}
+                onAddProfile={dpAddProfile} onUpdateProfile={dpUpdateProfile} onDeleteProfile={dpDeleteProfile} />
+            </>)}
           </div>
         </div>
       </header>
@@ -329,7 +373,7 @@ export default function Home() {
       <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-10 flex flex-col gap-6">
 
         {/* ── DP SECTION ── */}
-        {activeTab === "dp" && <DpSection />}
+        {activeTab === "dp" && <DpSection activeProfile={dpActiveProfile} />}
 
         {/* ── WD SECTION ── */}
         {activeTab === "wd" && <>
