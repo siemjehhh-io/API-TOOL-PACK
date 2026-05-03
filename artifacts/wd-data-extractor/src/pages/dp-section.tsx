@@ -61,9 +61,11 @@ function formatTxDate(dateStr: unknown): string {
 }
 
 function transformDpData(raw: Record<string, unknown>[], profile: DpProfile): DpRow[] {
+  const hasStatusCol = raw.length > 0 && "Status" in raw[0];
   return raw.flatMap((row) => {
     const memberId = String(row["Member ID"] ?? "").trim();
     if (!memberId) return [];
+    if (hasStatusCol && String(row["Status"] ?? "").trim().toLowerCase() !== "success") return [];
     return [{
       nama:          String(row["Whitelabel Transaction ID"] ?? "").trim(),
       nomorRekening: formatTxDate(row["Transaction Date"]),
