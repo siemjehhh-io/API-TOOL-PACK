@@ -44,8 +44,10 @@ const formatExcelDate = (v: unknown): string => {
 function transformData(raw: Record<string, unknown>[], p: WebProfile): ExtractedRow[] {
   const { sub, kodeTransaksi, keterangan, colAccountName, colPaymentMethod,
     colAccountNumber, colTransactionId, colTotalAmount, colFinishedDate } = p;
+  const hasStatusCol = raw.length > 0 && "Status" in raw[0];
   return raw.flatMap((row) => {
     if (!row[colAccountName] && !row[colPaymentMethod] && !row[colAccountNumber] && !row[colTransactionId]) return [];
+    if (hasStatusCol && String(row["Status"] ?? "").trim().toLowerCase() !== "success") return [];
     const pm = String(row[colPaymentMethod] ?? "").trim();
     let uid = String(row[colTransactionId] ?? "").trim();
     if (uid.includes("-")) uid = uid.split("-")[0].trim();
