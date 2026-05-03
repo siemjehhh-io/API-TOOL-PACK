@@ -226,9 +226,27 @@ export default function Home() {
     const rowNum = idx + 1;
     setIdSearchError(null);
     setIdSearchResult({ row: rowNum, id: data[idx].userId });
-    if (target === "start") { setStartRow(rowNum); if (rowNum > endRow) setEndRow(rowNum); }
-    else { setEndRow(rowNum); if (rowNum < startRow) setStartRow(rowNum); }
-    toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris ${target === "start" ? "awal" : "akhir"}`);
+    if (target === "start") {
+      if (rowNum > endRow) {
+        // melewati batas akhir → tukar
+        setStartRow(endRow);
+        setEndRow(rowNum);
+        toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris akhir (ditukar)`);
+      } else {
+        setStartRow(rowNum);
+        toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris awal`);
+      }
+    } else {
+      if (rowNum < startRow) {
+        // di atas batas awal → tukar, bukan timpa
+        setEndRow(startRow);
+        setStartRow(rowNum);
+        toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris awal (ditukar)`);
+      } else {
+        setEndRow(rowNum);
+        toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris akhir`);
+      }
+    }
   };
 
   const handleRowClick = (i: number) => {
