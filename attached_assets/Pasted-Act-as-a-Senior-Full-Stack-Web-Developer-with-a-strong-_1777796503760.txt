@@ -1,0 +1,51 @@
+Act as a Senior Full-Stack Web Developer with a strong focus on UX/UI and clean code. I want to build an internal web tool to parse and format Excel data.
+
+# PROJECT OVERVIEW
+Name: WD Data Extractor
+Tech Stack: React (Vite), TailwindCSS, `xlsx` (SheetJS) for parsing, and `lucide-react` for beautiful icons.
+Architecture: Fully client-side. No backend database needed. The app reads a local Excel file, transforms the data based on specific rules, and provides a "Copy to Clipboard" button in a TSV/Spreadsheet-compatible format.
+
+# DESIGN SYSTEM & VIBE
+Create a modern, minimalistic, and professional UI. Use a calming, shaded, and slightly melancholic aesthetic. Think "Dark Mode" by default or a very elegant dark theme using slate, muted deep navy/blues, and soft gray text (e.g., bg-slate-900, surface bg-slate-800, accents with muted indigo). It should feel focused, quiet, and premium.
+
+# EXECUTION TASKS (Execute step-by-step. Do not skip tasks):
+
+## TASK 1: Project Setup & Layouting
+- Initialize the React + Vite + Tailwind project.
+- Create a clean main layout: A neat Header, a main content area centered on the screen, and a subtle footer.
+- Install necessary dependencies (`xlsx`, `lucide-react`).
+
+## TASK 2: Drag & Drop Upload Component
+- Create an intuitive "Drag and Drop" zone for `.xlsx` files.
+- Give visual feedback when a file is hovered or dropped.
+- Show the uploaded file name and a "Remove/Reset" button if the user wants to upload a different file.
+
+## TASK 3: Core Data Transformation Logic
+- Write the logic to read the uploaded Excel file using `xlsx`.
+- Create a mapping function that iterates over the rows and generates a new dataset with EXACTLY these 13 columns in this order:
+  1. "NAMA": from raw `Account Name` (UPPERCASE).
+  2. "NOMOR REKENING": raw `Payment Method` + " " + `Account Number` (UPPERCASE).
+  3. "USER ID / LOGIN": from raw `Whitelabel Transaction ID` (take only the text BEFORE the first "-" character).
+  4. "SUB": hardcoded string "BOT".
+  5. "KODE TRANSAKSI": hardcoded string "WD".
+  6. "DEPOSIT": empty string "".
+  7. "WITHDRAWAL": from raw `Total Amount`.
+  8. "DP PULSA": empty string "".
+  9. "KETERANGAN / KODE SN": hardcoded string "QRIS HOKI RATUKILAT 77".
+  10. "KODE BANK": empty string "".
+  11. "SALDO AKHIR": empty string "".
+  12. "JAM INPUT WD": extract only the time (HH:MM:SS) from raw `Finished Date`.
+  13. "INPUT KODE BANK": empty string "".
+
+## TASK 4: Preview Table & Clipboard Feature
+- Build a responsive, scrollable preview table showing the transformed data. Ensure table headers are sticky and visually distinct.
+- Add a prominent "Copy to Clipboard" button.
+- The clipboard logic MUST convert the JSON array of transformed data into a Tab-Separated Values (TSV) string. It must NOT include the column headers, only the values, so the user can seamlessly paste it directly into an existing Google Sheet.
+- Add a beautiful Toast notification (success/error) when the copy action is performed.
+
+## TASK 5: Polishing & Error Handling
+- Add try/catch blocks for file reading. If the Excel file doesn't have the expected columns, show a friendly error message.
+- Ensure the UI handles empty states gracefully.
+- Do a final review of the CSS to ensure the "shaded/calm" aesthetic is applied consistently across borders, hovers, and shadows.
+
+Please start by confirming you understand the tech stack and the aesthetic, then immediately proceed to execute TASK 1 and 2.

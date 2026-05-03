@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "WD Data Extractor"
+version = "1.0.0"
+id = "artifacts/wd-data-extractor"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19541
+
+[services.development]
+run = "pnpm --filter @workspace/wd-data-extractor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/wd-data-extractor", "run", "build" ]
+publicDir = "artifacts/wd-data-extractor/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19541"
+BASE_PATH = "/"
