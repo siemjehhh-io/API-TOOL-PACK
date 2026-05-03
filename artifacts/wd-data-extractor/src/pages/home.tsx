@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
   Upload, FileSpreadsheet, X, Clipboard, Check, AlertCircle,
-  ChevronDown, ChevronsUpDown, Flag, FlagOff,
+  ChevronDown, ChevronsUpDown, Flag, FlagOff, Search, Hash,
+  Layers, Banknote, ListOrdered, CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,8 @@ interface ExtractedRow {
   saldoAkhir: string;
   jamInput: string;
   inputKodeBank: string;
+  // internal only — not in TSV output
+  _paymentMethod: string;
 }
 
 const OUTPUT_HEADERS = [
@@ -33,6 +36,14 @@ const OUTPUT_HEADERS = [
   "DEPOSIT", "WITHDRAWAL", "DP PULSA", "KETERANGAN / KODE SN",
   "KODE BANK", "SALDO AKHIR", "JAM INPUT WD", "INPUT KODE BANK",
 ];
+
+function rowToTsv(row: ExtractedRow): string {
+  return [
+    row.nama, row.nomorRekening, row.userId, row.sub, row.kodeTransaksi,
+    row.deposit, row.withdrawal, row.dpPulsa, row.keterangan,
+    row.kodeBank, row.saldoAkhir, row.jamInput, row.inputKodeBank,
+  ].join("\t");
+}
 
 const formatExcelDate = (dateVal: unknown): string => {
   if (!dateVal) return "";
@@ -64,6 +75,7 @@ function transformData(rawData: Record<string, unknown>[], profile: WebProfile):
       withdrawal: String(row[colTotalAmount] ?? "").trim(), dpPulsa: "",
       keterangan, kodeBank: "", saldoAkhir: "",
       jamInput: formatExcelDate(row[colFinishedDate]), inputKodeBank: "",
+      _paymentMethod: paymentMethod.toUpperCase(),
     });
   }
   return result;
@@ -71,6 +83,16 @@ function transformData(rawData: Record<string, unknown>[], profile: WebProfile):
 
 function clamp(val: number, min: number, max: number) {
   return Math.min(Math.max(val, min), max);
+}
+
+function formatNumber(n: number): string {
+  return n.toLocaleString("id-ID");
+}
+
+function parseAmount(val: string): number {
+  const cleaned = val.replace(/[^0-9.,-]/g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
 }
 
 export default function Home() {
@@ -86,32 +108,34 @@ export default function Home() {
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Row range state (1-indexed, inclusive)
+  // Row range (1-indexed, inclusive)
   const [startRow, setStartRow] = useState(1);
   const [endRow, setEndRow] = useState(1);
-  // "start" | "end" | null — click mode for marking rows directly
   const [markMode, setMarkMode] = useState<"start" | "end" | null>(null);
+
+  // ID Transaksi search
+  const [idSearch, setIdSearch] = useState("");
+  const [idSearchResult, setIdSearchResult] = useState<{ row: number; id: string } | null>(null);
+  const [idSearchError, setIdSearchError] = useState<string | null>(null);
 
   const totalRows = data?.length ?? 0;
 
-  // When data loads, reset range to full
   useEffect(() => {
-    if (data) {
-      setStartRow(1);
-      setEndRow(data.length);
-      setMarkMode(null);
-    }
+    if (data) { setStartRow(1); setEndRow(data.length); setMarkMode(null); setIdSearch(""); setIdSearchResult(null); setIdSearchError(null); }
   }, [data]);
 
-  const filteredData = data
-    ? data.slice(startRow - 1, endRow)
-    : [];
+  const filteredData = useMemo(() => data ? data.slice(startRow - 1, endRow) : [], [data, startRow, endRow]);
+
+  // Stats computed from filteredData
+  const stats = useMemo(() => {
+    if (!filteredData.length) return null;
+    const totalNominal = filteredData.reduce((acc, r) => acc + parseAmount(r.withdrawal), 0);
+    const uniqueBanks = [...new Set(filteredData.map((r) => r._paymentMethod).filter(Boolean))];
+    return { count: filteredData.length, totalNominal, uniqueBanks };
+  }, [filteredData]);
 
   const processFile = async (selectedFile: File, profile: WebProfile) => {
-    setFile(selectedFile);
-    setError(null);
-    setData(null);
-    setIsParsing(true);
+    setFile(selectedFile); setError(null); setData(null); setIsParsing(true);
     try {
       const buffer = await selectedFile.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
@@ -122,15 +146,11 @@ export default function Home() {
       const expectedCols = [profile.colAccountName, profile.colPaymentMethod,
         profile.colAccountNumber, profile.colTransactionId, profile.colTotalAmount, profile.colFinishedDate];
       const missingColumns = expectedCols.filter((col) => !(col in rawData[0]));
-      if (missingColumns.length > 0) {
-        throw new Error(`Kolom tidak ditemukan di profil "${profile.name}": ${missingColumns.join(", ")}. Periksa mapping kolom di Pengaturan.`);
-      }
+      if (missingColumns.length > 0) throw new Error(`Kolom tidak ditemukan di profil "${profile.name}": ${missingColumns.join(", ")}. Periksa mapping kolom di Pengaturan.`);
       setData(transformData(rawData, profile));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal membaca file Excel.");
-    } finally {
-      setIsParsing(false);
-    }
+    } finally { setIsParsing(false); }
   };
 
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
@@ -149,22 +169,40 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const resetState = () => { setFile(null); setData(null); setError(null); setIsCopied(false); setMarkMode(null); };
+  const resetState = () => { setFile(null); setData(null); setError(null); setIsCopied(false); setMarkMode(null); setIdSearch(""); setIdSearchResult(null); setIdSearchError(null); };
+
+  // Search by transaction ID and apply to start/end
+  const searchIdAndApply = (target: "start" | "end") => {
+    if (!data || !idSearch.trim()) return;
+    const q = idSearch.trim().toLowerCase();
+    const idx = data.findIndex((r) => r.userId.toLowerCase().includes(q));
+    if (idx === -1) {
+      setIdSearchResult(null);
+      setIdSearchError(`ID "${idSearch.trim()}" tidak ditemukan.`);
+      return;
+    }
+    const rowNum = idx + 1;
+    setIdSearchError(null);
+    setIdSearchResult({ row: rowNum, id: data[idx].userId });
+    if (target === "start") {
+      setStartRow(rowNum);
+      if (rowNum > endRow) setEndRow(rowNum);
+    } else {
+      setEndRow(rowNum);
+      if (rowNum < startRow) setStartRow(rowNum);
+    }
+    toast.success(`ID ditemukan di baris ${rowNum} — set sebagai baris ${target === "start" ? "awal" : "akhir"}`);
+  };
 
   const handleRowClick = (rowIndex: number) => {
-    // rowIndex is 0-based; display number is rowIndex+1
     const displayNum = rowIndex + 1;
     if (markMode === "start") {
-      const newStart = displayNum;
-      const newEnd = Math.max(endRow, newStart);
-      setStartRow(newStart);
-      setEndRow(newEnd);
+      setStartRow(displayNum);
+      if (displayNum > endRow) setEndRow(displayNum);
       setMarkMode(null);
     } else if (markMode === "end") {
-      const newEnd = displayNum;
-      const newStart = Math.min(startRow, newEnd);
-      setEndRow(newEnd);
-      setStartRow(newStart);
+      setEndRow(displayNum);
+      if (displayNum < startRow) setStartRow(displayNum);
       setMarkMode(null);
     }
   };
@@ -172,34 +210,28 @@ export default function Home() {
   const handleStartInput = (val: string) => {
     const n = parseInt(val, 10);
     if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
-    setStartRow(clamped);
-    if (clamped > endRow) setEndRow(clamped);
+    const c = clamp(n, 1, totalRows);
+    setStartRow(c);
+    if (c > endRow) setEndRow(c);
   };
 
   const handleEndInput = (val: string) => {
     const n = parseInt(val, 10);
     if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
-    setEndRow(clamped);
-    if (clamped < startRow) setStartRow(clamped);
+    const c = clamp(n, 1, totalRows);
+    setEndRow(c);
+    if (c < startRow) setStartRow(c);
   };
 
   const copyToClipboard = async () => {
     if (!filteredData.length) return;
     try {
-      const tsvData = filteredData.map((row) =>
-        [row.nama, row.nomorRekening, row.userId, row.sub, row.kodeTransaksi,
-          row.deposit, row.withdrawal, row.dpPulsa, row.keterangan,
-          row.kodeBank, row.saldoAkhir, row.jamInput, row.inputKodeBank].join("\t")
-      ).join("\n");
-      await navigator.clipboard.writeText(tsvData);
+      const tsv = filteredData.map(rowToTsv).join("\n");
+      await navigator.clipboard.writeText(tsv);
       setIsCopied(true);
       toast.success(`Berhasil menyalin ${filteredData.length} baris ke clipboard!`);
       setTimeout(() => setIsCopied(false), 2000);
-    } catch {
-      toast.error("Gagal menyalin ke clipboard.");
-    }
+    } catch { toast.error("Gagal menyalin ke clipboard."); }
   };
 
   const isFullRange = startRow === 1 && endRow === totalRows;
@@ -217,31 +249,23 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setProfilePickerOpen((v) => !v)}
+              <button type="button" onClick={() => setProfilePickerOpen((v) => !v)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted/70 transition-colors text-sm"
-                data-testid="button-profile-picker"
-              >
+                data-testid="button-profile-picker">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                 <span className="max-w-[140px] truncate text-foreground/90 font-medium">{activeProfile.name}</span>
                 <ChevronDown size={13} className={`text-muted-foreground transition-transform duration-200 ${profilePickerOpen ? "rotate-180" : ""}`} />
               </button>
               <AnimatePresence>
                 {profilePickerOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl border border-border bg-card shadow-xl overflow-hidden"
-                  >
+                  <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
                     {profiles.map((profile) => (
                       <button key={profile.id} type="button"
                         onClick={() => { setActiveProfileId(profile.id); setProfilePickerOpen(false); resetState(); }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${profile.id === activeProfileId ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted/50"}`}
-                        data-testid={`option-profile-${profile.id}`}
-                      >
+                        data-testid={`option-profile-${profile.id}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${profile.id === activeProfileId ? "bg-primary" : "bg-muted-foreground/30"}`} />
                         <span className="truncate">{profile.name}</span>
                         {profile.id === activeProfileId && <Check size={12} className="ml-auto shrink-0" />}
@@ -252,21 +276,17 @@ export default function Home() {
               </AnimatePresence>
               {profilePickerOpen && <div className="fixed inset-0 z-40" onClick={() => setProfilePickerOpen(false)} />}
             </div>
-            <SettingsModal
-              profiles={profiles} activeProfileId={activeProfileId}
+            <SettingsModal profiles={profiles} activeProfileId={activeProfileId}
               onSelectProfile={(id) => { setActiveProfileId(id); resetState(); }}
-              onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile}
-            />
+              onAddProfile={addProfile} onUpdateProfile={updateProfile} onDeleteProfile={deleteProfile} />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-12 flex flex-col gap-8">
         {/* Profile banner */}
         <motion.div key={activeProfile.id} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg border border-primary/20 bg-primary/5"
-        >
+          className="flex items-center gap-3 px-4 py-3 rounded-lg border border-primary/20 bg-primary/5">
           <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium text-foreground/90">{activeProfile.name}</span>
@@ -278,16 +298,13 @@ export default function Home() {
 
         {/* Upload Zone */}
         <section>
-          <div
-            data-testid="upload-zone"
+          <div data-testid="upload-zone"
             className={`relative group w-full rounded-xl border-2 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center p-12 text-center ${
               isDragging ? "border-primary bg-primary/10 scale-[1.02]"
               : file ? "border-border bg-card"
-              : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50 cursor-pointer"
-            }`}
+              : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50 cursor-pointer"}`}
             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-            onClick={() => !file && fileInputRef.current?.click()}
-          >
+            onClick={() => !file && fileInputRef.current?.click()}>
             <input type="file" accept=".xlsx" className="hidden" ref={fileInputRef} onChange={handleFileSelect} data-testid="input-file" />
             <AnimatePresence mode="wait">
               {isParsing ? (
@@ -345,133 +362,203 @@ export default function Home() {
           {data && !error && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="flex flex-col gap-4">
 
-              {/* Top bar: title + copy button */}
+              {/* ── STATS PANEL ── */}
+              <AnimatePresence>
+                {stats && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {/* Baris Dipilih */}
+                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                      <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                        <ListOrdered size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Baris Dipilih</p>
+                        <p className="text-xl font-bold text-foreground leading-tight font-mono">
+                          {stats.count}
+                          <span className="text-xs text-muted-foreground font-normal ml-1">/ {totalRows}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Total Nominal */}
+                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Banknote size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Nominal</p>
+                        <p className="text-base font-bold text-foreground leading-tight font-mono truncate" title={formatNumber(stats.totalNominal)}>
+                          {formatNumber(stats.totalNominal)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Total File */}
+                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                      <div className="w-9 h-9 rounded-lg bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0">
+                        <Layers size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total File</p>
+                        <p className="text-xl font-bold text-foreground leading-tight font-mono">{totalRows}</p>
+                      </div>
+                    </div>
+
+                    {/* Kode Bank */}
+                    <div className="flex items-start gap-3 p-4 rounded-xl border border-border/60 bg-card/80">
+                      <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <CreditCard size={16} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Kode Bank</p>
+                        {stats.uniqueBanks.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {stats.uniqueBanks.slice(0, 4).map((b) => (
+                              <span key={b} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                                {b}
+                              </span>
+                            ))}
+                            {stats.uniqueBanks.length > 4 && (
+                              <span className="text-[10px] text-muted-foreground">+{stats.uniqueBanks.length - 4}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* ── TOP BAR ── */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-medium">Pratinjau Data</h2>
-                  <span className="px-2.5 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/20">
-                    {totalRows} total
-                  </span>
+                  <span className="px-2.5 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/20">{totalRows} total</span>
                 </div>
-                <Button
-                  onClick={copyToClipboard}
-                  disabled={filteredData.length === 0}
-                  className={`transition-all duration-300 ${isCopied ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
-                  data-testid="button-copy-tsv"
-                >
+                <Button onClick={copyToClipboard} disabled={filteredData.length === 0}
+                  className={`transition-all duration-300 ${isCopied ? "bg-green-600 hover:bg-green-700 text-white" : ""}`} data-testid="button-copy-tsv">
                   {isCopied ? <><Check size={16} className="mr-2" />Tersalin!</> : <><Clipboard size={16} className="mr-2" />Salin sebagai TSV</>}
                 </Button>
               </div>
 
-              {/* Row range selector */}
-              <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-border/60 bg-card/60">
-                <ChevronsUpDown size={15} className="text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium text-foreground/80 shrink-0">Rentang Baris:</span>
+              {/* ── ROW RANGE SELECTOR ── */}
+              <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/60 bg-card/60">
+                {/* Row number controls */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <ChevronsUpDown size={15} className="text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium text-foreground/80 shrink-0">Rentang Baris:</span>
 
-                {/* Start row */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Mulai</span>
-                  <input
-                    type="number" min={1} max={totalRows}
-                    value={startRow}
-                    onChange={(e) => handleStartInput(e.target.value)}
-                    className="w-16 h-7 px-2 rounded-md border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
-                    data-testid="input-start-row"
-                  />
-                </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Mulai</span>
+                    <input type="number" min={1} max={totalRows} value={startRow} onChange={(e) => handleStartInput(e.target.value)}
+                      className="w-16 h-7 px-2 rounded-md border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
+                      data-testid="input-start-row" />
+                  </div>
+                  <span className="text-muted-foreground/50 text-xs">—</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Sampai</span>
+                    <input type="number" min={1} max={totalRows} value={endRow} onChange={(e) => handleEndInput(e.target.value)}
+                      className="w-16 h-7 px-2 rounded-md border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
+                      data-testid="input-end-row" />
+                  </div>
 
-                <span className="text-muted-foreground/50 text-xs">—</span>
-
-                {/* End row */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Sampai</span>
-                  <input
-                    type="number" min={1} max={totalRows}
-                    value={endRow}
-                    onChange={(e) => handleEndInput(e.target.value)}
-                    className="w-16 h-7 px-2 rounded-md border border-border bg-background text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
-                    data-testid="input-end-row"
-                  />
-                </div>
-
-                {/* Mark mode toggles */}
-                <div className="flex items-center gap-1.5 ml-1">
-                  <button
-                    type="button"
-                    onClick={() => setMarkMode((m) => m === "start" ? null : "start")}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                      markMode === "start"
-                        ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
-                        : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                    }`}
-                    data-testid="button-mark-start"
-                    title="Klik mode aktif, lalu klik nomor baris di tabel untuk set baris awal"
-                  >
-                    <Flag size={11} />
-                    Tandai Awal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMarkMode((m) => m === "end" ? null : "end")}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                      markMode === "end"
-                        ? "bg-rose-500/20 border-rose-500/50 text-rose-400"
-                        : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                    }`}
-                    data-testid="button-mark-end"
-                    title="Klik mode aktif, lalu klik nomor baris di tabel untuk set baris akhir"
-                  >
-                    <FlagOff size={11} />
-                    Tandai Akhir
-                  </button>
-                </div>
-
-                {/* Reset + selected count */}
-                <div className="flex items-center gap-3 ml-auto">
-                  {!isFullRange && (
-                    <button
-                      type="button"
-                      onClick={() => { setStartRow(1); setEndRow(totalRows); setMarkMode(null); }}
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                      data-testid="button-reset-range"
-                    >
-                      Reset
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <button type="button" onClick={() => setMarkMode((m) => m === "start" ? null : "start")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
+                        markMode === "start" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                      data-testid="button-mark-start">
+                      <Flag size={11} />Tandai Awal
                     </button>
+                    <button type="button" onClick={() => setMarkMode((m) => m === "end" ? null : "end")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
+                        markMode === "end" ? "bg-rose-500/20 border-rose-500/50 text-rose-400" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                      data-testid="button-mark-end">
+                      <FlagOff size={11} />Tandai Akhir
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3 ml-auto">
+                    {!isFullRange && (
+                      <button type="button" onClick={() => { setStartRow(1); setEndRow(totalRows); setMarkMode(null); }}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors" data-testid="button-reset-range">
+                        Reset
+                      </button>
+                    )}
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                      isFullRange ? "bg-muted/40 border-border/50 text-muted-foreground" : "bg-amber-500/15 border-amber-500/30 text-amber-400"}`}>
+                      {filteredData.length} baris dipilih
+                    </span>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border/40" />
+
+                {/* ID Transaksi search */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Hash size={14} className="text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium text-foreground/80 shrink-0">Patokan ID Transaksi:</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Cari User ID / Login..."
+                        value={idSearch}
+                        onChange={(e) => { setIdSearch(e.target.value); setIdSearchResult(null); setIdSearchError(null); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") searchIdAndApply("start"); }}
+                        className="w-full h-7 pl-7 pr-3 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono placeholder:text-muted-foreground/50"
+                        data-testid="input-id-search"
+                      />
+                    </div>
+                    <button type="button" onClick={() => searchIdAndApply("start")} disabled={!idSearch.trim()}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      data-testid="button-id-set-start">
+                      <Flag size={11} />Set Awal
+                    </button>
+                    <button type="button" onClick={() => searchIdAndApply("end")} disabled={!idSearch.trim()}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      data-testid="button-id-set-end">
+                      <FlagOff size={11} />Set Akhir
+                    </button>
+                  </div>
+
+                  {/* Search result feedback */}
+                  {idSearchResult && (
+                    <span className="text-xs text-emerald-400 flex items-center gap-1">
+                      <Check size={11} />
+                      Baris {idSearchResult.row}: <span className="font-mono">{idSearchResult.id}</span>
+                    </span>
                   )}
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
-                    isFullRange
-                      ? "bg-muted/40 border-border/50 text-muted-foreground"
-                      : "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                  }`}>
-                    {filteredData.length} baris dipilih
-                  </span>
+                  {idSearchError && (
+                    <span className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle size={11} />{idSearchError}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Mark mode hint */}
               <AnimatePresence>
                 {markMode && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs overflow-hidden"
                     style={{
                       borderColor: markMode === "start" ? "rgb(52 211 153 / 0.4)" : "rgb(251 113 133 / 0.4)",
                       background: markMode === "start" ? "rgb(52 211 153 / 0.08)" : "rgb(251 113 133 / 0.08)",
                       color: markMode === "start" ? "rgb(52 211 153)" : "rgb(251 113 133)",
-                    }}
-                  >
+                    }}>
                     <Flag size={12} />
                     Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris (#) di tabel untuk menetapkan posisi.
-                    <button type="button" onClick={() => setMarkMode(null)} className="ml-auto opacity-70 hover:opacity-100">
-                      <X size={12} />
-                    </button>
+                    <button type="button" onClick={() => setMarkMode(null)} className="ml-auto opacity-70 hover:opacity-100"><X size={12} /></button>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Table */}
+              {/* ── TABLE ── */}
               <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
                 <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
                   <table className="w-full text-sm text-left border-collapse" data-testid="preview-table">
@@ -490,42 +577,29 @@ export default function Home() {
                         const isStart = rowNum === startRow;
                         const isEnd = rowNum === endRow;
                         const isClickable = markMode !== null;
+                        const isIdMatch = idSearch.trim() && row.userId.toLowerCase().includes(idSearch.trim().toLowerCase());
 
                         return (
-                          <tr
-                            key={i}
-                            className={`transition-all duration-150 ${
-                              isInRange
-                                ? "hover:bg-muted/30"
-                                : "opacity-30 bg-background/30"
-                            } ${isStart ? "border-t-2 border-t-emerald-500/50" : ""} ${isEnd ? "border-b-2 border-b-rose-500/50" : ""}`}
-                            data-testid={`row-data-${i}`}
-                          >
-                            {/* Row number cell — clickable in mark mode */}
-                            <td
-                              className={`px-3 py-3 text-center align-middle select-none transition-all ${
-                                isClickable
-                                  ? "cursor-pointer"
-                                  : ""
-                              }`}
+                          <tr key={i}
+                            className={`transition-all duration-150 ${isInRange ? "hover:bg-muted/30" : "opacity-30 bg-background/30"}
+                              ${isStart ? "border-t-2 border-t-emerald-500/50" : ""}
+                              ${isEnd ? "border-b-2 border-b-rose-500/50" : ""}
+                              ${isIdMatch ? "bg-primary/5" : ""}`}
+                            data-testid={`row-data-${i}`}>
+                            <td className={`px-3 py-3 text-center align-middle select-none transition-all ${isClickable ? "cursor-pointer" : ""}`}
                               onClick={() => isClickable && handleRowClick(i)}
-                              title={isClickable ? `Set baris ${markMode === "start" ? "awal" : "akhir"} ke ${rowNum}` : undefined}
-                            >
+                              title={isClickable ? `Set baris ${markMode === "start" ? "awal" : "akhir"} ke ${rowNum}` : undefined}>
                               <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-medium transition-all ${
-                                isStart
-                                  ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40"
-                                  : isEnd
-                                  ? "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/40"
-                                  : isClickable
-                                  ? "text-muted-foreground/40 hover:bg-primary/20 hover:text-primary"
-                                  : "text-muted-foreground/30"
-                              }`}>
+                                isStart ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40"
+                                : isEnd ? "bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/40"
+                                : isClickable ? "text-muted-foreground/40 hover:bg-primary/20 hover:text-primary"
+                                : "text-muted-foreground/30"}`}>
                                 {rowNum}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-foreground/90">{row.nama}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-primary/90">{row.nomorRekening}</td>
-                            <td className="px-4 py-3 whitespace-nowrap">{row.userId}</td>
+                            <td className={`px-4 py-3 whitespace-nowrap ${isIdMatch ? "text-primary font-semibold" : ""}`}>{row.userId}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.sub}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.kodeTransaksi}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.deposit}</td>
