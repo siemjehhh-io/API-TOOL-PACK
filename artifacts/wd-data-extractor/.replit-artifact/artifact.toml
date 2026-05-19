@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "WD Data Extractor"
+title = "API FORMULA TOOLS"
 version = "1.0.0"
 id = "artifacts/wd-data-extractor"
 router = "path"

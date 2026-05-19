@@ -1,0 +1,466 @@
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { X } from 'lucide-react';
+
+const STORAGE_PREFIX = 'gigaSmartMutasi';
+const DEFAULT_TAB = { id: 'bca-1', name: 'BCA 1', bank: 'BCA' };
+const TYPE_OPTIONS = ['DP', 'TRANSFER', 'BIAYA ADMIN'];
+
+const storageKey = (tabId) => `${STORAGE_PREFIX}:queue:${tabId}`;
+const sanitizeTsvCell = (value) => String(value ?? '').replace(/[\t\n\r]/g, '').trim();
+const cleanNominal = (value) => String(value ?? '').replace(/,/g, '').replace(/\./g, '').replace(/[^0-9-]/g, '').trim();
+const parseNumber = (value) => Number(String(value ?? '').replace(/[^0-9-]/g, '')) || 0;
+const formatNumber = (value) => parseNumber(value).toLocaleString('id-ID');
+const getExportDate = () => new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+
+const readJson = (key, fallback) => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const NominalInput = ({ value, onChange, className }) => {
+    const [isFocused, setIsFocused] = React.useState(false);
+
+    const formatRibuan = (num) => {
+        if (!num) return "";
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+
+    return (
+        <input
+            type="text"
+            className={className}
+            value={isFocused ? value : formatRibuan(value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onChange={(e) => {
+                const rawAngka = e.target.value.replace(/[^0-9]/g, '');
+                onChange(rawAngka);
+            }}
+            placeholder="0"
+        />
+    );
+};
+
+export default function GigaSmartMutasi() {
+  const [tabs, setTabs] = useState(() => readJson(`${STORAGE_PREFIX}:tabs`, [DEFAULT_TAB]));
+  const [activeTabId, setActiveTabId] = useState(() => localStorage.getItem(`${STORAGE_PREFIX}:activeTab`) || DEFAULT_TAB.id);
+  const [queueList, setQueueList] = useState(() => readJson(storageKey(localStorage.getItem(`${STORAGE_PREFIX}:activeTab`) || DEFAULT_TAB.id), []));
+  const [shiftName, setShiftName] = useState(() => localStorage.getItem(`${STORAGE_PREFIX}:shiftName`) || '');
+  const [selectedBank, setSelectedBank] = useState(() => localStorage.getItem(`${STORAGE_PREFIX}:selectedBank`) || 'BCA');
+  const [bcaRawText, setBcaRawText] = useState('');
+  const [manualNama, setManualNama] = useState('');
+  const [manualNominal, setManualNominal] = useState('');
+  const [manualType, setManualType] = useState('DP');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const activeTab = useMemo(() => tabs.find(tab => tab.id === activeTabId) || tabs[0] || DEFAULT_TAB, [tabs, activeTabId]);
+
+  useEffect(() => {
+    if (!tabs.length) {
+      setTabs([DEFAULT_TAB]);
+      setActiveTabId(DEFAULT_TAB.id);
+      setQueueList(readJson(storageKey(DEFAULT_TAB.id), []));
+      return;
+    }
+    if (!tabs.some(tab => tab.id === activeTabId)) {
+      setActiveTabId(tabs[0].id);
+      setQueueList(readJson(storageKey(tabs[0].id), []));
+    }
+  }, [tabs, activeTabId]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_PREFIX}:tabs`, JSON.stringify(tabs));
+  }, [tabs]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_PREFIX}:activeTab`, activeTabId);
+  }, [activeTabId]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_PREFIX}:shiftName`, shiftName);
+  }, [shiftName]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_PREFIX}:selectedBank`, selectedBank);
+  }, [selectedBank]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey(activeTabId), JSON.stringify(queueList));
+  }, [queueList, activeTabId]);
+
+  const switchTab = (tabId) => {
+    if (tabId === activeTabId) return;
+    localStorage.setItem(storageKey(activeTabId), JSON.stringify(queueList));
+    setActiveTabId(tabId);
+    setQueueList(readJson(storageKey(tabId), []));
+  };
+
+  const createQueueItem = (nama, nominal, type, saldoAkhir = '', bank = selectedBank || activeTab?.bank) => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    nama: String(nama || '').trim(),
+    nominal: cleanNominal(nominal),
+    type,
+    bank: String(bank || selectedBank || 'BCA').trim(),
+    userId: '',
+    sub: shiftName,
+    saldoAkhir: cleanNominal(saldoAkhir),
+    timestamp: new Date().toISOString()
+  });
+
+  const addQueueItems = (items) => {
+    if (!items.length) return;
+    setQueueList(prev => [...prev, ...items]);
+  };
+
+  const updateRow = (id, field, value) => {
+    setQueueList(prev => prev.map(row => {
+      if (row.id !== id) return row;
+      const normalizedValue = field === 'nominal' || field === 'saldoAkhir' ? cleanNominal(value) : value;
+      return { ...row, [field]: normalizedValue };
+    }));
+  };
+
+  const deleteRow = (id) => {
+    setQueueList(prev => prev.filter(row => row.id !== id));
+    toast.success('Baris dihapus');
+  };
+
+  const resolveMutasiType = (text) => {
+    const upper = String(text || '').toUpperCase();
+    if (upper.includes('CR')) return 'DP';
+    if (upper.includes('DB')) return 'TRANSFER';
+    return 'BIAYA ADMIN';
+  };
+
+  const handleAddTab = () => {
+    if (!shiftName.trim()) {
+      toast.error('Isi SUB terlebih dahulu');
+      return;
+    }
+    const bankName = selectedBank.trim();
+    if (!bankName) {
+      toast.error('Isi nama bank terlebih dahulu');
+      return;
+    }
+    const newTab = {
+      id: `${bankName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+      name: bankName,
+      bank: bankName
+    };
+    localStorage.setItem(storageKey(activeTabId), JSON.stringify(queueList));
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+    setQueueList([]);
+    toast.success(`${newTab.name} ditambahkan`);
+  };
+
+  const handleDeleteTab = (tabId) => {
+    if (!window.confirm('Hapus tab ini dan semua datanya?')) return;
+    setTabs(prev => prev.filter(tab => tab.id !== tabId));
+    localStorage.removeItem(storageKey(tabId));
+    const remainingTabs = tabs.filter(tab => tab.id !== tabId);
+    if (remainingTabs.length) {
+      setActiveTabId(remainingTabs[0].id);
+      setQueueList(readJson(storageKey(remainingTabs[0].id), []));
+    } else {
+      setTabs([DEFAULT_TAB]);
+      setActiveTabId(DEFAULT_TAB.id);
+      setQueueList([]);
+    }
+    toast.success('Tab dihapus');
+  };
+
+  const handleManualSubmit = (event) => {
+    event.preventDefault();
+    if (!manualNama.trim() || !manualNominal.trim()) {
+      toast.error('Nama dan nominal wajib diisi');
+      return;
+    }
+    addQueueItems([createQueueItem(manualNama, manualNominal, manualType)]);
+    setManualNama('');
+    setManualNominal('');
+    setManualType('DP');
+    toast.success('Data manual ditambahkan');
+  };
+
+  const handleExtractBca = () => {
+    if (!bcaRawText.trim()) {
+      toast.error('Paste teks mutasi BCA dulu');
+      return;
+    }
+    const lines = bcaRawText.split('\n').map(line => line.trim()).filter(Boolean);
+    const items = [];
+    for (let index = 0; index < lines.length; index += 1) {
+      if (lines[index] !== '0000') continue;
+      let rawName = lines[index - 1] || '';
+      let upperRaw = rawName.toUpperCase();
+      let targetNameLine = rawName;
+
+      // Deteksi Biaya Admin
+      let isAdmin = false;
+      if (upperRaw.includes('BIAYA ADM') || upperRaw.includes('ADMIN') || upperRaw.includes('BIAYA TX')) {
+        targetNameLine = 'BIAYA ADMIN';
+        isAdmin = true;
+      }
+
+      // Deteksi ESPAY / E-Wallet
+      if (!isAdmin && (upperRaw.includes('ESPAY') || upperRaw.includes('PAYMENT'))) {
+        targetNameLine = lines[index - 2] || rawName;
+      }
+
+      // Bersihkan Nama
+      let cleanName = targetNameLine;
+      if (!isAdmin) {
+        cleanName = cleanName.replace(/TANGGAL\s*:\s*\d{2}\/\d{2}\s*TRANSFER\s*DR\s*\d*\s*/i, '');
+        cleanName = cleanName.replace(/TRFDN-/i, '');
+        cleanName = cleanName.trim();
+      }
+
+      // Ambil Nominal
+      let rawNominal = lines[index + 1] || '0';
+      let nominal = rawNominal.replace(/,/g, '').split('.')[0];
+
+      // Tentukan Tipe
+      let typeRaw = lines[index + 2];
+      let type = 'DP';
+      if (isAdmin) {
+        type = 'BIAYA ADMIN';
+      } else if (typeRaw === 'DB') {
+        type = 'TRANSFER';
+      } else if (typeRaw === 'CR') {
+        type = 'DP';
+      }
+
+      // Ambil Saldo Akhir
+      let rawSaldo = lines[index + 3] || '0';
+      let saldoAkhir = rawSaldo.replace(/,/g, '').split('.')[0];
+
+      // Filter Anti-Nyasar
+      if (cleanName && nominal !== '0') {
+        items.push(createQueueItem(cleanName, nominal, type, saldoAkhir, selectedBank));
+      }
+    }
+    if (!items.length) {
+      toast.error('Tidak ada data BCA valid ditemukan');
+      return;
+    }
+    addQueueItems(items);
+    setBcaRawText('');
+    toast.success(`${items.length} baris berhasil diproses`);
+  };
+
+  const totals = useMemo(() => {
+    const totalDeposit = queueList.filter(row => row.type === 'DP').reduce((sum, row) => sum + parseNumber(row.nominal), 0);
+    const totalTransfer = queueList.filter(row => row.type === 'TRANSFER' || row.type === 'BIAYA ADMIN').reduce((sum, row) => sum + parseNumber(row.nominal), 0);
+    const firstRow = queueList[0];
+    const firstDelta = firstRow ? (firstRow.type === 'DP' ? parseNumber(firstRow.nominal) : -parseNumber(firstRow.nominal)) : 0;
+    const saldoAwal = firstRow?.saldoAkhir ? parseNumber(firstRow.saldoAkhir) - firstDelta : 0;
+    const saldoAkhir = queueList.length ? parseNumber(queueList[queueList.length - 1].saldoAkhir) : 0;
+    const saldoKalkulasi = saldoAwal + totalDeposit - totalTransfer;
+    const selisih = saldoAkhir - saldoKalkulasi;
+    return { totalDeposit, totalTransfer, saldoAwal, saldoAkhir, saldoKalkulasi, selisih };
+  }, [queueList]);
+
+  const expectedSaldoByRow = useMemo(() => {
+    const map = new Map();
+    let runningSaldo = totals.saldoAwal;
+    queueList.forEach(row => {
+      runningSaldo += row.type === 'DP' ? parseNumber(row.nominal) : -parseNumber(row.nominal);
+      map.set(row.id, runningSaldo);
+    });
+    return map;
+  }, [queueList, totals.saldoAwal]);
+
+  const filteredRows = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return queueList;
+    return queueList.filter(row => [row.nama, row.userId, row.nominal, row.type, row.bank, row.saldoAkhir]
+      .some(value => String(value || '').toLowerCase().includes(keyword)));
+  }, [queueList, searchTerm]);
+
+  const completedRows = useMemo(() => queueList.filter(row => String(row.userId || '').trim() !== ''), [queueList]);
+
+  const handleCopyDocTrx = async () => {
+    if (!queueList.length) {
+      toast.error('Belum ada data antrean');
+      return;
+    }
+    const date = getExportDate();
+    const tsv = queueList.map(row => [
+      sanitizeTsvCell(row.nama),
+      sanitizeTsvCell(' '),
+      sanitizeTsvCell(row.userId),
+      sanitizeTsvCell(row.sub || shiftName),
+      sanitizeTsvCell(row.type),
+      sanitizeTsvCell(row.type === 'DP' ? row.nominal : ' '),
+      sanitizeTsvCell(row.type === 'TRANSFER' ? row.nominal : ' '),
+      sanitizeTsvCell(' '),
+      sanitizeTsvCell(date),
+      sanitizeTsvCell(row.bank),
+      sanitizeTsvCell(row.saldoAkhir)
+    ].join('\t')).join('\n');
+
+    try {
+      await navigator.clipboard.writeText(tsv);
+      toast.success(`${queueList.length} baris dicopy ke Doc TRX`);
+    } catch {
+      toast.error('Gagal copy ke clipboard');
+    }
+  };
+
+  const handleResetShift = () => {
+    if (!window.confirm('Akhiri shift dan hapus data tab aktif?')) return;
+    setQueueList([]);
+    localStorage.removeItem(storageKey(activeTabId));
+    toast.success('Data tab aktif direset');
+  };
+
+  const glassCard = 'rounded-xl border border-white/40 bg-white/30 shadow-sm shadow-amber-950/10 backdrop-blur-md';
+  const labelClass = 'text-[10px] font-black uppercase tracking-[0.18em] text-slate-600';
+  const inputClass = 'h-9 w-full rounded-lg border border-white/50 bg-white/65 px-3 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60';
+  const tableInputClass = 'h-8 w-full min-w-0 rounded-md border-none bg-transparent px-2 text-xs font-bold text-slate-800 outline-none transition focus:bg-white/70 focus:ring-1 focus:ring-amber-400';
+
+  return (
+    <div className="w-full h-full flex flex-col gap-4 p-2 lg:p-4 overflow-hidden">
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden">
+        <section className={`${glassCard} w-full shrink-0 overflow-hidden`}>
+          <div className="flex min-w-0 flex-row items-center justify-between gap-3 border-b border-white/40 bg-white/30 px-3 py-2 backdrop-blur-md">
+            <div className="flex min-w-0 flex-row items-center gap-2">
+              <span className="shrink-0 rounded-full bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-white">Giga Smart Mutasi</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="hidden text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 md:inline">SUB</span>
+                <input value={shiftName} onChange={event => setShiftName(event.target.value)} className="h-8 w-28 rounded-full border border-white/50 bg-white/70 px-3 text-xs font-black text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60 sm:w-36" placeholder="BOT / PAGI" />
+              </div>
+              <input type="text" value={selectedBank} onChange={event => setSelectedBank(event.target.value)} className="h-8 w-44 min-w-0 rounded-full border border-white/50 bg-white/70 px-3 text-xs font-black text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60 xl:w-56" placeholder="Ketik Nama Bank (Cth: BCA)..." />
+            </div>
+
+            <div className="flex min-w-0 flex-row items-center justify-end gap-2">
+              <div className="flex min-w-0 gap-1.5 overflow-x-auto">
+                {tabs.map(tab => (
+                  <div key={tab.id} className="relative group">
+                    <button onClick={() => switchTab(tab.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black transition ${activeTabId === tab.id ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30' : 'bg-white/60 text-slate-700 hover:bg-white/90'}`}>
+                      {tab.name}
+                    </button>
+                    {tabs.length > 1 && (
+                      <X onClick={() => handleDeleteTab(tab.id)} className="absolute -top-2 -right-2 h-4 w-4 text-red-500 opacity-0 group-hover:opacity-100 cursor-pointer transition" />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleAddTab} className="h-8 shrink-0 rounded-full bg-slate-900 px-4 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-700">
+                + Tambah Tab
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-2 bg-white/20 px-3 py-2 backdrop-blur-md">
+            <div className="col-span-12 grid grid-cols-[34px_minmax(0,1fr)_96px] items-center gap-2 xl:col-span-5">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">BCA</span>
+              <textarea rows={1} value={bcaRawText} onChange={event => setBcaRawText(event.target.value)} className="h-9 resize-none overflow-hidden rounded-lg border border-white/50 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="Paste mutasi BCA..." />
+              <button onClick={handleExtractBca} className="h-9 rounded-lg bg-amber-500 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-600">
+                Proses BCA
+              </button>
+            </div>
+
+            <form onSubmit={handleManualSubmit} className="col-span-12 grid grid-cols-[56px_minmax(120px,1fr)_105px_110px_84px] items-center gap-2 xl:col-span-7">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Manual</span>
+              <input value={manualNama} onChange={event => setManualNama(event.target.value)} className="h-9 min-w-0 rounded-lg border border-white/50 bg-white/70 px-3 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="Nama" />
+              <input value={manualNominal} onChange={event => setManualNominal(cleanNominal(event.target.value))} className="h-9 rounded-lg border border-white/50 bg-white/70 px-3 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="Nominal" />
+              <select value={manualType} onChange={event => setManualType(event.target.value)} className="h-9 rounded-lg border border-white/50 bg-white/70 px-2 text-xs font-black text-slate-800 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60">
+                {TYPE_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+              <button type="submit" className="h-9 rounded-lg bg-slate-900 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-700">
+                Tambah
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <section className={`${glassCard} flex min-h-0 w-full flex-1 flex-col overflow-hidden p-2`}>
+          <div className="mb-2 flex shrink-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">Papan Antrean</p>
+              <span className="rounded-full bg-white/65 px-3 py-1 text-[10px] font-black text-slate-700">{queueList.length} Total</span>
+              <span className="rounded-full bg-yellow-400 px-3 py-1 text-[10px] font-black text-yellow-950">{queueList.length - completedRows.length} Pending</span>
+              <span className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black text-white">{completedRows.length} Selesai</span>
+            </div>
+            <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="h-8 w-full rounded-lg border border-white/50 bg-white/70 px-3 text-xs font-bold text-slate-800 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60 md:w-72" placeholder="Cari data..." />
+          </div>
+
+          <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden rounded-lg border border-white/50 bg-white/20 shadow-inner">
+            <table className="w-full table-fixed border-collapse text-left">
+              <thead className="sticky top-0 z-10 bg-slate-900/95 text-white shadow-sm">
+                <tr className="text-[10px] font-black uppercase tracking-wide">
+                  <th className="w-[20%] px-2 py-2">Nama</th>
+                  <th className="w-[15%] px-2 py-2">User ID</th>
+                  <th className="w-[13%] px-2 py-2">Nominal</th>
+                  <th className="w-[13%] px-2 py-2">Tipe</th>
+                  <th className="w-[12%] px-2 py-2">Bank</th>
+                  <th className="w-[13%] px-2 py-2">Saldo Akhir</th>
+                  <th className="w-[8%] px-2 py-2">Validasi</th>
+                  <th className="w-[6%] px-2 py-2 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-16 text-center text-sm font-black text-slate-500">Belum ada antrean. Input data dari panel atas.</td>
+                  </tr>
+                ) : filteredRows.map(row => {
+                  const hasUserId = String(row.userId || '').trim() !== '';
+                  const expectedSaldo = expectedSaldoByRow.get(row.id) || 0;
+                  const hasSaldo = String(row.saldoAkhir || '').trim() !== '';
+                  const isMismatch = hasSaldo && parseNumber(row.saldoAkhir) !== expectedSaldo;
+                  const rowClass = isMismatch ? 'bg-red-50/80 ring-2 ring-inset ring-red-500' : hasUserId ? 'bg-white/90' : 'bg-yellow-100/80';
+
+                  return (
+                    <tr key={row.id} className={`${rowClass} transition hover:bg-white`}>
+                      <td className="border-b border-white/60 px-2 py-1.5"><input value={row.nama} onChange={event => updateRow(row.id, 'nama', event.target.value)} className={tableInputClass} /></td>
+                      <td className="border-b border-white/60 px-2 py-1.5"><input value={row.userId} onChange={event => updateRow(row.id, 'userId', event.target.value)} className={tableInputClass} placeholder="opsional" /></td>
+                      <td className="border-b border-white/60 px-2 py-1.5"><NominalInput value={row.nominal} onChange={value => updateRow(row.id, 'nominal', value)} className={tableInputClass} /></td>
+                      <td className="border-b border-white/60 px-2 py-1.5"><select value={row.type} onChange={event => updateRow(row.id, 'type', event.target.value)} className={tableInputClass}>{TYPE_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}</select></td>
+                      <td className="border-b border-white/60 px-2 py-1.5"><input value={row.bank} onChange={event => updateRow(row.id, 'bank', event.target.value)} className={tableInputClass} /></td>
+                      <td className="border-b border-white/60 px-2 py-1.5"><input value={row.saldoAkhir} onChange={event => updateRow(row.id, 'saldoAkhir', event.target.value)} className={tableInputClass} placeholder={String(expectedSaldo)} /></td>
+                      <td className="border-b border-white/60 px-2 py-1.5">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${isMismatch ? 'bg-red-600 text-white' : hasUserId ? 'bg-emerald-500 text-white' : 'bg-yellow-400 text-yellow-950'}`}>
+                          {isMismatch ? 'ERROR' : hasUserId ? 'SELESAI' : 'PENDING'}
+                        </span>
+                      </td>
+                      <td className="border-b border-white/60 px-2 py-1.5 text-center">
+                        <button onClick={() => deleteRow(row.id)} className="rounded-md bg-red-500 px-3 py-1.5 text-[10px] font-black uppercase text-white transition hover:bg-red-600">Hapus</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className={`${glassCard} shrink-0 px-3 py-2`}>
+          <div className="grid gap-2 xl:grid-cols-[1fr_auto] xl:items-center">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <div className="rounded-lg bg-white/60 px-3 py-2"><p className={labelClass}>Deposit</p><p className="text-sm font-black text-emerald-700">{formatNumber(totals.totalDeposit)}</p></div>
+              <div className="rounded-lg bg-white/60 px-3 py-2"><p className={labelClass}>Transfer</p><p className="text-sm font-black text-red-700">{formatNumber(totals.totalTransfer)}</p></div>
+              <div className="rounded-lg bg-white/60 px-3 py-2"><p className={labelClass}>Saldo Akhir</p><p className="text-sm font-black text-slate-900">{formatNumber(totals.saldoAkhir)}</p></div>
+              <div className={`rounded-lg px-3 py-2 ${totals.selisih === 0 ? 'bg-white/60' : 'bg-red-100/90 ring-2 ring-red-500'}`}><p className={labelClass}>Selisih</p><p className={`text-sm font-black ${totals.selisih === 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatNumber(totals.selisih)}</p></div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:w-[430px]">
+              <button onClick={handleCopyDocTrx} className="h-10 rounded-lg bg-emerald-600 px-5 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-emerald-700">
+                Copy To Doc TRX
+              </button>
+              <button onClick={handleResetShift} className="h-10 rounded-lg bg-red-600 px-5 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-red-700">
+                Akhiri Shift
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

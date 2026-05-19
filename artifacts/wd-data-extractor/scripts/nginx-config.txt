@@ -1,0 +1,43 @@
+# ============================================================
+# Nginx Config untuk QRIS HOKI TOOL (SPA - Single Page App)
+# ============================================================
+# Cara pakai:
+# 1. SSH ke VPS: ssh kuyaba@5.184.18.93
+# 2. Edit /etc/nginx/sites-available/default (atau buat file baru)
+#    sudo nano /etc/nginx/sites-available/default
+# 3. Paste config ini (sesuaikan root path dan server_name)
+# 4. Test config: sudo nginx -t
+# 5. Reload nginx: sudo systemctl reload nginx
+# ============================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    # Ganti dengan domain kamu, atau biarkan _ untuk IP langsung
+    server_name _;
+
+    # Path ke folder deploy (HARUS sama dengan REMOTE_PATH di deploy.ps1)
+    root /home/kuyaba/qris-tool;
+    index index.html;
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA fallback - SEMUA route diarahkan ke index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# ============================================================
+# ALTERNATIF: Python Simple Server (testing only)
+# ============================================================
+# SSH ke VPS, lalu jalankan:
+#   cd /home/kuyaba/qris-tool && python3 -m http.server 8080
+# Akses via: http://5.184.18.93:8080
+#
+# Untuk production selalu gunakan Nginx!
