@@ -1,0 +1,117 @@
+/**
+ * Design Tokens
+ * -------------
+ * Single source of truth for design primitives used across the
+ * UI/UX Redesign System. These tokens are exposed as CSS custom
+ * properties on :root so they are available globally to every
+ * component and can be consumed via `var(--token-name)` or mapped
+ * into Tailwind utilities in `tailwind.config.ts`.
+ *
+ * Spec: .kiro/specs/ui-ux-redesign-system/design.md
+ *       (Sections: "1. Spacing & Padding System",
+ *                  "2. Container & Box Design",
+ *                  "5.1 Color Palette",
+ *                  "5.3 Shadows & Depth")
+ *
+ * Scope of this file (Phase 1.1 — token groups complete):
+ *   - Standardized spacing scale (xs → xxl)
+ *   - Color palette (primary, status, neutral)
+ *   - Shadow scale (sm → xl)
+ *   - Border radius scale (sm → 2xl)
+ */
+
+:root {
+  /* ------------------------------------------------------------------
+   * Spacing Scale
+   * ------------------------------------------------------------------
+   * Use these tokens for padding, margin, and gap values to keep
+   * spacing consistent across containers, cards, controls, and grids.
+   *
+   * Application rules (see design.md):
+   *   - Containers: minimum --space-md horizontal/vertical padding
+   *   - Flex/Grid gaps: --space-md by default
+   *   - Section separation: --space-lg
+   *   - Nested elements: step down one level (e.g. md → sm)
+   * ------------------------------------------------------------------ */
+  --space-xs: 0.25rem;  /* 4px  — minimal spacing, icon gaps          */
+  --space-sm: 0.5rem;   /* 8px  — tight spacing, small components     */
+  --space-md: 1rem;     /* 16px — standard spacing, most elements     */
+  --space-lg: 1.5rem;   /* 24px — generous spacing, section separation*/
+  --space-xl: 2rem;     /* 32px — large spacing, major sections       */
+  --space-xxl: 3rem;    /* 48px — extra large, page-level spacing     */
+
+  /* ------------------------------------------------------------------
+   * Color Palette
+   * ------------------------------------------------------------------
+   * Brand and system colors expressed in HSL space-separated form so
+   * they can be consumed directly via `hsl(var(--token))` or with an
+   * alpha channel via `hsl(var(--token) / <alpha>)`.
+   *
+   * Spec: design.md — Section "5.1 Color Palette".
+   *
+   * Groups:
+   *   - Primary  : brand identity (violet) and supporting accents
+   *   - Status   : feedback colors for success / warning / danger
+   *   - Neutral  : surfaces, borders, and text foreground
+   * ------------------------------------------------------------------ */
+
+  /* Primary Colors */
+  --color-primary: hsl(248 80% 68%);       /* Violet — primary brand     */
+  --color-primary-dark: hsl(248 50% 22%);  /* Accent — darker violet     */
+  --color-secondary: hsl(238 28% 16%);     /* Dark slate — secondary     */
+
+  /* Status Colors */
+  --color-success: hsl(175 70% 48%);       /* Teal  — success states     */
+  --color-warning: hsl(35 90% 58%);        /* Amber — warning states     */
+  --color-danger: hsl(0 65% 50%);          /* Red   — danger / error     */
+
+  /* Neutral Colors */
+  --color-background: hsl(238 35% 7%);     /* Deep indigo — app surface  */
+  --color-card: hsl(238 30% 10%);          /* Slightly lighter — cards   */
+  --color-border: hsl(238 28% 18%);        /* Light border — dividers    */
+  --color-text-primary: hsl(240 25% 93%);  /* Off-white — primary text   */
+  --color-text-secondary: hsl(238 18% 52%);/* Muted — secondary text     */
+
+  /* ------------------------------------------------------------------
+   * Shadow Scale
+   * ------------------------------------------------------------------
+   * Elevation tokens used to convey depth across surfaces. Shadow
+   * intensity scales with the perceived elevation of the element so
+   * that depth cues remain consistent across the UI.
+   *
+   * Spec: design.md — Section "5.3 Shadows & Depth".
+   *
+   * Application rules (see design.md):
+   *   - Cards / surfaces (Level 1):     --shadow-sm
+   *   - Dropdowns, tooltips (Level 3-4):--shadow-md
+   *   - Modals, dialogs (Level 2):      --shadow-lg
+   *   - Floating panels / popovers:     --shadow-xl
+   * ------------------------------------------------------------------ */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);   /* subtle lift          */
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);    /* standard elevation   */
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);  /* prominent elevation  */
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);  /* highest elevation    */
+
+  /* ------------------------------------------------------------------
+   * Border Radius Scale
+   * ------------------------------------------------------------------
+   * Corner-rounding tokens used to convey container hierarchy and
+   * keep component shapes visually consistent. Each step maps to a
+   * specific role in the UI so that radii compound predictably with
+   * padding and elevation.
+   *
+   * Spec: design.md — Section "2. Container & Box Design".
+   *
+   * Application rules (see design.md):
+   *   - Standard elements / general use:        --radius-sm
+   *   - Buttons & controls (rounded-lg):        --radius-md
+   *   - Large containers / wrappers:            --radius-lg
+   *   - Cards / box containers (rounded-xl):    --radius-xl
+   *   - Section containers (rounded-2xl):       --radius-2xl
+   * ------------------------------------------------------------------ */
+  --radius-sm: 0.625rem;  /* 10px — standard radius                     */
+  --radius-md: 0.75rem;   /* 12px — buttons, controls (rounded-lg)      */
+  --radius-lg: 0.875rem;  /* 14px — large containers                    */
+  --radius-xl: 1rem;      /* 16px — cards (rounded-xl)                  */
+  --radius-2xl: 1.25rem;  /* 20px — section containers (rounded-2xl)    */
+}

@@ -1,7 +1,16 @@
+@import "./styles/design-tokens.css";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
+
+@font-face {
+  font-family: "Quadrillion";
+  src: url("/fonts/quadrillion.semi-bold-italic.otf") format("opentype");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -65,6 +74,105 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* ------------------------------------------------------------------
+   * Spacing Scale (Tailwind v4 utilities)
+   * ------------------------------------------------------------------
+   * Maps the design-token spacing scale (defined in
+   * styles/design-tokens.css) to Tailwind's `--spacing-*` theme keys
+   * so utilities like p-md, gap-lg, px-xl, m-xs, etc. are generated.
+   *
+   * Spec: design.md — Section "1. Spacing & Padding System".
+   * ------------------------------------------------------------------ */
+  --spacing-xs: var(--space-xs);
+  --spacing-sm: var(--space-sm);
+  --spacing-md: var(--space-md);
+  --spacing-lg: var(--space-lg);
+  --spacing-xl: var(--space-xl);
+  --spacing-xxl: var(--space-xxl);
+
+  /* ------------------------------------------------------------------
+   * Design System Color Palette (Tailwind v4 utilities)
+   * ------------------------------------------------------------------
+   * Maps the design-token color palette (defined in
+   * styles/design-tokens.css) to Tailwind v4 theme keys under the
+   * `ds-` namespace so utilities like `bg-ds-primary`,
+   * `text-ds-success`, `border-ds-danger`, etc. are generated.
+   *
+   * The `ds-` prefix is used intentionally to avoid colliding with
+   * the existing shadcn-style mappings above (`--color-primary`,
+   * `--color-secondary`, `--color-background`, `--color-card`,
+   * `--color-border`), which are kept untouched for shadcn/ui
+   * compatibility.
+   *
+   * Spec: design.md — Section "5.1 Color Palette".
+   * ------------------------------------------------------------------ */
+  --color-ds-primary: var(--color-primary);
+  --color-ds-primary-dark: var(--color-primary-dark);
+  --color-ds-secondary: var(--color-secondary);
+  --color-ds-success: var(--color-success);
+  --color-ds-warning: var(--color-warning);
+  --color-ds-danger: var(--color-danger);
+  --color-ds-background: var(--color-background);
+  --color-ds-card: var(--color-card);
+  --color-ds-border: var(--color-border);
+  --color-ds-text-primary: var(--color-text-primary);
+  --color-ds-text-secondary: var(--color-text-secondary);
+
+  /* ------------------------------------------------------------------
+   * Design System Shadow Scale (Tailwind v4 utilities)
+   * ------------------------------------------------------------------
+   * Maps the design-token shadow scale (defined in
+   * styles/design-tokens.css) to Tailwind v4 theme keys under the
+   * `ds-` namespace so utilities like `shadow-ds-sm`, `shadow-ds-md`,
+   * `shadow-ds-lg`, and `shadow-ds-xl` are generated.
+   *
+   * The `ds-` prefix is used intentionally to avoid colliding with
+   * Tailwind v4's built-in shadow theme keys (`--shadow-sm`,
+   * `--shadow-md`, `--shadow-lg`, `--shadow-xl`) and to prevent any
+   * self-reference ambiguity with the like-named custom properties
+   * defined on `:root` in styles/design-tokens.css.
+   *
+   * Values mirror the design tokens (--shadow-sm, --shadow-md,
+   * --shadow-lg, --shadow-xl) and are kept inline here so the
+   * Tailwind `@theme inline` resolution stays unambiguous.
+   *
+   * Spec: design.md — Section "5.3 Shadows & Depth".
+   * ------------------------------------------------------------------ */
+  --shadow-ds-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-ds-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-ds-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-ds-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
+  /* ------------------------------------------------------------------
+   * Design System Border Radius Scale (Tailwind v4 utilities)
+   * ------------------------------------------------------------------
+   * Maps the design-token border-radius scale (defined in
+   * styles/design-tokens.css) to Tailwind v4 theme keys under the
+   * `ds-` namespace so utilities like `rounded-ds-sm`, `rounded-ds-md`,
+   * `rounded-ds-lg`, `rounded-ds-xl`, and `rounded-ds-2xl` are
+   * generated.
+   *
+   * The `ds-` prefix is used intentionally to avoid colliding with
+   * the existing shadcn-style radii above (`--radius-sm`,
+   * `--radius-md`, `--radius-lg`, `--radius-xl`) which are derived
+   * from `var(--radius)` and kept untouched for shadcn/ui
+   * compatibility (preserving `rounded-sm`, `rounded-md`,
+   * `rounded-lg`, `rounded-xl`).
+   *
+   * Values mirror the design tokens (--radius-sm, --radius-md,
+   * --radius-lg, --radius-xl, --radius-2xl) and are kept inline here
+   * so the Tailwind `@theme inline` resolution stays unambiguous and
+   * avoids self-reference with the like-named custom properties on
+   * `:root` in styles/design-tokens.css.
+   *
+   * Spec: design.md — Section "2. Container & Box Design".
+   * ------------------------------------------------------------------ */
+  --radius-ds-sm: 0.625rem;   /* 10px — standard radius                  */
+  --radius-ds-md: 0.75rem;    /* 12px — buttons, controls                */
+  --radius-ds-lg: 0.875rem;   /* 14px — large containers                 */
+  --radius-ds-xl: 1rem;       /* 16px — cards                            */
+  --radius-ds-2xl: 1.25rem;   /* 20px — section containers               */
 }
 
 :root {

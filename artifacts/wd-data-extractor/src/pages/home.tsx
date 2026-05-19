@@ -2,18 +2,17 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
   Upload, FileSpreadsheet, X, Check, AlertCircle,
-  ChevronDown, ChevronsUpDown, Flag, FlagOff, Search, Hash,
+  ChevronsUpDown, Flag, FlagOff, Search, Hash,
   Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
-  TableProperties, ArrowDownToLine, ArrowUpFromLine,
+  TableProperties, ArrowDownToLine, ArrowUpFromLine, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { SettingsModal } from "@/components/settings-modal";
-import { useWebProfiles } from "@/hooks/useWebProfiles";
-import { WebProfile } from "@/types/webProfile";
 import { DpSection } from "@/pages/dp-section";
-import { DpSettingsModal } from "@/components/dp-settings-modal";
-import { useDpProfiles } from "@/hooks/useDpProfiles";
+import GigaCopyDpHoki from "@/pages/GigaCopyDpHoki";
+import GigaCopyDpZenpay from "@/pages/GigaCopyDpZenpay";
+import GigaCopyBonus from "@/pages/GigaCopyBonus";
+import GigaSmartMutasi from "@/pages/GigaSmartMutasi";
 
 // ─── Output row type ──────────────────────────────────────────────────────────
 //
@@ -36,6 +35,7 @@ interface ExtractedRow {
   jamInput:       string; // col 12: JAM INPUT WD    (HH:MM:SS from finished date)
   inputKodeBank:  string; // col 13: INPUT KODE BANK (always empty for WD rows)
   _paymentMethod: string; // internal: raw payment method, used for table colouring
+  _userIdNeedsReview?: boolean;
 }
 
 // ─── Output column headers (same order for WD and DP) ────────────────────────
@@ -55,6 +55,19 @@ const OUTPUT_HEADERS = [
   "JAM INPUT WD",
   "INPUT KODE BANK",
 ];
+
+const WD_OUTPUT_SUB = "BOT";
+const WD_OUTPUT_KODE_TRANSAKSI = "WD";
+const WD_USER_ID_REGEX = /^(?=.{5,30}$)(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9_]+$/;
+
+const WD_SOURCE_COLUMNS = {
+  accountName: "Account Name",
+  paymentMethod: "Payment Method",
+  accountNumber: "Account Number",
+  transactionId: "Transaction ID",
+  totalAmount: "Total Amount",
+  finishedDate: "Finished Date",
+};
 
 // ─── Pure utility functions ───────────────────────────────────────────────────
 
@@ -89,52 +102,136 @@ function formatExcelDate(cellValue: unknown): string {
   return "";
 }
 
+function formatExcelDateTime(cellValue: unknown): string {
+  if (!cellValue) return "";
+
+  if (typeof cellValue === "number") {
+    const date = new Date((cellValue - (25567 + 2)) * 86400 * 1000);
+    return date.toISOString().replace("T", " ").slice(0, 19);
+  }
+
+  return String(cellValue).trim();
+}
+
+function cleanWdUserIdCandidate(value: unknown): string {
+  return String(value ?? "").trim().replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/^[^A-Za-z0-9_]+|[^A-Za-z0-9_]+$/g, "");
+}
+
+function isLikelyWdUserId(value: unknown): boolean {
+  return WD_USER_ID_REGEX.test(cleanWdUserIdCandidate(value));
+}
+
+function extractWdUserId(rawValue: unknown): string {
+  const block = String(rawValue ?? "").trim();
+  if (!block) return "";
+
+  const candidates: string[] = [];
+  const pushCandidate = (value: unknown) => {
+    const candidate = cleanWdUserIdCandidate(value);
+    if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
+  };
+
+  pushCandidate(block);
+
+  const compactBlock = block.replace(/\s+/g, "");
+  const whitelabelMatch = block.match(/([A-Za-z0-9_]{5,30})\s*-\s*([A-Za-z0-9_]{1,20})/) ?? compactBlock.match(/([A-Za-z0-9_]{5,30})-([A-Za-z0-9_]{1,20})/);
+  if (whitelabelMatch) {
+    pushCandidate(whitelabelMatch[1]);
+    pushCandidate(whitelabelMatch[2]);
+  }
+
+  if (block.includes("-")) {
+    block.split("-").slice().reverse().forEach(pushCandidate);
+  }
+
+  block.match(/[A-Za-z0-9_]+/g)?.forEach(pushCandidate);
+
+  return candidates.find(isLikelyWdUserId) ?? "";
+}
+
+function transformOutputData(raw: Record<string, unknown>[]): ExtractedRow[] {
+  return raw.flatMap((row) => {
+    const nama = String(row["NAMA"] ?? "").trim().toUpperCase();
+    const nomorRekening = String(row["NOMOR REKENING"] ?? "").trim().toUpperCase();
+    const userId = extractWdUserId(row["USER ID / LOGIN"]);
+    let safeUserId = userId ? userId.trim() : "";
+    if (safeUserId.includes(" ") || safeUserId.length > 20) {
+        safeUserId = "";
+    }
+
+    const withdrawal = String(row["WITHDRAWAL"] ?? "").trim();
+    const keterangan = String(row["KETERANGAN / KODE SN"] ?? "").trim();
+
+    if (!nama && !nomorRekening && !safeUserId && !withdrawal && !keterangan) {
+      return [];
+    }
+
+    const jamInput = String(row["JAM INPUT WD"] ?? "").trim() || formatExcelDate(keterangan);
+
+    return [{
+      nama,
+      nomorRekening,
+      userId: safeUserId,
+      sub: String(row["SUB"] ?? WD_OUTPUT_SUB).trim() || WD_OUTPUT_SUB,
+      kodeTransaksi: String(row["KODE TRANSAKSI"] ?? WD_OUTPUT_KODE_TRANSAKSI).trim() || WD_OUTPUT_KODE_TRANSAKSI,
+      deposit: String(row["DEPOSIT"] ?? "").trim(),
+      withdrawal,
+      dpPulsa: String(row["DP PULSA"] ?? "").trim(),
+      keterangan,
+      kodeBank: String(row["KODE BANK"] ?? "").trim(),
+      saldoAkhir: String(row["SALDO AKHIR"] ?? "").trim(),
+      jamInput,
+      inputKodeBank: String(row["INPUT KODE BANK"] ?? "").trim(),
+      _paymentMethod: nomorRekening.split(/\s+/)[0] ?? "",
+      _userIdNeedsReview: !safeUserId,
+    }];
+  });
+}
+
 /**
  * Transform raw Excel rows from a withdrawal report into ExtractedRow objects.
  * - Rows without key columns are skipped.
  * - Rows where Status !== "success" are skipped (if Status column exists).
  * - The user ID is truncated at the first "-" (removes branch suffix).
  */
-function transformData(raw: Record<string, unknown>[], profile: WebProfile): ExtractedRow[] {
-  const {
-    sub, kodeTransaksi, keterangan,
-    colAccountName, colPaymentMethod, colAccountNumber,
-    colTransactionId, colTotalAmount, colFinishedDate,
-  } = profile;
-
+function transformData(raw: Record<string, unknown>[]): ExtractedRow[] {
   const hasStatusCol = raw.length > 0 && "Status" in raw[0];
 
   return raw.flatMap((row) => {
-    // Skip completely empty rows
-    if (!row[colAccountName] && !row[colPaymentMethod] && !row[colAccountNumber] && !row[colTransactionId]) {
+    const rowValues = Object.values(row);
+    const forcedColD = rowValues.length > 3 ? String(rowValues[3] ?? "").trim() : "";
+    const rawColD = forcedColD || String(row["Whitelabel Transaction ID"] || row["Transaction ID"] || "");
+    if (!rawColD && !row[WD_SOURCE_COLUMNS.paymentMethod] && !row[WD_SOURCE_COLUMNS.accountNumber]) {
       return [];
     }
-    // Skip non-successful transactions
     if (hasStatusCol && String(row["Status"] ?? "").trim().toLowerCase() !== "success") {
       return [];
     }
 
-    const paymentMethod = String(row[colPaymentMethod] ?? "").trim();
+    const paymentMethod = String(row[WD_SOURCE_COLUMNS.paymentMethod] ?? "").trim();
 
-    // Transaction ID is split on "-" to remove branch/suffix (e.g. "ABC123-01" → "ABC123")
-    let userId = String(row[colTransactionId] ?? "").trim();
-    if (userId.includes("-")) userId = userId.split("-")[0].trim();
+    const userId = extractWdUserId(forcedColD) || extractWdUserId(rawColD);
+    let safeUserId = userId ? userId.trim() : "";
+    if (safeUserId.includes(" ") || safeUserId.length > 20) {
+        safeUserId = "";
+    }
 
     return [{
-      nama:           String(row[colAccountName] ?? "").trim().toUpperCase(),
-      nomorRekening:  `${paymentMethod} ${String(row[colAccountNumber] ?? "").trim()}`.trim().toUpperCase(),
-      userId,
-      sub,
-      kodeTransaksi,
+      nama:           String(row[WD_SOURCE_COLUMNS.accountName] ?? "").trim().toUpperCase(),
+      nomorRekening:  `${paymentMethod} ${String(row[WD_SOURCE_COLUMNS.accountNumber] ?? "").trim()}`.trim().toUpperCase(),
+      userId:        safeUserId,
+      sub:            WD_OUTPUT_SUB,
+      kodeTransaksi:  WD_OUTPUT_KODE_TRANSAKSI,
       deposit:        "",
-      withdrawal:     String(row[colTotalAmount] ?? "").trim(),
+      withdrawal:     String(row[WD_SOURCE_COLUMNS.totalAmount] ?? "").trim(),
       dpPulsa:        "",
-      keterangan,
+      keterangan:     formatExcelDateTime(row[WD_SOURCE_COLUMNS.finishedDate]),
       kodeBank:       "",
       saldoAkhir:     "",
-      jamInput:       formatExcelDate(row[colFinishedDate]),
+      jamInput:       formatExcelDate(row[WD_SOURCE_COLUMNS.finishedDate]),
       inputKodeBank:  "",
       _paymentMethod: paymentMethod.toUpperCase(),
+      _userIdNeedsReview: !safeUserId,
     }];
   });
 }
@@ -192,44 +289,17 @@ function GlassBtn({
 //
 // Shell component that owns:
 //   - Tab state (WD | DP)
-//   - Both profile hooks (WD via useWebProfiles, DP via useDpProfiles)
 //   - All WD extractor state + logic
-//   - The shared header (logo, tab switcher, profile pickers, settings)
+//   - The shared header (logo, tab switcher, category tabs)
 //
-// The DP extractor logic lives entirely in <DpSection activeProfile={...} />.
+// The DP extractor logic lives entirely in <DpSection />.
 
 export default function Home() {
-  // ── Tab ──────────────────────────────────────────────────────────────────
+  // ── Category & Tab ──────────────────────────────────────────────────────────
 
-  const [activeTab, setActiveTab] = useState<"wd" | "dp">("wd");
-
-  // ── WD profile management ─────────────────────────────────────────────────
-
-  const {
-    profiles,
-    activeProfile,
-    activeProfileId,
-    setActiveProfileId,
-    addProfile,
-    updateProfile,
-    deleteProfile,
-  } = useWebProfiles();
-
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  // ── DP profile management ─────────────────────────────────────────────────
-
-  const {
-    profiles:         dpProfiles,
-    activeProfile:    dpActiveProfile,
-    activeProfileId:  dpActiveProfileId,
-    setActiveProfileId: setDpActiveProfileId,
-    addProfile:       dpAddProfile,
-    updateProfile:    dpUpdateProfile,
-    deleteProfile:    dpDeleteProfile,
-  } = useDpProfiles();
-
-  const [dpPickerOpen, setDpPickerOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "giga-smart-mutasi">("qris-hoki");
+  const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
+  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus">("qrishoki");
 
   // ── WD extractor state ────────────────────────────────────────────────────
 
@@ -320,26 +390,35 @@ export default function Home() {
    * Parse a single sheet from an already-loaded workbook.
    * Validates that all mapped columns exist before calling transformData().
    */
-  const processSheet = (wb: XLSX.WorkBook, sheetName: string, profile: WebProfile): ExtractedRow[] => {
-    const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as Record<string, unknown>[];
+  const processSheet = (wb: XLSX.WorkBook, sheetName: string): ExtractedRow[] => {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" }) as Record<string, unknown>[];
     if (!raw.length) throw new Error(`Sheet "${sheetName}" kosong.`);
 
+    const hasOutputHeaders = OUTPUT_HEADERS.slice(0, 9).every((col) => col in raw[0]);
+    if (hasOutputHeaders) return transformOutputData(raw);
+
     const requiredCols = [
-      profile.colAccountName, profile.colPaymentMethod, profile.colAccountNumber,
-      profile.colTransactionId, profile.colTotalAmount, profile.colFinishedDate,
+      WD_SOURCE_COLUMNS.paymentMethod,
+      WD_SOURCE_COLUMNS.accountNumber,
+      WD_SOURCE_COLUMNS.totalAmount,
+      WD_SOURCE_COLUMNS.finishedDate,
     ];
     const missingCols = requiredCols.filter((col) => !(col in raw[0]));
-    if (missingCols.length) {
+    const hasWhitelabelIdCol =
+      "Whitelabel Transaction ID" in raw[0] ||
+      WD_SOURCE_COLUMNS.accountName in raw[0] ||
+      WD_SOURCE_COLUMNS.transactionId in raw[0];
+    if (missingCols.length || !hasWhitelabelIdCol) {
       throw new Error(
-        `Kolom tidak ditemukan: ${missingCols.join(", ")}. Periksa mapping kolom di Pengaturan.`
+        `Kolom tidak ditemukan: ${[...missingCols, ...(!hasWhitelabelIdCol ? ["Whitelabel Transaction ID / Account Name / Transaction ID"] : [])].join(", ")}. Pastikan file Withdrawal Report atau file output QRIS HOKI sesuai format.`
       );
     }
 
-    return transformData(raw, profile);
+    return transformData(raw);
   };
 
   /** Load a new .xlsx file: parse the workbook and process the first sheet. */
-  const processFile = async (f: File, profile: WebProfile) => {
+  const processFile = async (f: File) => {
     setFile(f);
     setError(null);
     setData(null);
@@ -356,7 +435,9 @@ export default function Home() {
 
       setSheetNames(wb.SheetNames);
       setSelectedSheet(wb.SheetNames[0]);
-      setData(processSheet(wb, wb.SheetNames[0], profile));
+      const processed = processSheet(wb, wb.SheetNames[0]);
+      processed.sort((a, b) => new Date(a.keterangan).getTime() - new Date(b.keterangan).getTime());
+      setData(processed);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Gagal membaca file Excel.");
     } finally {
@@ -371,7 +452,9 @@ export default function Home() {
     setError(null);
     setData(null);
     try {
-      setData(processSheet(wbRef.current, name, activeProfile));
+      const processed = processSheet(wbRef.current, name);
+      processed.sort((a, b) => new Date(a.keterangan).getTime() - new Date(b.keterangan).getTime());
+      setData(processed);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Gagal membaca sheet.");
     }
@@ -396,21 +479,21 @@ export default function Home() {
       const f = e.dataTransfer.files?.[0];
       if (!f) return;
       if (f.name.endsWith(".xlsx")) {
-        processFile(f, activeProfile);
+        processFile(f);
       } else {
         setError("Hanya file .xlsx yang didukung.");
       }
     },
-    [activeProfile]
+    []
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) processFile(e.target.files[0], activeProfile);
+    if (e.target.files?.[0]) processFile(e.target.files[0]);
     // Reset input so the same file can be re-selected after a reset.
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /** Clear all WD state (called when removing a file or switching profiles). */
+  /** Clear all WD state (called when removing a file). */
   const reset = () => {
     setFile(null);
     setData(null);
@@ -504,10 +587,17 @@ export default function Home() {
   const copyTSV = async () => {
     if (!filteredData.length) return;
     try {
-      const tsv = filteredData.map((r) => rowToArr(r).join("\t")).join("\n");
+      const tsv = filteredData
+        .map((r) =>
+          rowToArr(r)
+            .slice(0, 9)
+            .map((cell) => String(cell ?? "").replace(/[\t\n\r]/g, " ").trim())
+            .join("\t")
+        )
+        .join("\n");
       await navigator.clipboard.writeText(tsv);
       setIsCopied(true);
-      toast.success(`${filteredData.length} baris disalin!`);
+      toast.success(`${filteredData.length} baris disalin ke Doc TRX! (9 kolom)`);
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
       toast.error("Gagal menyalin.");
@@ -560,210 +650,112 @@ export default function Home() {
       </div>
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 glass-strong border-b border-white/8 shadow-lg">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 bg-[#131424]/85 backdrop-blur-md border-b border-white/5">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3">
 
-          {/* Left: logo + tab switcher */}
-          <div className="flex items-center gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-                <FileSpreadsheet size={18} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold leading-none tracking-tight">Data Extractor</h1>
-                <p className="text-[10px] text-white/35 mt-0.5">Internal Operations Tooling</p>
-              </div>
-            </div>
-
-            {/* WD / DP tab switcher */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/8">
-              <button
-                type="button"
-                onClick={() => setActiveTab("wd")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200
-                  ${activeTab === "wd"
-                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}
-              >
-                <ArrowUpFromLine size={12} />
-                WD
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("dp")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200
-                  ${activeTab === "dp"
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/30"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}
-              >
-                <ArrowDownToLine size={12} />
-                DP
-              </button>
+          {/* Left: logo + title */}
+          <div className="flex items-center gap-4 min-w-0">
+            <img
+              src="/logo.png"
+              alt="API Formula Tools"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-lg shadow-violet-500/20 object-cover"
+            />
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl sm:text-3xl font-[Quadrillion] italic leading-none tracking-tight text-white whitespace-nowrap">API FORMULA TOOLS</h1>
+              <p className="text-sm sm:text-base text-slate-400 mt-1 whitespace-nowrap">Internal Operations Tooling</p>
             </div>
           </div>
 
-          {/* Right: profile picker + settings (switches based on active tab) */}
-          <div className="flex items-center gap-2">
-
-            {/* WD profile picker + WD settings */}
-            {activeTab === "wd" && (
-              <>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen((v) => !v)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
-                    data-testid="button-profile-picker"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
-                    <span className="max-w-[140px] truncate text-white/85 font-medium">
-                      {activeProfile.name}
-                    </span>
-                    <ChevronDown
-                      size={13}
-                      className={`text-white/40 transition-transform duration-200 ${pickerOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  <AnimatePresence>
-                    {pickerOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden"
-                      >
-                        {profiles.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => { setActiveProfileId(p.id); setPickerOpen(false); reset(); }}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
-                              ${p.id === activeProfileId
-                                ? "bg-violet-500/15 text-violet-200"
-                                : "text-white/70 hover:bg-white/6 hover:text-white"}`}
-                            data-testid={`option-profile-${p.id}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === activeProfileId ? "bg-violet-400" : "bg-white/20"}`} />
-                            <span className="truncate">{p.name}</span>
-                            {p.id === activeProfileId && (
-                              <Check size={12} className="ml-auto text-violet-400 shrink-0" />
-                            )}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Backdrop to close the picker when clicking outside */}
-                  {pickerOpen && (
-                    <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
-                  )}
-                </div>
-
-                <SettingsModal
-                  profiles={profiles}
-                  activeProfileId={activeProfileId}
-                  onSelectProfile={(id) => { setActiveProfileId(id); reset(); }}
-                  onAddProfile={addProfile}
-                  onUpdateProfile={updateProfile}
-                  onDeleteProfile={deleteProfile}
-                />
-              </>
-            )}
-
-            {/* DP profile picker + DP settings */}
-            {activeTab === "dp" && (
-              <>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setDpPickerOpen((v) => !v)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8 transition-all text-sm"
-                    data-testid="button-dp-profile-picker"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
-                    <span className="max-w-[140px] truncate text-white/85 font-medium">
-                      {dpActiveProfile.name}
-                    </span>
-                    <ChevronDown
-                      size={13}
-                      className={`text-white/40 transition-transform duration-200 ${dpPickerOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  <AnimatePresence>
-                    {dpPickerOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl glass-strong shadow-2xl overflow-hidden"
-                      >
-                        {dpProfiles.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => { setDpActiveProfileId(p.id); setDpPickerOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-all
-                              ${p.id === dpActiveProfileId
-                                ? "bg-emerald-500/15 text-emerald-200"
-                                : "text-white/70 hover:bg-white/6 hover:text-white"}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.id === dpActiveProfileId ? "bg-emerald-400" : "bg-white/20"}`} />
-                            <span className="truncate">{p.name}</span>
-                            {p.id === dpActiveProfileId && (
-                              <Check size={12} className="ml-auto text-emerald-400 shrink-0" />
-                            )}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {dpPickerOpen && (
-                    <div className="fixed inset-0 z-40" onClick={() => setDpPickerOpen(false)} />
-                  )}
-                </div>
-
-                <DpSettingsModal
-                  profiles={dpProfiles}
-                  activeProfileId={dpActiveProfileId}
-                  onSelectProfile={(id) => setDpActiveProfileId(id)}
-                  onAddProfile={dpAddProfile}
-                  onUpdateProfile={dpUpdateProfile}
-                  onDeleteProfile={dpDeleteProfile}
-                />
-              </>
-            )}
+          {/* Center: category switcher */}
+          <div className="w-full rounded-2xl bg-slate-950/45 border border-white/10 shadow-inner shadow-black/20 overflow-hidden">
+            <div className="grid grid-cols-3 gap-1.5 p-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveCategory("giga")}
+              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
+                ${activeCategory === "giga"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
+                  : "text-slate-300 hover:bg-white/10"}`}
+            >
+              <ClipboardList size={14} className="flex-shrink-0" />
+              GIGA PANEL TOOLS
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("qris-hoki")}
+              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
+                ${activeCategory === "qris-hoki"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
+                  : "text-slate-300 hover:bg-white/10"}`}
+            >
+              <Layers size={14} className="flex-shrink-0" />
+              QRIS HOKI TOOLS
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("giga-smart-mutasi")}
+              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
+                ${activeCategory === "giga-smart-mutasi"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
+                  : "text-slate-300 hover:bg-white/10"}`}
+            >
+              <TableProperties size={14} className="flex-shrink-0" />
+              GIGA SMART MUTASI TOOLS
+            </button>
+            </div>
           </div>
+
         </div>
       </header>
 
       {/* ── MAIN CONTENT ───────────────────────────────────────────────── */}
-      <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-10 flex flex-col gap-6">
+      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-lg sm:py-xl flex flex-col gap-lg">
 
-        {/* DP section is rendered entirely by its own component */}
-        {activeTab === "dp" && <DpSection activeProfile={dpActiveProfile} />}
-
-        {/* WD section ───────────────────────────────────────────────────── */}
-        {activeTab === "wd" && (
+        {/* QRIS HOKI TOOL category content */}
+        {activeCategory === "qris-hoki" && (
           <>
-            {/* Profile banner */}
+            {/* Sub-tab switcher for WD/DP */}
+            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 self-start">
+              <button
+                type="button"
+                onClick={() => setActiveQrisTab("wd")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
+                  ${activeQrisTab === "wd"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
+                    : "text-slate-300 hover:bg-white/10"}`}
+              >
+                <ArrowUpFromLine size={14} />
+                QRIS HOKI WD
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveQrisTab("dp")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
+                  ${activeQrisTab === "dp"
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/30"
+                    : "text-slate-300 hover:bg-white/10"}`}
+              >
+                <ArrowDownToLine size={14} />
+                QRIS HOKI DP
+              </button>
+            </div>
+
+            {/* DP section */}
+            {activeQrisTab === "dp" && <DpSection />}
+
+            {/* WD section */}
+            {activeQrisTab === "wd" && (
+              <>
             <motion.div
-              key={activeProfile.id}
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-3 px-4 py-3 rounded-2xl glass border-violet-400/20"
               style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(99,102,241,0.06) 100%)" }}
             >
               <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
-              <span className="text-sm font-semibold text-white/90">{activeProfile.name}</span>
+              <span className="text-sm font-semibold text-white/90">QRIS HOKI WD</span>
               <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-                SUB: {activeProfile.sub} &nbsp;·&nbsp; KODE: {activeProfile.kodeTransaksi} &nbsp;·&nbsp; {activeProfile.keterangan}
+                SUB: {WD_OUTPUT_SUB} &nbsp;·&nbsp; KODE: {WD_OUTPUT_KODE_TRANSAKSI}
               </span>
             </motion.div>
 
@@ -771,13 +763,13 @@ export default function Home() {
             <section>
               <div
                 data-testid="upload-zone"
-                className={`relative group w-full rounded-2xl border-2 border-dashed transition-all duration-300
-                  flex flex-col items-center justify-center p-12 text-center overflow-hidden
+                className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
+                  flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-md
                   ${isDragging
                     ? "border-violet-400/70 scale-[1.01]"
                     : file
-                    ? "border-white/12 glass"
-                    : "border-white/12 glass hover:border-violet-400/40 cursor-pointer"}`}
+                    ? "border-white/15 glass"
+                    : "border-white/15 glass hover:border-violet-400/40 cursor-pointer"}`}
                 style={isDragging ? { background: "rgba(139,92,246,0.12)" } : undefined}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -933,23 +925,23 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="flex flex-col gap-4"
+                  className="flex flex-col gap-lg"
                 >
                   {/* Stat cards */}
                   {stats && (
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md"
                     >
                       {/* Row count */}
-                      <div className="flex items-center gap-4 p-4 rounded-2xl glass border-white/8 shadow-lg">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30 shrink-0">
-                          <ListOrdered size={18} className="text-white" />
+                      <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                        <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
+                          <ListOrdered size={20} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Baris Dipilih</p>
-                          <p className="text-2xl font-bold text-white leading-tight font-mono mt-0.5">
+                          <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Baris Dipilih</p>
+                          <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
                             {stats.count}
                             <span className="text-sm text-white/30 font-normal ml-1">/ {totalRows}</span>
                           </p>
@@ -957,42 +949,42 @@ export default function Home() {
                       </div>
 
                       {/* Total withdrawal */}
-                      <div className="flex items-center gap-4 p-4 rounded-2xl glass border-white/8 shadow-lg">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
-                          <Banknote size={18} className="text-white" />
+                      <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                        <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
+                          <Banknote size={20} className="text-white" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Total Nominal</p>
-                          <p className="text-lg font-bold text-white leading-tight font-mono mt-0.5 truncate" title={fmt(stats.totalNominal)}>
+                          <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Nominal</p>
+                          <p className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate" title={fmt(stats.totalNominal)}>
                             {fmt(stats.totalNominal)}
                           </p>
                         </div>
                       </div>
 
                       {/* Duplicate IDs (amber warning) or Total File count */}
-                      <div className={`flex items-center gap-4 p-4 rounded-2xl glass shadow-lg transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/8"}`}>
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg shrink-0
+                      <div className={`flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
+                        <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
                           ${stats.dupCount > 0
                             ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
                             : "bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-fuchsia-500/30"}`}
                         >
                           {stats.dupCount > 0
-                            ? <TriangleAlert size={18} className="text-white" />
-                            : <Layers size={18} className="text-white" />
+                            ? <TriangleAlert size={20} className="text-white" />
+                            : <Layers size={20} className="text-white" />
                           }
                         </div>
                         <div>
                           {stats.dupCount > 0 ? (
                             <>
-                              <p className="text-[10px] uppercase tracking-widest text-amber-400/60 font-semibold">ID Duplikat</p>
-                              <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-0.5">
+                              <p className="text-xs uppercase tracking-wide text-amber-400/70 font-medium">ID Duplikat</p>
+                              <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-1">
                                 {stats.dupCount} <span className="text-sm font-normal">baris</span>
                               </p>
                             </>
                           ) : (
                             <>
-                              <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Total File</p>
-                              <p className="text-2xl font-bold text-white leading-tight font-mono mt-0.5">{totalRows}</p>
+                              <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total File</p>
+                              <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{totalRows}</p>
                             </>
                           )}
                         </div>
@@ -1001,31 +993,30 @@ export default function Home() {
                   )}
 
                   {/* Top bar: title + export buttons */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between gap-md">
+                    <div className="flex items-center gap-md">
                       <h2 className="text-base font-semibold text-white/85">Pratinjau Data</h2>
-                      <span className="px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-300 text-xs font-semibold border border-violet-400/20">
+                      <span className="px-3 py-1 rounded-full bg-violet-500/15 text-violet-300 text-xs font-semibold border border-violet-400/20">
                         {totalRows} total
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-sm">
                       <button
                         type="button"
                         onClick={exportXlsx}
                         disabled={filteredData.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8
-                          text-sm text-white/60 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all disabled:opacity-35 disabled:cursor-not-allowed"
                         data-testid="button-export-excel"
                       >
-                        <Download size={14} />
-                        <span className="hidden sm:inline text-xs">Export</span>
+                        <Download size={15} />
+                        <span className="hidden sm:inline">Export</span>
                       </button>
                       <button
                         type="button"
                         onClick={copyTSV}
                         disabled={filteredData.length === 0}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg
-                          disabled:opacity-30 disabled:cursor-not-allowed
+                        className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
+                          disabled:opacity-35 disabled:cursor-not-allowed
                           ${isCopied
                             ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/30"
                             : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-violet-500/30 hover:from-violet-500 hover:to-indigo-500"}`}
@@ -1040,12 +1031,12 @@ export default function Home() {
                   </div>
 
                   {/* ── Controls panel: row range + ID search + table filter ─ */}
-                  <div className="flex flex-col gap-3 p-4 rounded-2xl glass border-white/8 shadow-lg">
+                  <div className="flex flex-col gap-md px-lg py-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
 
                     {/* Row range inputs + mark mode buttons */}
                     <div className="flex flex-wrap items-center gap-3">
                       <ChevronsUpDown size={14} className="text-white/30 shrink-0" />
-                      <span className="text-xs font-semibold text-white/50 shrink-0">RENTANG:</span>
+                      <span className="text-xs font-semibold text-white/50 shrink-0 hidden sm:inline">RENTANG:</span>
 
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-white/30">Mulai</span>
@@ -1209,20 +1200,20 @@ export default function Home() {
                   </AnimatePresence>
 
                   {/* ── Preview table ───────────────────────────────────────── */}
-                  <div className="rounded-2xl overflow-hidden glass border-white/8 shadow-2xl">
+                  <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
                     <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
                       <table
                         className="w-full text-sm text-left border-collapse"
                         data-testid="preview-table"
                       >
                         <thead
-                          className="text-[10px] uppercase tracking-wider text-white/30 sticky top-0 z-10"
+                          className="text-[10px] uppercase tracking-wider text-white/50 sticky top-0 z-10"
                           style={{ background: "rgba(15,12,40,0.75)", backdropFilter: "blur(20px)" }}
                         >
                           <tr>
-                            <th className="px-3 py-3.5 text-center w-10 border-b border-white/6">#</th>
+                            <th className="px-md py-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
                             {OUTPUT_HEADERS.map((header, i) => (
-                              <th key={i} className="px-4 py-3.5 font-semibold whitespace-nowrap border-b border-white/6">
+                              <th key={i} className="px-md py-sm font-semibold whitespace-nowrap border-b border-white/10">
                                 {header}
                               </th>
                             ))}
@@ -1237,6 +1228,7 @@ export default function Home() {
                             const isEnd     = rowNumber === endRow;
                             const isIdMatch = idSearch.trim() && row.userId.toLowerCase().includes(idSearch.trim().toLowerCase());
                             const isDup     = dupIds.has(row.userId);
+                            const needsIdReview = row._userIdNeedsReview || !row.userId;
 
                             // Apply text filter: skip rows outside range or not matching query
                             if (tableFilter.trim() && inRange) {
@@ -1256,6 +1248,7 @@ export default function Home() {
                                   ${inRange ? "hover:bg-white/3" : "opacity-20"}
                                   ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
                                   ${isEnd ? "border-b-2 border-b-rose-400/40" : ""}
+                                  ${needsIdReview && inRange ? "bg-red-500/10 ring-1 ring-inset ring-red-400/30" : ""}
                                   ${isIdMatch && inRange ? "bg-violet-500/5" : ""}
                                   ${isDup && inRange ? "bg-amber-500/4" : ""}`}
                                 data-testid={`row-data-${i}`}
@@ -1266,21 +1259,22 @@ export default function Home() {
                                   onClick={() => markMode && handleRowClick(i)}
                                 >
                                   <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold transition-all
-                                    ${isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
+                                    ${needsIdReview && inRange ? "bg-red-500/25 text-red-300 ring-1 ring-red-400/40"
+                                    : isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
                                     : isEnd    ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"
                                     : isDup && inRange ? "bg-amber-500/20 text-amber-300"
                                     : markMode ? "text-white/20 hover:bg-violet-500/20 hover:text-violet-300"
                                     : "text-white/15"}`}
                                   >
-                                    {isDup && inRange ? "!" : rowNumber}
+                                    {needsIdReview && inRange ? "!" : isDup && inRange ? "!" : rowNumber}
                                   </span>
                                 </td>
 
                                 {/* Data cells */}
                                 <td className="px-4 py-2.5 whitespace-nowrap text-white/80">{row.nama}</td>
                                 <td className="px-4 py-2.5 whitespace-nowrap text-violet-300/80">{row.nomorRekening}</td>
-                                <td className={`px-4 py-2.5 whitespace-nowrap ${isIdMatch ? "text-violet-200 font-semibold" : isDup && inRange ? "text-amber-300" : "text-white/70"}`}>
-                                  {row.userId}
+                                <td className={`px-4 py-2.5 whitespace-nowrap ${needsIdReview ? "text-red-300 font-black" : isIdMatch ? "text-violet-200 font-semibold" : isDup && inRange ? "text-amber-300" : "text-white/70"}`}>
+                                  {needsIdReview ? "AWAS! Cek ID" : row.userId}
                                 </td>
                                 <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.sub}</td>
                                 <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.kodeTransaksi}</td>
@@ -1302,13 +1296,64 @@ export default function Home() {
                 </motion.section>
               )}
             </AnimatePresence>
+              </>
+            )}
           </>
         )}
+
+        {/* GIGA category content */}
+        {activeCategory === "giga" && (
+          <>
+            {/* Sub-tab switcher for QRISHOKI / ZENPAY / BONUS */}
+            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 self-start">
+              <button
+                type="button"
+                onClick={() => setActiveGigaTab("qrishoki")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
+                  ${activeGigaTab === "qrishoki"
+                    ? "bg-fuchsia-600 text-white shadow-md shadow-fuchsia-500/30"
+                    : "text-slate-300 hover:bg-white/10"}`}
+              >
+                <ClipboardList size={14} />
+                QRISHOKI
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGigaTab("zenpay")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
+                  ${activeGigaTab === "zenpay"
+                    ? "bg-cyan-600 text-white shadow-md shadow-cyan-500/30"
+                    : "text-slate-300 hover:bg-white/10"}`}
+              >
+                <Layers size={14} />
+                ZENPAY
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGigaTab("bonus")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
+                  ${activeGigaTab === "bonus"
+                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/30"
+                    : "text-slate-300 hover:bg-white/10"}`}
+              >
+                <Banknote size={14} />
+                BONUS
+              </button>
+            </div>
+
+            {/* GIGA sub-tab content */}
+            {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
+            {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
+            {activeGigaTab === "bonus" && <GigaCopyBonus />}
+          </>
+        )}
+
+        {activeCategory === "giga-smart-mutasi" && <GigaSmartMutasi />}
       </main>
 
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 py-5 text-center">
-        <p className="text-[11px] text-white/20">Data Extractor &nbsp;·&nbsp; Internal Operations Tooling</p>
+        <p className="text-[11px] text-white/20">API FORMULA TOOLS &nbsp;·&nbsp; Internal Operations Tooling</p>
       </footer>
     </div>
   );

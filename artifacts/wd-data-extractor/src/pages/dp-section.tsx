@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { DpProfile } from "@/types/dpProfile";
 
 // ─── Output row type ──────────────────────────────────────────────────────────
 //
@@ -19,13 +18,13 @@ import { DpProfile } from "@/types/dpProfile";
 //   Whitelabel Transaction ID → nama         (col 1)
 //   Transaction Date          → nomorRekening (col 2, formatted as M/D/YYYY HH:MM:SS)
 //   Member ID                 → userId        (col 3)
-//   profile.sub               → sub           (col 4)
+//   "BOT"                     → sub           (col 4)
 //   "DP" (hardcoded)          → kodeTransaksi (col 5)
 //   Amount                    → deposit       (col 6)
 //   (empty)                   → withdrawal    (col 7)
 //   (empty)                   → dpPulsa       (col 8)
-//   Transaction ID (UUID)     → keterangan    (col 9)
-//   profile.kodeBank          → kodeBank      (col 10)
+//   Finished Date             → keterangan    (col 9)
+//   (empty)                   → kodeBank      (col 10)
 //   (empty)                   → saldoAkhir    (col 11)
 //   Finished Date (time only) → jamInput      (col 12)
 //   Finished Date (time only) → inputKodeBank (col 13)
@@ -63,6 +62,9 @@ const OUTPUT_HEADERS = [
   "JAM INPUT WD",
   "INPUT KODE BANK",
 ];
+
+const DP_OUTPUT_SUB = "BOT";
+const DP_OUTPUT_KODE_TRANSAKSI = "DP";
 
 // ─── Required source columns ──────────────────────────────────────────────────
 // These must exist in the deposit report sheet for processing to succeed.
@@ -116,7 +118,7 @@ function formatTxDate(dateValue: unknown): string {
  * - Rows without a Member ID are skipped.
  * - Rows where Status !== "success" are skipped (if Status column exists).
  */
-function transformDpData(raw: Record<string, unknown>[], profile: DpProfile): DpRow[] {
+function transformDpData(raw: Record<string, unknown>[]): DpRow[] {
   const hasStatusCol = raw.length > 0 && "Status" in raw[0];
 
   return raw.flatMap((row) => {
@@ -136,13 +138,13 @@ function transformDpData(raw: Record<string, unknown>[], profile: DpProfile): Dp
       nama:          String(row["Whitelabel Transaction ID"] ?? "").trim(),
       nomorRekening: formatTxDate(row["Transaction Date"]),
       userId:        memberId,
-      sub:           profile.sub,
-      kodeTransaksi: "DP",
+      sub:           DP_OUTPUT_SUB,
+      kodeTransaksi: DP_OUTPUT_KODE_TRANSAKSI,
       deposit:       String(row["Amount"] ?? "").trim(),
       withdrawal:    "",
       dpPulsa:       "",
-      keterangan:    String(row["Transaction ID"] ?? "").trim(),
-      kodeBank:      profile.kodeBank,
+      keterangan:    formatTxDate(finishedDate),
+      kodeBank:      "",
       saldoAkhir:    "",
       jamInput:      extractTime(finishedDate),
       inputKodeBank: extractTime(finishedDate),
@@ -203,11 +205,8 @@ function GlassBtn({
 // ─── DpSection component ──────────────────────────────────────────────────────
 //
 // Rendered inside Home when the "DP" tab is active.
-// Receives `activeProfile` as a prop — the profile is managed in Home so that
-// the picker/settings can live in the shared header.
 
-export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
-
+export function DpSection() {
   // ── File state ────────────────────────────────────────────────────────────
 
   const [isDragging, setIsDragging] = useState(false);
@@ -215,7 +214,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
   const [data, setData]             = useState<DpRow[] | null>(null);
   const [error, setError]           = useState<string | null>(null);
   const [isParsing, setIsParsing]   = useState(false);
-  const [isCopied, setIsCopied]     = useState(false);
+  const [copiedType, setCopiedType] = useState<"trx" | "qris" | null>(null);
   const fileInputRef                = useRef<HTMLInputElement>(null);
 
   // Multiple sheets: wbRef holds the parsed workbook so we can re-process on sheet change.
@@ -225,15 +224,14 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
 
   // ── Row range state ───────────────────────────────────────────────────────
 
-  const [startRow, setStartRow] = useState(1);
-  const [endRow, setEndRow]     = useState(1);
+  const [startIndex, setStartIndex] = useState<number | null>(null);
+  const [endIndex, setEndIndex]     = useState<number | null>(null);
   const [markMode, setMarkMode] = useState<"start" | "end" | null>(null);
 
   // ── Search / filter state ─────────────────────────────────────────────────
 
-  const [idSearch, setIdSearch] = useState("");
-  const [idResult, setIdResult] = useState<{ row: number; id: string } | null>(null);
-  const [idErr, setIdErr]       = useState<string | null>(null);
+  const [startTrxIdInput, setStartTrxIdInput] = useState("");
+  const [endTrxIdInput, setEndTrxIdInput]     = useState("");
   const [tableFilter, setTableFilter] = useState("");
 
   const totalRows = data?.length ?? 0;
@@ -243,20 +241,32 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
   // Reset controls whenever a new file is loaded.
   useEffect(() => {
     if (data) {
-      setStartRow(1);
-      setEndRow(data.length);
+      setStartIndex(0);
+      setEndIndex(data.length - 1);
       setMarkMode(null);
-      setIdSearch("");
-      setIdResult(null);
-      setIdErr(null);
+      setStartTrxIdInput("");
+      setEndTrxIdInput("");
       setTableFilter("");
     }
   }, [data]);
 
+  const selectedBounds = useMemo(() => {
+    if (!data?.length) return { minIdx: 0, maxIdx: -1 };
+    const start = startIndex ?? 0;
+    const end = endIndex ?? data.length - 1;
+    return {
+      minIdx: Math.max(0, Math.min(start, end)),
+      maxIdx: Math.min(data.length - 1, Math.max(start, end)),
+    };
+  }, [data, startIndex, endIndex]);
+
+  const startRow = totalRows ? (startIndex ?? 0) + 1 : 0;
+  const endRow = totalRows ? (endIndex ?? totalRows - 1) + 1 : 0;
+
   // Slice the full dataset to the selected row range.
   const rangeData = useMemo(
-    () => (data ? data.slice(startRow - 1, endRow) : []),
-    [data, startRow, endRow]
+    () => (data ? data.slice(selectedBounds.minIdx, selectedBounds.maxIdx + 1) : []),
+    [data, selectedBounds]
   );
 
   // Apply the text filter on top of the range slice.
@@ -272,14 +282,23 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
     );
   }, [rangeData, tableFilter]);
 
-  // Set of user IDs that appear more than once in the current range.
-  const dupIds = useMemo(() => {
+  // Set of Transaction IDs that appear more than once in the full extracted data.
+  const duplicateTrxIds = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const r of rangeData) {
-      if (r.userId) counts[r.userId] = (counts[r.userId] ?? 0) + 1;
+    for (const r of data ?? []) {
+      const trxId = r.nama.trim();
+      if (trxId) counts[trxId] = (counts[trxId] ?? 0) + 1;
     }
     return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
-  }, [rangeData]);
+  }, [data]);
+
+  const duplicateTrxSummary = useMemo(() => {
+    const ids = Array.from(duplicateTrxIds);
+    return {
+      count: ids.length,
+      preview: ids.slice(0, 5),
+    };
+  }, [duplicateTrxIds]);
 
   // Summary statistics for the stat cards.
   const stats = useMemo(() => {
@@ -287,9 +306,9 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
     return {
       count:        filteredData.length,
       totalNominal: filteredData.reduce((sum, r) => sum + parseAmt(r.deposit), 0),
-      dupCount:     filteredData.filter((r) => dupIds.has(r.userId)).length,
+      dupCount:     filteredData.filter((r) => duplicateTrxIds.has(r.nama)).length,
     };
-  }, [filteredData, dupIds]);
+  }, [filteredData, duplicateTrxIds]);
 
   // ── File processing ───────────────────────────────────────────────────────
 
@@ -308,7 +327,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
       );
     }
 
-    return transformDpData(raw, activeProfile);
+    return transformDpData(raw);
   };
 
   /** Load a new .xlsx file: parse the workbook and process the first sheet. */
@@ -329,7 +348,13 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
 
       setSheetNames(wb.SheetNames);
       setSelectedSheet(wb.SheetNames[0]);
-      setData(processSheet(wb, wb.SheetNames[0]));
+      const processed = processSheet(wb, wb.SheetNames[0]);
+      processed.sort((a, b) => {
+        const tA = new Date(`${a.nomorRekening} ${a.jamInput}`).getTime();
+        const tB = new Date(`${b.nomorRekening} ${b.jamInput}`).getTime();
+        return tA - tB || a.nomorRekening.localeCompare(b.nomorRekening) || a.jamInput.localeCompare(b.jamInput);
+      });
+      setData(processed);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Gagal membaca file.");
     } finally {
@@ -344,7 +369,13 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
     setError(null);
     setData(null);
     try {
-      setData(processSheet(wbRef.current, name));
+      const processed = processSheet(wbRef.current, name);
+      processed.sort((a, b) => {
+        const tA = new Date(`${a.nomorRekening} ${a.jamInput}`).getTime();
+        const tB = new Date(`${b.nomorRekening} ${b.jamInput}`).getTime();
+        return tA - tB || a.nomorRekening.localeCompare(b.nomorRekening) || a.jamInput.localeCompare(b.jamInput);
+      });
+      setData(processed);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Gagal membaca sheet.");
     }
@@ -374,7 +405,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
         setError("Hanya file .xlsx yang didukung.");
       }
     },
-    [activeProfile]
+    []
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -387,11 +418,10 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
     setFile(null);
     setData(null);
     setError(null);
-    setIsCopied(false);
+    setCopiedType(null);
     setMarkMode(null);
-    setIdSearch("");
-    setIdResult(null);
-    setIdErr(null);
+    setStartTrxIdInput("");
+    setEndTrxIdInput("");
     setTableFilter("");
     setSheetNames([]);
     setSelectedSheet("");
@@ -400,51 +430,37 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
 
   // ── Row range controls ────────────────────────────────────────────────────
 
-  const searchId = (target: "start" | "end") => {
-    if (!data || !idSearch.trim()) return;
-    const q = idSearch.trim().toLowerCase();
-    const idx = data.findIndex((r) => r.userId.toLowerCase().includes(q));
-
+  const setStartByTrxId = () => {
+    if (!data || !startTrxIdInput.trim()) return;
+    const q = startTrxIdInput.trim();
+    const idx = data.findIndex((r) => r.nama.trim() === q);
     if (idx === -1) {
-      setIdResult(null);
-      setIdErr(`ID "${idSearch.trim()}" tidak ditemukan.`);
+      toast.error(`ID Transaksi "${q}" tidak ditemukan.`);
       return;
     }
+    setStartIndex(idx);
+    toast.success(`Baris ${idx + 1} — set awal (ID: ${q})`);
+  };
 
-    const rowNumber = idx + 1;
-    setIdErr(null);
-    setIdResult({ row: rowNumber, id: data[idx].userId });
-
-    if (target === "start") {
-      if (rowNumber > endRow) {
-        setStartRow(endRow);
-        setEndRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set akhir (ditukar)`);
-      } else {
-        setStartRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set awal`);
-      }
-    } else {
-      if (rowNumber < startRow) {
-        setEndRow(startRow);
-        setStartRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set awal (ditukar)`);
-      } else {
-        setEndRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set akhir`);
-      }
+  const setEndByTrxId = () => {
+    if (!data || !endTrxIdInput.trim()) return;
+    const q = endTrxIdInput.trim();
+    const idx = data.findIndex((r) => r.nama.trim() === q);
+    if (idx === -1) {
+      toast.error(`ID Transaksi "${q}" tidak ditemukan.`);
+      return;
     }
+    setEndIndex(idx);
+    toast.success(`Baris ${idx + 1} — set akhir (ID: ${q})`);
   };
 
   const handleRowClick = (rowIndex: number) => {
     const rowNumber = rowIndex + 1;
     if (markMode === "start") {
-      setStartRow(rowNumber);
-      if (rowNumber > endRow) setEndRow(rowNumber);
+      setStartIndex(rowIndex);
       setMarkMode(null);
     } else if (markMode === "end") {
-      setEndRow(rowNumber);
-      if (rowNumber < startRow) setStartRow(rowNumber);
+      setEndIndex(rowIndex);
       setMarkMode(null);
     }
   };
@@ -453,16 +469,14 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
     const n = parseInt(value, 10);
     if (isNaN(n)) return;
     const clamped = clamp(n, 1, totalRows);
-    setStartRow(clamped);
-    if (clamped > endRow) setEndRow(clamped);
+    setStartIndex(clamped - 1);
   };
 
   const handleEndInput = (value: string) => {
     const n = parseInt(value, 10);
     if (isNaN(n)) return;
     const clamped = clamp(n, 1, totalRows);
-    setEndRow(clamped);
-    if (clamped < startRow) setStartRow(clamped);
+    setEndIndex(clamped - 1);
   };
 
   // ── Output actions ────────────────────────────────────────────────────────
@@ -470,13 +484,58 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
   const copyTSV = async () => {
     if (!filteredData.length) return;
     try {
-      const tsv = filteredData.map((r) => rowToArr(r).join("\t")).join("\n");
+      const tsv = filteredData
+        .map((r) => {
+          const cleanTrxId = String(r.nama || "").replace(/[\t\n\r]/g, "").trim();
+          const cleanUsername = String(r.userId || "").replace(/[\t\n\r]/g, "").trim();
+          const cleanAmount = String(r.deposit || "0").replace(/[\t\n\r]/g, "").trim();
+          const cleanDate = String(r.nomorRekening || "").replace(/[\t\n\r]/g, " ").trim();
+
+          return [
+            cleanTrxId,
+            " ",
+            cleanUsername,
+            "BOT",
+            "DP",
+            cleanAmount,
+            " ",
+            " ",
+            cleanDate,
+          ].join("\t");
+        })
+        .join("\n");
       await navigator.clipboard.writeText(tsv);
-      setIsCopied(true);
-      toast.success(`${filteredData.length} baris disalin!`);
-      setTimeout(() => setIsCopied(false), 2000);
+      setCopiedType("trx");
+      toast.success(`${filteredData.length} baris disalin ke Doc TRX! (9 kolom)`);
+      setTimeout(() => setCopiedType(null), 2000);
     } catch {
       toast.error("Gagal menyalin.");
+    }
+  };
+
+  const handleCopyDocQris = async () => {
+    if (!filteredData.length) return;
+    try {
+      // 6-column TSV: NAMA, NOMINAL, (hidden C), STATUS, KODE EWALLET, KODE WEB
+      const tsv = filteredData
+        .map(
+          (r) =>
+            [
+              r.nama,              // Column A: NAMA (trxId)
+              r.deposit,           // Column B: NOMINAL (amount)
+              "",                  // Column C: HIDDEN (empty)
+              "COMPLETED",         // Column D: STATUS
+              "",
+              "",
+            ].join("\t")
+        )
+        .join("\n");
+      await navigator.clipboard.writeText(tsv);
+      setCopiedType("qris");
+      toast.success(`${filteredData.length} baris disalin ke Doc Qris!`);
+      setTimeout(() => setCopiedType(null), 2000);
+    } catch {
+      toast.error("Gagal menyalin Doc Qris.");
     }
   };
 
@@ -503,7 +562,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
 
   // ── Derived booleans & shared styles ─────────────────────────────────────
 
-  const isFullRange = startRow === 1 && endRow === totalRows;
+  const isFullRange = totalRows > 0 && selectedBounds.minIdx === 0 && selectedBounds.maxIdx === totalRows - 1;
 
   const inputCls = [
     "bg-white/5 border border-white/10 text-white/90 placeholder:text-white/25",
@@ -513,33 +572,31 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-lg">
 
-      {/* ── Profile banner ─────────────────────────────────────────────── */}
       <motion.div
-        key={activeProfile.id}
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3 px-4 py-3 rounded-2xl glass border-emerald-400/20"
         style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.04) 100%)" }}
       >
         <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
-        <span className="text-sm font-semibold text-white/90">{activeProfile.name}</span>
+        <span className="text-sm font-semibold text-white/90">QRIS HOKI DP</span>
         <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-          SUB: {activeProfile.sub} &nbsp;·&nbsp; KODE TRANSAKSI: DP &nbsp;·&nbsp; KODE BANK: {activeProfile.kodeBank}
+          SUB: {DP_OUTPUT_SUB} &nbsp;·&nbsp; KODE TRANSAKSI: {DP_OUTPUT_KODE_TRANSAKSI}
         </span>
       </motion.div>
 
       {/* ── UPLOAD ZONE ────────────────────────────────────────────────── */}
       <div
         data-testid="dp-upload-zone"
-        className={`relative group w-full rounded-2xl border-2 border-dashed transition-all duration-300
-          flex flex-col items-center justify-center p-12 text-center overflow-hidden
+        className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
+          flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-md
           ${isDragging
             ? "border-emerald-400/70 scale-[1.01]"
             : file
-            ? "border-white/12 glass"
-            : "border-white/12 glass hover:border-emerald-400/40 cursor-pointer"}`}
+            ? "border-white/15 glass"
+            : "border-white/15 glass hover:border-emerald-400/40 cursor-pointer"}`}
         style={isDragging ? { background: "rgba(16,185,129,0.1)" } : undefined}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -690,23 +747,23 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-lg"
           >
             {/* Stat cards */}
             {stats && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md"
               >
                 {/* Row count */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl glass border-white/8 shadow-lg">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
-                    <ListOrdered size={18} className="text-white" />
+                <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                  <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
+                    <ListOrdered size={20} className="text-white" />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Baris Dipilih</p>
-                    <p className="text-2xl font-bold text-white leading-tight font-mono mt-0.5">
+                    <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Baris Dipilih</p>
+                    <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
                       {stats.count}
                       <span className="text-sm text-white/30 font-normal ml-1">/ {totalRows}</span>
                     </p>
@@ -714,42 +771,42 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
                 </div>
 
                 {/* Total deposit */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl glass border-white/8 shadow-lg">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 shrink-0">
-                    <Banknote size={18} className="text-white" />
+                <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                  <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-ds-md shadow-cyan-500/30 shrink-0">
+                    <Banknote size={20} className="text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Total Deposit</p>
-                    <p className="text-lg font-bold text-white leading-tight font-mono mt-0.5 truncate">
+                    <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Deposit</p>
+                    <p className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate">
                       {fmt(stats.totalNominal)}
                     </p>
                   </div>
                 </div>
 
                 {/* Duplicate IDs or Total File count */}
-                <div className={`flex items-center gap-4 p-4 rounded-2xl glass shadow-lg transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/8"}`}>
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg shrink-0
+                <div className={`flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
+                  <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
                     ${stats.dupCount > 0
                       ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
                       : "bg-gradient-to-br from-violet-500 to-purple-600 shadow-violet-500/30"}`}
                   >
                     {stats.dupCount > 0
-                      ? <TriangleAlert size={18} className="text-white" />
-                      : <Layers size={18} className="text-white" />
+                      ? <TriangleAlert size={20} className="text-white" />
+                      : <Layers size={20} className="text-white" />
                     }
                   </div>
                   <div>
                     {stats.dupCount > 0 ? (
                       <>
-                        <p className="text-[10px] uppercase tracking-widest text-amber-400/60 font-semibold">ID Duplikat</p>
-                        <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-0.5">
+                        <p className="text-xs uppercase tracking-wide text-amber-400/70 font-medium">ID Duplikat</p>
+                        <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-1">
                           {stats.dupCount} <span className="text-sm font-normal">baris</span>
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Total File</p>
-                        <p className="text-2xl font-bold text-white leading-tight font-mono mt-0.5">{totalRows}</p>
+                        <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total File</p>
+                        <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{totalRows}</p>
                       </>
                     )}
                   </div>
@@ -758,44 +815,58 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
             )}
 
             {/* Top bar: title + export buttons */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-md flex-wrap">
+              <div className="flex items-center gap-md">
                 <h2 className="text-base font-semibold text-white/85">Pratinjau Data DP</h2>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold border border-emerald-400/20">
+                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold border border-emerald-400/20">
                   {totalRows} total
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-sm flex-wrap">
                 <button
                   type="button"
                   onClick={exportXlsx}
                   disabled={filteredData.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass border-white/10 hover:bg-white/8
-                    text-sm text-white/60 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all disabled:opacity-35 disabled:cursor-not-allowed"
                 >
-                  <Download size={14} />
-                  <span className="hidden sm:inline text-xs">Export</span>
+                  <Download size={15} />
+                  <span className="hidden sm:inline">Export</span>
                 </button>
                 <button
                   type="button"
                   onClick={copyTSV}
                   disabled={filteredData.length === 0}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg
-                    disabled:opacity-30 disabled:cursor-not-allowed
-                    ${isCopied
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/30"
-                      : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-500"}`}
+                  className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
+                    disabled:opacity-35 disabled:cursor-not-allowed
+                    ${copiedType === "trx"
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30 hover:from-amber-400 hover:to-orange-400"}`}
                 >
-                  {isCopied
+                  {copiedType === "trx"
                     ? <><Check size={15} />Tersalin!</>
-                    : <><Copy size={15} />Salin TSV</>
+                    : <><Copy size={15} />Copy to Doc TRX</>
+                  }
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyDocQris}
+                  disabled={filteredData.length === 0}
+                  className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
+                    disabled:opacity-35 disabled:cursor-not-allowed
+                    ${copiedType === "qris"
+                      ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-cyan-500/30"
+                      : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-cyan-500/30 hover:from-cyan-500 hover:to-blue-500"}`}
+                >
+                  {copiedType === "qris"
+                    ? <><Check size={15} />Tersalin!</>
+                    : <><Copy size={15} />Copy to Doc Qris</>
                   }
                 </button>
               </div>
             </div>
 
             {/* ── Controls panel: row range + ID search + table filter ── */}
-            <div className="flex flex-col gap-3 p-4 rounded-2xl glass border-white/8 shadow-lg">
+            <div className="flex flex-col gap-md px-lg py-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
 
               {/* Row range inputs + mark mode buttons */}
               <div className="flex flex-wrap items-center gap-3">
@@ -848,7 +919,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
                 <div className="flex items-center gap-2 ml-auto">
                   {!isFullRange && (
                     <button
-                      onClick={() => { setStartRow(1); setEndRow(totalRows); setMarkMode(null); }}
+                      onClick={() => { setStartIndex(0); setEndIndex(totalRows - 1); setMarkMode(null); }}
                       className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors"
                     >
                       Reset
@@ -863,48 +934,49 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
 
               <div className="border-t border-white/6" />
 
-              {/* ID search + table filter */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Hash size={13} className="text-white/30 shrink-0" />
-                <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">ID:</span>
-
-                <div className="relative">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+              {/* Dual ID Transaksi search + table filter */}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Start ID group */}
+                <div className="flex items-center gap-2">
+                  <Flag size={13} className="text-emerald-400/60 shrink-0" />
+                  <span className="text-xs font-semibold text-white/40 shrink-0">Awal:</span>
                   <input
                     type="text"
-                    placeholder="Cari Member ID…"
-                    value={idSearch}
-                    onChange={(e) => { setIdSearch(e.target.value); setIdResult(null); setIdErr(null); }}
-                    onKeyDown={(e) => e.key === "Enter" && searchId("start")}
-                    className={`w-36 h-7 pl-7 pr-3 text-xs font-mono ${inputCls}`}
+                    placeholder="Paste ID Transaksi Awal…"
+                    value={startTrxIdInput}
+                    onChange={(e) => setStartTrxIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && setStartByTrxId()}
+                    className={`w-44 h-7 px-2.5 text-xs font-mono ${inputCls}`}
                   />
+                  <GlassBtn
+                    disabled={!startTrxIdInput.trim()}
+                    active={false}
+                    onClick={setStartByTrxId}
+                  >
+                    <Flag size={11} />Set Awal
+                  </GlassBtn>
                 </div>
 
-                <GlassBtn
-                  disabled={!idSearch.trim()}
-                  active={false}
-                  onClick={() => searchId("start")}
-                >
-                  <Flag size={11} />Set Awal
-                </GlassBtn>
-                <GlassBtn
-                  disabled={!idSearch.trim()}
-                  active={false}
-                  onClick={() => searchId("end")}
-                >
-                  <FlagOff size={11} />Set Akhir
-                </GlassBtn>
-
-                {idResult && (
-                  <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-                    <Check size={10} />Baris {idResult.row}: <span className="font-mono">{idResult.id}</span>
-                  </span>
-                )}
-                {idErr && (
-                  <span className="text-[11px] text-red-400 flex items-center gap-1">
-                    <AlertCircle size={10} />{idErr}
-                  </span>
-                )}
+                {/* End ID group */}
+                <div className="flex items-center gap-2">
+                  <FlagOff size={13} className="text-rose-400/60 shrink-0" />
+                  <span className="text-xs font-semibold text-white/40 shrink-0">Akhir:</span>
+                  <input
+                    type="text"
+                    placeholder="Paste ID Transaksi Akhir…"
+                    value={endTrxIdInput}
+                    onChange={(e) => setEndTrxIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && setEndByTrxId()}
+                    className={`w-44 h-7 px-2.5 text-xs font-mono ${inputCls}`}
+                  />
+                  <GlassBtn
+                    disabled={!endTrxIdInput.trim()}
+                    active={false}
+                    onClick={setEndByTrxId}
+                  >
+                    <FlagOff size={11} />Set Akhir
+                  </GlassBtn>
+                </div>
 
                 {/* Table text filter (right-aligned) */}
                 <div className="ml-auto flex items-center gap-2">
@@ -954,18 +1026,48 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
               )}
             </AnimatePresence>
 
+            {duplicateTrxSummary.count > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col gap-2 px-4 py-3 rounded-2xl border border-amber-400/35 bg-amber-500/12 shadow-lg shadow-amber-500/10"
+              >
+                <div className="flex items-center gap-2 text-amber-200">
+                  <TriangleAlert size={16} className="shrink-0" />
+                  <span className="text-sm font-black">
+                    WARNING: Ditemukan {duplicateTrxSummary.count} ID Transaksi Duplikat!
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pl-6">
+                  {duplicateTrxSummary.preview.map((trxId) => (
+                    <span
+                      key={trxId}
+                      className="px-2 py-1 rounded-lg bg-amber-300/10 border border-amber-300/20 text-[11px] font-mono text-amber-100"
+                    >
+                      {trxId}
+                    </span>
+                  ))}
+                  {duplicateTrxSummary.count > duplicateTrxSummary.preview.length && (
+                    <span className="px-2 py-1 text-[11px] text-amber-200/70">
+                      +{duplicateTrxSummary.count - duplicateTrxSummary.preview.length} lainnya
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {/* ── Preview table ───────────────────────────────────────── */}
-            <div className="rounded-2xl overflow-hidden glass border-white/8 shadow-2xl">
+            <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
               <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
                 <table className="w-full text-sm text-left border-collapse">
                   <thead
-                    className="text-[10px] uppercase tracking-wider text-white/30 sticky top-0 z-10"
+                    className="text-[10px] uppercase tracking-wider text-white/50 sticky top-0 z-10"
                     style={{ background: "rgba(5,46,22,0.75)", backdropFilter: "blur(20px)" }}
                   >
                     <tr>
-                      <th className="px-3 py-3.5 text-center w-10 border-b border-white/6">#</th>
+                      <th className="px-md py-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
                       {OUTPUT_HEADERS.map((header, i) => (
-                        <th key={i} className="px-4 py-3.5 font-semibold whitespace-nowrap border-b border-white/6">
+                        <th key={i} className="px-md py-sm font-semibold whitespace-nowrap border-b border-white/10">
                           {header}
                         </th>
                       ))}
@@ -975,11 +1077,10 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
                   <tbody className="font-mono text-xs divide-y divide-white/4">
                     {data.map((row, i) => {
                       const rowNumber = i + 1;
-                      const inRange   = rowNumber >= startRow && rowNumber <= endRow;
-                      const isStart   = rowNumber === startRow;
-                      const isEnd     = rowNumber === endRow;
-                      const isIdMatch = idSearch.trim() && row.userId.toLowerCase().includes(idSearch.trim().toLowerCase());
-                      const isDup     = dupIds.has(row.userId);
+                      const inRange   = i >= selectedBounds.minIdx && i <= selectedBounds.maxIdx;
+                      const isStart   = i === startIndex;
+                      const isEnd     = i === endIndex;
+                      const isDup = duplicateTrxIds.has(row.nama);
 
                       // Apply text filter
                       if (tableFilter.trim() && inRange) {
@@ -999,7 +1100,6 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
                             ${inRange ? "hover:bg-white/3" : "opacity-20"}
                             ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
                             ${isEnd ? "border-b-2 border-b-rose-400/40" : ""}
-                            ${isIdMatch && inRange ? "bg-emerald-500/5" : ""}
                             ${isDup && inRange ? "bg-amber-500/4" : ""}`}
                         >
                           {/* Row number / mark cell */}
@@ -1021,7 +1121,7 @@ export function DpSection({ activeProfile }: { activeProfile: DpProfile }) {
                           {/* Data cells */}
                           <td className="px-4 py-2.5 whitespace-nowrap text-white/50 text-[11px]">{row.nama}</td>
                           <td className="px-4 py-2.5 whitespace-nowrap text-cyan-300/70 text-[11px]">{row.nomorRekening}</td>
-                          <td className={`px-4 py-2.5 whitespace-nowrap ${isIdMatch ? "text-emerald-200 font-semibold" : isDup && inRange ? "text-amber-300" : "text-white/80"}`}>
+                          <td className={`px-4 py-2.5 whitespace-nowrap ${isDup && inRange ? "text-amber-300" : "text-white/80"}`}>
                             {row.userId}
                           </td>
                           <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.sub}</td>
