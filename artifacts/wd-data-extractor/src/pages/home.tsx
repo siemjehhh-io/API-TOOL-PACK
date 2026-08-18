@@ -1,24 +1,63 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import * as XLSX from "xlsx";
+// External dependencies
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Upload, FileSpreadsheet, X, Check, AlertCircle,
-  ChevronsUpDown, Flag, FlagOff, Search, Hash,
-  Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
-  TableProperties, ArrowDownToLine, ArrowUpFromLine, ClipboardList,
+  AlertCircle,
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowUpFromLine,
+  Banknote,
+  Check,
+  ChevronsUpDown,
+  ClipboardList,
+  Copy,
+  Download,
+  FileSpreadsheet,
+  Flag,
+  FlagOff,
+  Hash,
+  Layers,
+  ListOrdered,
+  Search,
+  Shield,
+  TableProperties,
+  TriangleAlert,
+  Trophy,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { DpSection } from "@/pages/dp-section";
-import GigaCopyDpHoki from "@/pages/GigaCopyDpHoki";
-import GigaCopyDpZenpay from "@/pages/GigaCopyDpZenpay";
-import GigaCopyBonus from "@/pages/GigaCopyBonus";
-import GigaSmartMutasi from "@/pages/GigaSmartMutasi";
+import * as XLSX from "xlsx";
 
-// ─── Output row type ──────────────────────────────────────────────────────────
+// React
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+// Shared components
+import { IdRangePicker } from "@/components/IdRangePicker";
+
+// Local pages — lazy-loaded so each tab ships as its own chunk.
+const DpSection = lazy(() =>
+  import("@/pages/dp-section").then((m) => ({ default: m.DpSection })),
+);
+const GigaCopyBonus = lazy(() => import("@/pages/GigaCopyBonus"));
+const GigaCopyDpHoki = lazy(() => import("@/pages/GigaCopyDpHoki"));
+const GigaCopyDpZenpay = lazy(() => import("@/pages/GigaCopyDpZenpay"));
+const GigaCopyWd = lazy(() => import("@/pages/GigaCopyWd"));
+const GigaSmartMutasi = lazy(() => import("@/pages/GigaSmartMutasi"));
+const CheckPusatGigaTools = lazy(() => import("@/pages/CheckPusatGigaTools"));
+const PhishShield = lazy(() => import("@/pages/PhishShield"));
+
+// Lightweight spinner shown while a tab's chunk is being fetched.
+const TabLoadingFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-12 h-12 rounded-full border-4 border-violet-400/20 border-t-violet-400 animate-spin" />
+  </div>
+);
+
+// â”€â”€â”€ Output row type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // This is the internal representation of one processed withdrawal row.
 // Field names map 1-to-1 with OUTPUT_HEADERS (see below).
-// _paymentMethod is a temporary field used for display only — not exported.
+// _paymentMethod is a temporary field used for display only â€” not exported.
 
 interface ExtractedRow {
   nama:           string; // col 1:  NAMA
@@ -38,7 +77,7 @@ interface ExtractedRow {
   _userIdNeedsReview?: boolean;
 }
 
-// ─── Output column headers (same order for WD and DP) ────────────────────────
+// â”€â”€â”€ Output column headers (same order for WD and DP) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const OUTPUT_HEADERS = [
   "NAMA",
@@ -69,7 +108,7 @@ const WD_SOURCE_COLUMNS = {
   finishedDate: "Finished Date",
 };
 
-// ─── Pure utility functions ───────────────────────────────────────────────────
+// â”€â”€â”€ Pure utility functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Serialize a row to an ordered string array matching OUTPUT_HEADERS. */
 function rowToArr(row: ExtractedRow): string[] {
@@ -89,7 +128,7 @@ function formatExcelDate(cellValue: unknown): string {
   if (!cellValue) return "";
 
   if (typeof cellValue === "number") {
-    // Excel serial date → JS Date → time string
+    // Excel serial date â†’ JS Date â†’ time string
     const date = new Date((cellValue - (25567 + 2)) * 86400 * 1000);
     return date.toISOString().substr(11, 8);
   }
@@ -252,7 +291,7 @@ function parseAmt(value: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-// ─── Shared small button component ───────────────────────────────────────────
+// â”€â”€â”€ Shared small button component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * A small glassmorphism toggle/action button used in the controls panel.
@@ -285,7 +324,11 @@ function GlassBtn({
   );
 }
 
-// ─── Home page ────────────────────────────────────────────────────────────────
+// ─── ID range picker ─────────────────────────────────────────────────────────
+// Extracted to a shared component so both QRIS HOKI sections (WD here, DP in
+// dp-section.tsx) use an identical marking UI/flow. See @/components/IdRangePicker.
+
+// ─── Home page ───────────────────────────────────────────────────────────────
 //
 // Shell component that owns:
 //   - Tab state (WD | DP)
@@ -295,13 +338,14 @@ function GlassBtn({
 // The DP extractor logic lives entirely in <DpSection />.
 
 export default function Home() {
-  // ── Category & Tab ──────────────────────────────────────────────────────────
+  // ── Category & Tab ────────────────────────────────────────────────────────────
 
-  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "giga-smart-mutasi">("qris-hoki");
+  const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
+  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "giga-smart-mutasi" | "check-pusat">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
-  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus">("qrishoki");
+  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd">("qrishoki");
 
-  // ── WD extractor state ────────────────────────────────────────────────────
+  // â”€â”€ WD extractor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const [isDragging, setIsDragging]       = useState(false);
   const [file, setFile]                   = useState<File | null>(null);
@@ -319,29 +363,31 @@ export default function Home() {
   // Row range selection (1-indexed, inclusive).
   const [startRow, setStartRow] = useState(1);
   const [endRow, setEndRow]     = useState(1);
-  const [markMode, setMarkMode] = useState<"start" | "end" | null>(null);
 
-  // ID search (finds a user ID in the full dataset and sets start/end).
-  const [idSearch, setIdSearch] = useState("");
-  const [idResult, setIdResult] = useState<{ row: number; id: string } | null>(null);
-  const [idErr, setIdErr]       = useState<string | null>(null);
+  // Range marking via two independent ID search boxes.
+  // Each box has its own typed query and currently-selected match index
+  // (when an ID matches multiple rows the user can cycle through them).
+  const [startIdQuery, setStartIdQuery]   = useState("");
+  const [startMatchIdx, setStartMatchIdx] = useState(0);
+  const [endIdQuery, setEndIdQuery]       = useState("");
+  const [endMatchIdx, setEndMatchIdx]     = useState(0);
 
   // Table filter (client-side substring filter on visible columns).
   const [tableFilter, setTableFilter] = useState("");
 
   const totalRows = data?.length ?? 0;
 
-  // ── Derived data ──────────────────────────────────────────────────────────
+  // â”€â”€ Derived data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Reset controls whenever a new file is loaded.
   useEffect(() => {
     if (data) {
       setStartRow(1);
       setEndRow(data.length);
-      setMarkMode(null);
-      setIdSearch("");
-      setIdResult(null);
-      setIdErr(null);
+      setStartIdQuery("");
+      setStartMatchIdx(0);
+      setEndIdQuery("");
+      setEndMatchIdx(0);
       setTableFilter("");
     }
   }, [data]);
@@ -354,24 +400,24 @@ export default function Home() {
 
   // Apply the text filter on top of the range slice.
   const filteredData = useMemo(() => {
-    const q = tableFilter.trim().toLowerCase();
-    if (!q) return rangeData;
+    const query = tableFilter.trim().toLowerCase();
+    if (!query) return rangeData;
     return rangeData.filter(
-      (r) =>
-        r.nama.toLowerCase().includes(q) ||
-        r.userId.toLowerCase().includes(q) ||
-        r.nomorRekening.toLowerCase().includes(q) ||
-        r.withdrawal.toLowerCase().includes(q)
+      (row) =>
+        row.nama.toLowerCase().includes(query) ||
+        row.userId.toLowerCase().includes(query) ||
+        row.nomorRekening.toLowerCase().includes(query) ||
+        row.withdrawal.toLowerCase().includes(query)
     );
   }, [rangeData, tableFilter]);
 
   // Set of user IDs that appear more than once in the current range.
   const dupIds = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const r of rangeData) {
-      if (r.userId) counts[r.userId] = (counts[r.userId] ?? 0) + 1;
+    for (const row of rangeData) {
+      if (row.userId) counts[row.userId] = (counts[row.userId] ?? 0) + 1;
     }
-    return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
+    return new Set(Object.keys(counts).filter((key) => counts[key] > 1));
   }, [rangeData]);
 
   // Summary statistics for the stat cards.
@@ -379,19 +425,19 @@ export default function Home() {
     if (!filteredData.length) return null;
     return {
       count:        filteredData.length,
-      totalNominal: filteredData.reduce((sum, r) => sum + parseAmt(r.withdrawal), 0),
-      dupCount:     filteredData.filter((r) => dupIds.has(r.userId)).length,
+      totalNominal: filteredData.reduce((sum, row) => sum + parseAmt(row.withdrawal), 0),
+      dupCount:     filteredData.filter((row) => dupIds.has(row.userId)).length,
     };
   }, [filteredData, dupIds]);
 
-  // ── File processing ───────────────────────────────────────────────────────
+  // â”€â”€ File processing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /**
    * Parse a single sheet from an already-loaded workbook.
    * Validates that all mapped columns exist before calling transformData().
    */
-  const processSheet = (wb: XLSX.WorkBook, sheetName: string): ExtractedRow[] => {
-    const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" }) as Record<string, unknown>[];
+  const processSheet = useCallback((workbook: XLSX.WorkBook, sheetName: string): ExtractedRow[] => {
+    const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" }) as Record<string, unknown>[];
     if (!raw.length) throw new Error(`Sheet "${sheetName}" kosong.`);
 
     const hasOutputHeaders = OUTPUT_HEADERS.slice(0, 9).every((col) => col in raw[0]);
@@ -415,11 +461,11 @@ export default function Home() {
     }
 
     return transformData(raw);
-  };
+  }, []);
 
   /** Load a new .xlsx file: parse the workbook and process the first sheet. */
-  const processFile = async (f: File) => {
-    setFile(f);
+  const processFile = useCallback(async (incomingFile: File) => {
+    setFile(incomingFile);
     setError(null);
     setData(null);
     setSheetNames([]);
@@ -428,25 +474,25 @@ export default function Home() {
     setIsParsing(true);
 
     try {
-      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
-      wbRef.current = wb;
+      const workbook = XLSX.read(await incomingFile.arrayBuffer(), { type: "array" });
+      wbRef.current = workbook;
 
-      if (!wb.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
+      if (!workbook.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
 
-      setSheetNames(wb.SheetNames);
-      setSelectedSheet(wb.SheetNames[0]);
-      const processed = processSheet(wb, wb.SheetNames[0]);
+      setSheetNames(workbook.SheetNames);
+      setSelectedSheet(workbook.SheetNames[0]);
+      const processed = processSheet(workbook, workbook.SheetNames[0]);
       processed.sort((a, b) => new Date(a.keterangan).getTime() - new Date(b.keterangan).getTime());
       setData(processed);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Gagal membaca file Excel.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal membaca file Excel.");
     } finally {
       setIsParsing(false);
     }
-  };
+  }, [processSheet]);
 
   /** Switch to a different sheet within the already-loaded workbook. */
-  const changeSheet = (name: string) => {
+  const changeSheet = useCallback((name: string) => {
     if (!wbRef.current) return;
     setSelectedSheet(name);
     setError(null);
@@ -455,141 +501,182 @@ export default function Home() {
       const processed = processSheet(wbRef.current, name);
       processed.sort((a, b) => new Date(a.keterangan).getTime() - new Date(b.keterangan).getTime());
       setData(processed);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Gagal membaca sheet.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal membaca sheet.");
     }
-  };
+  }, [processSheet]);
 
-  // ── Drag & drop / file input handlers ────────────────────────────────────
+  // â”€â”€ Drag & drop / file input handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
+    (event: React.DragEvent) => {
+      event.preventDefault();
       setIsDragging(false);
-      const f = e.dataTransfer.files?.[0];
-      if (!f) return;
-      if (f.name.endsWith(".xlsx")) {
-        processFile(f);
+      const incomingFile = event.dataTransfer.files?.[0];
+      if (!incomingFile) return;
+      if (incomingFile.name.endsWith(".xlsx")) {
+        processFile(incomingFile);
       } else {
         setError("Hanya file .xlsx yang didukung.");
       }
     },
-    []
+    [processFile]
   );
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) processFile(e.target.files[0]);
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const incomingFile = event.target.files?.[0];
+    if (incomingFile) processFile(incomingFile);
     // Reset input so the same file can be re-selected after a reset.
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  }, [processFile]);
 
   /** Clear all WD state (called when removing a file). */
-  const reset = () => {
+  const reset = useCallback(() => {
     setFile(null);
     setData(null);
     setError(null);
     setIsCopied(false);
-    setMarkMode(null);
-    setIdSearch("");
-    setIdResult(null);
-    setIdErr(null);
+    setStartIdQuery("");
+    setStartMatchIdx(0);
+    setEndIdQuery("");
+    setEndMatchIdx(0);
     setTableFilter("");
     setSheetNames([]);
     setSelectedSheet("");
     wbRef.current = null;
-  };
+  }, []);
 
-  // ── Row range controls ────────────────────────────────────────────────────
+  // â”€â”€ Row range controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /**
-   * Search the full dataset for a user ID and apply the result as start or end row.
-   * If the found row would invert the range, the two boundaries are swapped.
+   * Find every row whose userId contains `query` (case-insensitive).
+   * Returns 1-indexed row numbers paired with the actual ID for display.
+   * Empty / whitespace-only query yields an empty list.
    */
-  const searchId = (target: "start" | "end") => {
-    if (!data || !idSearch.trim()) return;
-    const q = idSearch.trim().toLowerCase();
-    const idx = data.findIndex((r) => r.userId.toLowerCase().includes(q));
+  const findIdMatches = useCallback(
+    (query: string): { row: number; id: string }[] => {
+      if (!data) return [];
+      const trimmed = query.trim().toLowerCase();
+      if (!trimmed) return [];
+      const matches: { row: number; id: string }[] = [];
+      for (let i = 0; i < data.length; i += 1) {
+        if (data[i].userId.toLowerCase().includes(trimmed)) {
+          matches.push({ row: i + 1, id: data[i].userId });
+        }
+      }
+      return matches;
+    },
+    [data],
+  );
 
-    if (idx === -1) {
-      setIdResult(null);
-      setIdErr(`ID "${idSearch.trim()}" tidak ditemukan.`);
+  // Recompute matches as the user types in either box.
+  const startMatches = useMemo(() => findIdMatches(startIdQuery), [findIdMatches, startIdQuery]);
+  const endMatches   = useMemo(() => findIdMatches(endIdQuery),   [findIdMatches, endIdQuery]);
+
+  // Keep the cycle index in range whenever the matches list changes.
+  useEffect(() => {
+    if (startMatchIdx >= startMatches.length) setStartMatchIdx(0);
+  }, [startMatches.length, startMatchIdx]);
+  useEffect(() => {
+    if (endMatchIdx >= endMatches.length) setEndMatchIdx(0);
+  }, [endMatches.length, endMatchIdx]);
+
+  // The actual selected match (clamped to the available list).
+  const startMatch = startMatches.length ? startMatches[Math.min(startMatchIdx, startMatches.length - 1)] : null;
+  const endMatch   = endMatches.length   ? endMatches[Math.min(endMatchIdx, endMatches.length - 1)]       : null;
+
+  // â”€â”€ Live boundary application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //
+  // Both ID boxes update startRow/endRow live (no Apply button). When both
+  // boxes are empty we restore the full range (1..total) so the user gets
+  // back to "everything selected" with a single Backspace.
+  //
+  // Auto-swap: if the start match lands on a row after the end boundary we
+  // swap them so the resulting range stays valid (and surface a toast so the
+  // user knows what happened).
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+
+    const total = data.length;
+    const startTrimmed = startIdQuery.trim();
+    const endTrimmed   = endIdQuery.trim();
+
+    // Both boxes empty â†’ restore full range.
+    if (!startTrimmed && !endTrimmed) {
+      if (startRow !== 1) setStartRow(1);
+      if (endRow !== total) setEndRow(total);
       return;
     }
 
-    const rowNumber = idx + 1;
-    setIdErr(null);
-    setIdResult({ row: rowNumber, id: data[idx].userId });
+    // Resolve the row numbers each box is currently pointing at (or null
+    // when the box is empty / has no matches).
+    const startTarget = startMatch ? startMatch.row : null;
+    const endTarget   = endMatch   ? endMatch.row   : null;
 
-    if (target === "start") {
-      if (rowNumber > endRow) {
-        setStartRow(endRow);
-        setEndRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set akhir (ditukar)`);
-      } else {
-        setStartRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set awal`);
-      }
-    } else {
-      if (rowNumber < startRow) {
-        setEndRow(startRow);
-        setStartRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set awal (ditukar)`);
-      } else {
-        setEndRow(rowNumber);
-        toast.success(`Baris ${rowNumber} — set akhir`);
-      }
+    let nextStart = startRow;
+    let nextEnd   = endRow;
+
+    // ID Awal menandai transaksi terakhir yang SUDAH diproses, jadi rentang
+    // dimulai 1 transaksi SETELAH baris itu (baris penanda tidak ikut).
+    if (startTarget !== null) nextStart = startTarget + 1;
+    else if (!startTrimmed) nextStart = 1;
+    if (endTarget !== null) nextEnd = endTarget;
+    else if (!endTrimmed) nextEnd = total;
+
+    const startIsLast = startTarget !== null && startTarget >= total;
+    if (startIsLast) {
+      // Tidak ada transaksi setelah ID penanda -> rentang kosong (slice kosong).
+      nextStart = total + 1;
+      toast("ID penanda adalah transaksi terakhir — tidak ada transaksi setelahnya.");
+    } else if (nextStart > nextEnd) {
+      // Auto-swap if the resulting range is inverted.
+      [nextStart, nextEnd] = [nextEnd, nextStart];
+      toast.success("Rentang ditukar otomatis (awal > akhir).");
     }
-  };
 
-  /** Called when user clicks a row number cell while mark mode is active. */
-  const handleRowClick = (rowIndex: number) => {
-    const rowNumber = rowIndex + 1;
-    if (markMode === "start") {
-      setStartRow(rowNumber);
-      if (rowNumber > endRow) setEndRow(rowNumber);
-      setMarkMode(null);
-    } else if (markMode === "end") {
-      setEndRow(rowNumber);
-      if (rowNumber < startRow) setStartRow(rowNumber);
-      setMarkMode(null);
-    }
-  };
+    if (nextStart !== startRow) setStartRow(nextStart);
+    if (nextEnd !== endRow) setEndRow(nextEnd);
+    // We intentionally depend only on the *resolved* match rows + queries.
+    // Re-running on every startRow/endRow tick would create a feedback loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, startIdQuery, endIdQuery, startMatch?.row, endMatch?.row]);
 
-  const handleStartInput = (value: string) => {
-    const n = parseInt(value, 10);
-    if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
+  const handleStartInput = useCallback((value: string) => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) return;
+    const clamped = clamp(parsed, 1, totalRows);
     setStartRow(clamped);
     if (clamped > endRow) setEndRow(clamped);
-  };
+  }, [totalRows, endRow]);
 
-  const handleEndInput = (value: string) => {
-    const n = parseInt(value, 10);
-    if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
+  const handleEndInput = useCallback((value: string) => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) return;
+    const clamped = clamp(parsed, 1, totalRows);
     setEndRow(clamped);
     if (clamped < startRow) setStartRow(clamped);
-  };
+  }, [totalRows, startRow]);
 
-  // ── Output actions ────────────────────────────────────────────────────────
+  // â”€â”€ Output actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /** Copy the filtered rows as tab-separated values for pasting into spreadsheets. */
-  const copyTSV = async () => {
+  const copyTSV = useCallback(async () => {
     if (!filteredData.length) return;
     try {
       const tsv = filteredData
-        .map((r) =>
-          rowToArr(r)
+        .map((row) =>
+          rowToArr(row)
             .slice(0, 9)
             .map((cell) => String(cell ?? "").replace(/[\t\n\r]/g, " ").trim())
             .join("\t")
@@ -602,32 +689,32 @@ export default function Home() {
     } catch {
       toast.error("Gagal menyalin.");
     }
-  };
+  }, [filteredData]);
 
   /** Export the filtered rows as an .xlsx file with auto-sized columns. */
-  const exportXlsx = () => {
+  const exportXlsx = useCallback(() => {
     if (!filteredData.length) return;
     try {
       const rows = filteredData.map(rowToArr);
-      const ws = XLSX.utils.aoa_to_sheet([OUTPUT_HEADERS, ...rows]);
+      const worksheet = XLSX.utils.aoa_to_sheet([OUTPUT_HEADERS, ...rows]);
 
       // Auto-fit column widths based on header + content length.
-      ws["!cols"] = OUTPUT_HEADERS.map((header, i) => ({
-        wch: Math.max(header.length, ...rows.map((r) => String(r[i] ?? "").length)) + 2,
+      worksheet["!cols"] = OUTPUT_HEADERS.map((header, columnIndex) => ({
+        wch: Math.max(header.length, ...rows.map((row) => String(row[columnIndex] ?? "").length)) + 2,
       }));
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Output");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Output");
 
       const baseName = file?.name.replace(/\.xlsx$/i, "") ?? "output";
-      XLSX.writeFile(wb, `${baseName}_output.xlsx`);
+      XLSX.writeFile(workbook, `${baseName}_output.xlsx`);
       toast.success(`"${baseName}_output.xlsx" berhasil diunduh!`);
     } catch {
       toast.error("Gagal ekspor Excel.");
     }
-  };
+  }, [filteredData, file]);
 
-  // ── Derived booleans & shared styles ─────────────────────────────────────
+  // â”€â”€ Derived booleans & shared styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const isFullRange = startRow === 1 && endRow === totalRows;
 
@@ -637,111 +724,310 @@ export default function Home() {
     "rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400/50 focus:border-violet-400/40 transition-all",
   ].join(" ");
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="relative min-h-screen flex flex-col text-white font-sans">
 
-      {/* ── Animated background ────────────────────────────────────────── */}
+      {/* â”€â”€ Animated background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="bg-scene" aria-hidden>
         <div className="orb orb-1" />
         <div className="orb orb-2" />
         <div className="orb orb-3" />
       </div>
 
-      {/* ── HEADER ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header className="sticky top-0 z-30 bg-[#131424]/85 backdrop-blur-md border-b border-white/5">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3">
 
           {/* Left: logo + title */}
-          <div className="flex items-center gap-4 min-w-0">
+          <div 
+            onClick={() => setMainSection(null)}
+            className="flex items-center gap-4 min-w-0 cursor-pointer group select-none self-start"
+          >
             <img
               src="/logo.png"
-              alt="API Formula Tools"
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-lg shadow-violet-500/20 object-cover"
+              alt="API GROUP TOOLS"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-lg shadow-violet-500/20 object-cover group-hover:scale-105 transition-transform duration-200"
             />
             <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-[Quadrillion] italic leading-none tracking-tight text-white whitespace-nowrap">API FORMULA TOOLS</h1>
-              <p className="text-sm sm:text-base text-slate-400 mt-1 whitespace-nowrap">Internal Operations Tooling</p>
+              <h1 className="text-2xl sm:text-3xl font-quadrillion italic leading-none tracking-tight text-white whitespace-nowrap group-hover:text-violet-300 transition-colors">API GROUP TOOLS</h1>
+              <p className="text-sm sm:text-base text-slate-400 mt-1 whitespace-nowrap">Internal Operation Tools</p>
             </div>
           </div>
-
-          {/* Center: category switcher */}
-          <div className="w-full rounded-2xl bg-slate-950/45 border border-white/10 shadow-inner shadow-black/20 overflow-hidden">
-            <div className="grid grid-cols-3 gap-1.5 p-1.5">
-            <button
-              type="button"
-              onClick={() => setActiveCategory("giga")}
-              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
-                ${activeCategory === "giga"
-                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
-                  : "text-slate-300 hover:bg-white/10"}`}
-            >
-              <ClipboardList size={14} className="flex-shrink-0" />
-              GIGA PANEL TOOLS
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("qris-hoki")}
-              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
-                ${activeCategory === "qris-hoki"
-                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
-                  : "text-slate-300 hover:bg-white/10"}`}
-            >
-              <Layers size={14} className="flex-shrink-0" />
-              QRIS HOKI TOOLS
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("giga-smart-mutasi")}
-              className={`min-w-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs lg:text-[13px] font-semibold transition-all duration-200 whitespace-nowrap
-                ${activeCategory === "giga-smart-mutasi"
-                  ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
-                  : "text-slate-300 hover:bg-white/10"}`}
-            >
-              <TableProperties size={14} className="flex-shrink-0" />
-              GIGA SMART MUTASI TOOLS
-            </button>
-            </div>
-          </div>
-
         </div>
       </header>
 
-      {/* ── MAIN CONTENT ───────────────────────────────────────────────── */}
-      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-lg sm:py-xl flex flex-col gap-lg">
+      {/* â”€â”€ MAIN CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <main className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-ds-lg sm:py-ds-xl flex flex-col gap-ds-lg">
 
-        {/* QRIS HOKI TOOL category content */}
-        {activeCategory === "qris-hoki" && (
-          <>
-            {/* Sub-tab switcher for WD/DP */}
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 self-start">
-              <button
-                type="button"
-                onClick={() => setActiveQrisTab("wd")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
-                  ${activeQrisTab === "wd"
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/30"
-                    : "text-slate-300 hover:bg-white/10"}`}
-              >
-                <ArrowUpFromLine size={14} />
-                QRIS HOKI WD
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveQrisTab("dp")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
-                  ${activeQrisTab === "dp"
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/30"
-                    : "text-slate-300 hover:bg-white/10"}`}
-              >
-                <ArrowDownToLine size={14} />
-                QRIS HOKI DP
-              </button>
+        {/* ── UNIFIED FORMULA TOOLS TOP NAVIGATION BAR ── */}
+        {mainSection === "formula" && (
+          <div className="flex flex-col gap-2.5">
+            {/* Top Bar: Back Button + Main Category Switcher in a unified glass navbar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-2 sm:p-2.5 rounded-2xl glass border border-white/10 shadow-lg bg-slate-900/60 backdrop-blur-xl">
+              {/* Left: Back to Lobby + Section Title */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMainSection(null)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 shadow-sm shrink-0"
+                >
+                  <ArrowLeft size={14} className="text-violet-400" />
+                  <span>Menu Utama</span>
+                </button>
+                <div className="h-5 w-px bg-white/10 hidden sm:block" />
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
+                    Formula Tools
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Main Category Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/5 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory("giga")}
+                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
+                    ${activeCategory === "giga"
+                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                >
+                  <ClipboardList size={14} />
+                  GIGA PANEL TOOLS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory("qris-hoki")}
+                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
+                    ${activeCategory === "qris-hoki"
+                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                >
+                  <ArrowDownToLine size={14} />
+                  QRIS HOKI TOOLS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory("check-pusat")}
+                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
+                    ${activeCategory === "check-pusat"
+                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                >
+                  <Trophy size={14} />
+                  CHECK PUSAT GIGA
+                </button>
+              </div>
             </div>
 
+            {/* Sub-Tab Bar (Only for Giga Panel & QRIS Hoki) */}
+            {activeCategory === "giga" && (
+              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
+                    PILIH PANEL:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("qrishoki")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "qrishoki"
+                        ? "bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-500/30 border border-fuchsia-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <ClipboardList size={13} />
+                    QRISHOKI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("zenpay")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "zenpay"
+                        ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30 border border-cyan-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <Layers size={13} />
+                    ZENPAY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("bonus")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "bonus"
+                        ? "bg-amber-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <Banknote size={13} />
+                    BONUS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("wd")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "wd"
+                        ? "bg-rose-600 text-white shadow-sm shadow-rose-500/30 border border-rose-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <ArrowUpFromLine size={13} />
+                    WD GIGA
+                  </button>
+                </div>
+                <span className="text-[11px] font-mono text-white/30 hidden md:inline">
+                  GIGA PANEL TOOLS
+                </span>
+              </div>
+            )}
+
+            {activeCategory === "qris-hoki" && (
+              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
+                    MODE TRANSAKSI:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveQrisTab("wd")}
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeQrisTab === "wd"
+                        ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <ArrowUpFromLine size={13} />
+                    QRIS HOKI WD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveQrisTab("dp")}
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeQrisTab === "dp"
+                        ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/30 border border-emerald-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <ArrowDownToLine size={13} />
+                    QRIS HOKI DP
+                  </button>
+                </div>
+                <span className="text-[11px] font-mono text-white/30 hidden md:inline">
+                  QRIS HOKI TOOLS
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── UNIFIED SMART MUTASI TOP BAR ── */}
+        {mainSection === "mutasi" && (
+          <div className="flex items-center justify-between gap-3 p-2 sm:p-2.5 rounded-2xl glass border border-white/10 shadow-lg bg-slate-900/60 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setMainSection(null)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 shadow-sm shrink-0"
+            >
+              <ArrowLeft size={14} className="text-violet-400" />
+              <span>Menu Utama</span>
+            </button>
+            <div className="flex items-center gap-2 pr-3">
+              <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
+                Smart Mutasi Tools
+              </span>
+            </div>
+          </div>
+        )}
+
+        {mainSection === null && (
+          <div className="flex-1 flex flex-col justify-center items-center py-12">
+            <div className="max-w-4xl w-full text-center mb-12">
+              <h2 className="text-4xl sm:text-5xl font-quadrillion tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-400 to-red-400 bg-clip-text text-transparent">
+                PILIH LAYANAN PORTAL
+              </h2>
+              <p className="text-slate-400 mt-3 text-sm sm:text-base">
+                Silakan pilih salah satu dari tiga tools di bawah ini untuk memulai operasional
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4">
+              {/* Card 1: Formula Tools */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMainSection("formula");
+                  setActiveCategory("giga");
+                }}
+                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-violet-500/10 cursor-pointer overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="w-16 h-16 rounded-2xl bg-violet-600/20 text-violet-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-violet-500/20">
+                  <ClipboardList size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
+                  Formula Tools
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Giga Panel Tools &amp; QRIS Hoki Tools untuk perhitungan dan salin data DP/WD.
+                </p>
+              </button>
+
+              {/* Card 2: Smart Mutasi Tools */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMainSection("mutasi");
+                  setActiveCategory("giga-smart-mutasi");
+                }}
+                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-violet-500/10 cursor-pointer overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="w-16 h-16 rounded-2xl bg-violet-600/20 text-violet-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-violet-500/20">
+                  <TableProperties size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
+                  Smart Mutasi Tools
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Laporan dan sinkronisasi otomatis mutasi bank internal.
+                </p>
+              </button>
+
+              {/* Card 3: Phishing Report Tools */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMainSection("phishing");
+                }}
+                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-amber-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-amber-500/10 cursor-pointer overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold tracking-wider uppercase">
+                  Under Maintenance
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-orange-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="w-16 h-16 rounded-2xl bg-amber-600/20 text-amber-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-amber-500/20">
+                  <Shield size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-300 transition-colors">
+                  Phishing Report Tools
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  PhishShield untuk perlindungan brand (Sedang dalam pemeliharaan).
+                </p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* QRIS HOKI TOOL category content */}
+        {mainSection === "formula" && activeCategory === "qris-hoki" && (
+          <>
+
             {/* DP section */}
-            {activeQrisTab === "dp" && <DpSection />}
+            {activeQrisTab === "dp" && (
+              <Suspense fallback={<TabLoadingFallback />}>
+                <DpSection />
+              </Suspense>
+            )}
 
             {/* WD section */}
             {activeQrisTab === "wd" && (
@@ -755,16 +1041,16 @@ export default function Home() {
               <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
               <span className="text-sm font-semibold text-white/90">QRIS HOKI WD</span>
               <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-                SUB: {WD_OUTPUT_SUB} &nbsp;·&nbsp; KODE: {WD_OUTPUT_KODE_TRANSAKSI}
+                SUB: {WD_OUTPUT_SUB} &nbsp;Â·&nbsp; KODE: {WD_OUTPUT_KODE_TRANSAKSI}
               </span>
             </motion.div>
 
-            {/* ── UPLOAD ZONE ────────────────────────────────────────────── */}
+            {/* â”€â”€ UPLOAD ZONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <section>
               <div
                 data-testid="upload-zone"
                 className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
-                  flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-md
+                  flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-ds-md
                   ${isDragging
                     ? "border-violet-400/70 scale-[1.01]"
                     : file
@@ -804,7 +1090,7 @@ export default function Home() {
                       className="flex flex-col items-center gap-4"
                     >
                       <div className="w-14 h-14 rounded-full border-4 border-violet-400/20 border-t-violet-400 animate-spin" />
-                      <p className="text-white/60 font-medium">Memproses data…</p>
+                      <p className="text-white/60 font-medium">Memproses dataâ€¦</p>
                     </motion.div>
                   )}
 
@@ -829,7 +1115,7 @@ export default function Home() {
                       {sheetNames.length > 1 && (
                         <div
                           className="flex items-center gap-2 flex-wrap justify-center"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
                         >
                           <TableProperties size={13} className="text-white/40" />
                           <span className="text-xs text-white/40">Sheet:</span>
@@ -852,7 +1138,7 @@ export default function Home() {
 
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); reset(); }}
+                        onClick={(event) => { event.stopPropagation(); reset(); }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40
                           hover:text-red-400 hover:bg-red-400/10 border border-white/8 hover:border-red-400/20 transition-all"
                         data-testid="button-remove-file"
@@ -892,7 +1178,7 @@ export default function Home() {
               </div>
             </section>
 
-            {/* ── ERROR BANNER ────────────────────────────────────────────── */}
+            {/* â”€â”€ ERROR BANNER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -918,24 +1204,24 @@ export default function Home() {
               )}
             </AnimatePresence>
 
-            {/* ── DATA PREVIEW ────────────────────────────────────────────── */}
+            {/* â”€â”€ DATA PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <AnimatePresence>
               {data && !error && (
                 <motion.section
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="flex flex-col gap-lg"
+                  className="flex flex-col gap-ds-lg"
                 >
                   {/* Stat cards */}
                   {stats && (
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-ds-md"
                     >
                       {/* Row count */}
-                      <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                      <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
                         <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
                           <ListOrdered size={20} className="text-white" />
                         </div>
@@ -949,7 +1235,7 @@ export default function Home() {
                       </div>
 
                       {/* Total withdrawal */}
-                      <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                      <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
                         <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
                           <Banknote size={20} className="text-white" />
                         </div>
@@ -962,7 +1248,7 @@ export default function Home() {
                       </div>
 
                       {/* Duplicate IDs (amber warning) or Total File count */}
-                      <div className={`flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
+                      <div className={`flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
                         <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
                           ${stats.dupCount > 0
                             ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
@@ -993,14 +1279,14 @@ export default function Home() {
                   )}
 
                   {/* Top bar: title + export buttons */}
-                  <div className="flex items-center justify-between gap-md">
-                    <div className="flex items-center gap-md">
+                  <div className="flex items-center justify-between gap-ds-md">
+                    <div className="flex items-center gap-ds-md">
                       <h2 className="text-base font-semibold text-white/85">Pratinjau Data</h2>
                       <span className="px-3 py-1 rounded-full bg-violet-500/15 text-violet-300 text-xs font-semibold border border-violet-400/20">
                         {totalRows} total
                       </span>
                     </div>
-                    <div className="flex items-center gap-sm">
+                    <div className="flex items-center gap-ds-sm">
                       <button
                         type="button"
                         onClick={exportXlsx}
@@ -1030,8 +1316,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* ── Controls panel: row range + ID search + table filter ─ */}
-                  <div className="flex flex-col gap-md px-lg py-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
+                  {/* â”€â”€ Controls panel: row range + ID search + table filter â”€ */}
+                  <div className="flex flex-col gap-ds-md px-ds-lg py-ds-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
 
                     {/* Row range inputs + mark mode buttons */}
                     <div className="flex flex-wrap items-center gap-3">
@@ -1045,13 +1331,13 @@ export default function Home() {
                           min={1}
                           max={totalRows}
                           value={startRow}
-                          onChange={(e) => handleStartInput(e.target.value)}
+                          onChange={(event) => handleStartInput(event.target.value)}
                           className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
                           data-testid="input-start-row"
                         />
                       </div>
 
-                      <span className="text-white/20 text-xs">—</span>
+                      <span className="text-white/20 text-xs">â€”</span>
 
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-white/30">Sampai</span>
@@ -1060,35 +1346,23 @@ export default function Home() {
                           min={1}
                           max={totalRows}
                           value={endRow}
-                          onChange={(e) => handleEndInput(e.target.value)}
+                          onChange={(event) => handleEndInput(event.target.value)}
                           className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
                           data-testid="input-end-row"
                         />
                       </div>
 
-                      <div className="flex gap-1.5">
-                        <GlassBtn
-                          active={markMode === "start"}
-                          activeClass="bg-emerald-500/15 border-emerald-400/40 text-emerald-300"
-                          onClick={() => setMarkMode((m) => m === "start" ? null : "start")}
-                          data-testid="button-mark-start"
-                        >
-                          <Flag size={11} />Tandai Awal
-                        </GlassBtn>
-                        <GlassBtn
-                          active={markMode === "end"}
-                          activeClass="bg-rose-500/15 border-rose-400/40 text-rose-300"
-                          onClick={() => setMarkMode((m) => m === "end" ? null : "end")}
-                          data-testid="button-mark-end"
-                        >
-                          <FlagOff size={11} />Tandai Akhir
-                        </GlassBtn>
-                      </div>
-
                       <div className="flex items-center gap-2 ml-auto">
                         {!isFullRange && (
                           <button
-                            onClick={() => { setStartRow(1); setEndRow(totalRows); setMarkMode(null); }}
+                            onClick={() => {
+                              setStartRow(1);
+                              setEndRow(totalRows);
+                              setStartIdQuery("");
+                              setStartMatchIdx(0);
+                              setEndIdQuery("");
+                              setEndMatchIdx(0);
+                            }}
                             className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors"
                             data-testid="button-reset-range"
                           >
@@ -1104,61 +1378,67 @@ export default function Home() {
 
                     <div className="border-t border-white/6" />
 
-                    {/* ID search + table filter */}
+                    {/* â”€â”€ ID range pickers (two independent boxes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-md">
+                      <IdRangePicker
+                        label="ID Awal"
+                        accent="emerald"
+                        icon={<Flag size={12} />}
+                        query={startIdQuery}
+                        onQueryChange={(value) => { setStartIdQuery(value); setStartMatchIdx(0); }}
+                        matches={startMatches}
+                        matchIdx={startMatchIdx}
+                        onCycle={(direction) => {
+                          if (!startMatches.length) return;
+                          setStartMatchIdx((current) => {
+                            const next = current + direction;
+                            if (next < 0) return startMatches.length - 1;
+                            if (next >= startMatches.length) return 0;
+                            return next;
+                          });
+                        }}
+                        onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
+                        inputCls={inputCls}
+                        testidPrefix="start"
+                        excludeMarked
+                      />
+                      <IdRangePicker
+                        label="ID Akhir"
+                        accent="rose"
+                        icon={<FlagOff size={12} />}
+                        query={endIdQuery}
+                        onQueryChange={(value) => { setEndIdQuery(value); setEndMatchIdx(0); }}
+                        matches={endMatches}
+                        matchIdx={endMatchIdx}
+                        onCycle={(direction) => {
+                          if (!endMatches.length) return;
+                          setEndMatchIdx((current) => {
+                            const next = current + direction;
+                            if (next < 0) return endMatches.length - 1;
+                            if (next >= endMatches.length) return 0;
+                            return next;
+                          });
+                        }}
+                        onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
+                        inputCls={inputCls}
+                        testidPrefix="end"
+                      />
+                    </div>
+
+                    <div className="border-t border-white/6" />
+
+                    {/* Table text filter */}
                     <div className="flex flex-wrap items-center gap-2">
                       <Hash size={13} className="text-white/30 shrink-0" />
-                      <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">ID:</span>
-
-                      <div className="relative">
-                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Cari User ID…"
-                          value={idSearch}
-                          onChange={(e) => { setIdSearch(e.target.value); setIdResult(null); setIdErr(null); }}
-                          onKeyDown={(e) => e.key === "Enter" && searchId("start")}
-                          className={`w-36 h-7 pl-7 pr-3 text-xs font-mono ${inputCls}`}
-                          data-testid="input-id-search"
-                        />
-                      </div>
-
-                      <GlassBtn
-                        disabled={!idSearch.trim()}
-                        active={false}
-                        onClick={() => searchId("start")}
-                        data-testid="button-id-set-start"
-                      >
-                        <Flag size={11} />Set Awal
-                      </GlassBtn>
-                      <GlassBtn
-                        disabled={!idSearch.trim()}
-                        active={false}
-                        onClick={() => searchId("end")}
-                        data-testid="button-id-set-end"
-                      >
-                        <FlagOff size={11} />Set Akhir
-                      </GlassBtn>
-
-                      {idResult && (
-                        <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-                          <Check size={10} />Baris {idResult.row}: <span className="font-mono">{idResult.id}</span>
-                        </span>
-                      )}
-                      {idErr && (
-                        <span className="text-[11px] text-red-400 flex items-center gap-1">
-                          <AlertCircle size={10} />{idErr}
-                        </span>
-                      )}
-
-                      {/* Table text filter (right-aligned) */}
+                      <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">FILTER:</span>
                       <div className="ml-auto flex items-center gap-2">
                         <div className="relative">
                           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
                           <input
                             type="text"
-                            placeholder="Filter tabel…"
+                            placeholder="Filter tabelâ€¦"
                             value={tableFilter}
-                            onChange={(e) => setTableFilter(e.target.value)}
+                            onChange={(event) => setTableFilter(event.target.value)}
                             className={`w-32 h-7 pl-7 pr-7 text-xs ${inputCls}`}
                             data-testid="input-table-filter"
                           />
@@ -1178,28 +1458,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Mark mode active hint */}
-                  <AnimatePresence>
-                    {markMode && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs overflow-hidden
-                          ${markMode === "start"
-                            ? "bg-emerald-500/8 border-emerald-400/20 text-emerald-300"
-                            : "bg-rose-500/8 border-rose-400/20 text-rose-300"}`}
-                      >
-                        <Flag size={12} />
-                        Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris di tabel.
-                        <button onClick={() => setMarkMode(null)} className="ml-auto opacity-60 hover:opacity-100">
-                          <X size={12} />
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* ── Preview table ───────────────────────────────────────── */}
+                  {/* â”€â”€ Preview table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
                     <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
                       <table
@@ -1211,9 +1470,9 @@ export default function Home() {
                           style={{ background: "rgba(15,12,40,0.75)", backdropFilter: "blur(20px)" }}
                         >
                           <tr>
-                            <th className="px-md py-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
-                            {OUTPUT_HEADERS.map((header, i) => (
-                              <th key={i} className="px-md py-sm font-semibold whitespace-nowrap border-b border-white/10">
+                            <th className="px-ds-md py-ds-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
+                            {OUTPUT_HEADERS.map((header, columnIndex) => (
+                              <th key={columnIndex} className="px-ds-md py-ds-sm font-semibold whitespace-nowrap border-b border-white/10">
                                 {header}
                               </th>
                             ))}
@@ -1221,29 +1480,32 @@ export default function Home() {
                         </thead>
 
                         <tbody className="font-mono text-xs divide-y divide-white/4">
-                          {data.map((row, i) => {
-                            const rowNumber = i + 1;
+                          {data.map((row, rowIndex) => {
+                            const rowNumber = rowIndex + 1;
                             const inRange   = rowNumber >= startRow && rowNumber <= endRow;
                             const isStart   = rowNumber === startRow;
                             const isEnd     = rowNumber === endRow;
-                            const isIdMatch = idSearch.trim() && row.userId.toLowerCase().includes(idSearch.trim().toLowerCase());
+                            const startQ    = startIdQuery.trim().toLowerCase();
+                            const endQ      = endIdQuery.trim().toLowerCase();
+                            const isIdMatch = (startQ && row.userId.toLowerCase().includes(startQ)) ||
+                                              (endQ   && row.userId.toLowerCase().includes(endQ));
                             const isDup     = dupIds.has(row.userId);
                             const needsIdReview = row._userIdNeedsReview || !row.userId;
 
                             // Apply text filter: skip rows outside range or not matching query
                             if (tableFilter.trim() && inRange) {
-                              const q = tableFilter.trim().toLowerCase();
+                              const query = tableFilter.trim().toLowerCase();
                               const matches =
-                                row.nama.toLowerCase().includes(q) ||
-                                row.userId.toLowerCase().includes(q) ||
-                                row.nomorRekening.toLowerCase().includes(q) ||
-                                row.withdrawal.toLowerCase().includes(q);
+                                row.nama.toLowerCase().includes(query) ||
+                                row.userId.toLowerCase().includes(query) ||
+                                row.nomorRekening.toLowerCase().includes(query) ||
+                                row.withdrawal.toLowerCase().includes(query);
                               if (!matches) return null;
                             }
 
                             return (
                               <tr
-                                key={i}
+                                key={rowIndex}
                                 className={`transition-colors duration-100
                                   ${inRange ? "hover:bg-white/3" : "opacity-20"}
                                   ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
@@ -1251,19 +1513,15 @@ export default function Home() {
                                   ${needsIdReview && inRange ? "bg-red-500/10 ring-1 ring-inset ring-red-400/30" : ""}
                                   ${isIdMatch && inRange ? "bg-violet-500/5" : ""}
                                   ${isDup && inRange ? "bg-amber-500/4" : ""}`}
-                                data-testid={`row-data-${i}`}
+                                data-testid={`row-data-${rowIndex}`}
                               >
-                                {/* Row number / mark cell */}
-                                <td
-                                  className={`px-3 py-2.5 text-center align-middle select-none ${markMode ? "cursor-pointer" : ""}`}
-                                  onClick={() => markMode && handleRowClick(i)}
-                                >
+                                {/* Row number cell (visual marker only; no click action). */}
+                                <td className="px-3 py-2.5 text-center align-middle select-none">
                                   <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold transition-all
                                     ${needsIdReview && inRange ? "bg-red-500/25 text-red-300 ring-1 ring-red-400/40"
                                     : isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
                                     : isEnd    ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"
                                     : isDup && inRange ? "bg-amber-500/20 text-amber-300"
-                                    : markMode ? "text-white/20 hover:bg-violet-500/20 hover:text-violet-300"
                                     : "text-white/15"}`}
                                   >
                                     {needsIdReview && inRange ? "!" : isDup && inRange ? "!" : rowNumber}
@@ -1302,58 +1560,69 @@ export default function Home() {
         )}
 
         {/* GIGA category content */}
-        {activeCategory === "giga" && (
+        {mainSection === "formula" && activeCategory === "giga" && (
           <>
-            {/* Sub-tab switcher for QRISHOKI / ZENPAY / BONUS */}
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 self-start">
-              <button
-                type="button"
-                onClick={() => setActiveGigaTab("qrishoki")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
-                  ${activeGigaTab === "qrishoki"
-                    ? "bg-fuchsia-600 text-white shadow-md shadow-fuchsia-500/30"
-                    : "text-slate-300 hover:bg-white/10"}`}
-              >
-                <ClipboardList size={14} />
-                QRISHOKI
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveGigaTab("zenpay")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
-                  ${activeGigaTab === "zenpay"
-                    ? "bg-cyan-600 text-white shadow-md shadow-cyan-500/30"
-                    : "text-slate-300 hover:bg-white/10"}`}
-              >
-                <Layers size={14} />
-                ZENPAY
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveGigaTab("bonus")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap w-auto
-                  ${activeGigaTab === "bonus"
-                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/30"
-                    : "text-slate-300 hover:bg-white/10"}`}
-              >
-                <Banknote size={14} />
-                BONUS
-              </button>
-            </div>
 
             {/* GIGA sub-tab content */}
-            {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
-            {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
-            {activeGigaTab === "bonus" && <GigaCopyBonus />}
+            <Suspense fallback={<TabLoadingFallback />}>
+              {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
+              {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
+              {activeGigaTab === "bonus" && <GigaCopyBonus />}
+              {activeGigaTab === "wd" && <GigaCopyWd />}
+            </Suspense>
           </>
         )}
 
-        {activeCategory === "giga-smart-mutasi" && <GigaSmartMutasi />}
+        {mainSection === "mutasi" && (
+          <Suspense fallback={<TabLoadingFallback />}>
+            <GigaSmartMutasi />
+          </Suspense>
+        )}
+
+        {mainSection === "formula" && activeCategory === "check-pusat" && (
+          <Suspense fallback={<TabLoadingFallback />}>
+            <CheckPusatGigaTools />
+          </Suspense>
+        )}
+
+        {mainSection === "phishing" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center text-center p-10 sm:p-14 rounded-3xl bg-slate-900/80 border border-amber-500/20 glass shadow-2xl max-w-2xl mx-auto my-6"
+          >
+            <div className="relative mb-6">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20">
+                <Shield size={38} className="animate-pulse" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shadow-sm">
+                Maintenance
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold text-white tracking-wide mb-3">
+              Phishing Report Tools Sedang Dalam Pemeliharaan
+            </h2>
+
+            <p className="text-sm text-slate-400 leading-relaxed mb-8 max-w-lg">
+              Modul PhishShield saat ini sedang dinonaktifkan sementara untuk peningkatan sistem dan pemeliharaan berkala (Under Maintenance). Fitur lainnya tetap berjalan normal.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setMainSection(null)}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-amber-500/25 transition-all hover:scale-105"
+            >
+              <ArrowLeft size={16} />
+              Kembali ke Menu Utama
+            </button>
+          </motion.div>
+        )}
       </main>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <footer className="relative z-10 border-t border-white/5 py-5 text-center">
-        <p className="text-[11px] text-white/20">API FORMULA TOOLS &nbsp;·&nbsp; Internal Operations Tooling</p>
+        <p className="text-[11px] text-white/20">API GROUP TOOLS &nbsp;·&nbsp; Internal Operation Tools</p>
       </footer>
     </div>
   );

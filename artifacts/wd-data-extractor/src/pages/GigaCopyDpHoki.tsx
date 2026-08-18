@@ -1,8 +1,8 @@
-import { useMemo, useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+﻿import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Check, Copy, Eraser, FileText, Layers, Loader2, Sparkles, Wand2, Download, ListOrdered, Banknote, Upload } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 interface GigaCopyRow {
   nama: string;
@@ -53,7 +53,25 @@ const OUTPUT_HEADERS = [
 const GIGA_QRISHOKI_OUTPUT_SUB = "BOT";
 const GIGA_QRISHOKI_OUTPUT_KODE_TRANSAKSI = "DP";
 
-const SAMPLE_TEXT = "1Game Wallet 2026-05-04 23:10:47 202.65.239.152003OK869f8c507343bcDwi angga yuda / DANA 082351054946 yuda89 1019df3c1-18bb-2abd-c386-11fdfd50d248Bank / QRISHOKIAdmin Deposit Transfer -QRISHOKI / QRISHOKI QRISHOKI Confirmed80,000.001ggabacc@sub0052026-05-04 23:10:47";
+export const SAMPLE_TEXT = `1
+Game Wallet 2026-06-05 02:39:39 114.79.4.157
+007AE86a21d47bdcd19 (https://giga2-ns3-admin.net/transactions/t_depositform/007AE86a21d47bdcd19)
+Uum lasnawati bt sahri / SEABANK
+901829253180
+mawarr (https://giga2-ns3-admin.net/member_details/DGAABAF007AE)
+AFFEFXAWQ
+019e9425-3cfd-dc01-0ef0-57bbbf3cc94c
+Bank / QRISHOKI
+Admin Deposit Transfer -
+QRISHOKI / QRISHOKI
+QRISHOKI
+Confirmed
+100,000.00
+pin88qrishoki
+2026-06-05 02:39:40`;
+
+const INPUT_GUIDANCE =
+  "Copy langsung dari tabel panel QRISHOKI lalu paste di sini — kolom (Username, Transaction ID, Credit, Status) terbaca otomatis & presisi. Hanya status Confirmed yang diambil. (Masih bisa paste teks biasa; klik Use Sample untuk contoh.)";
 
 function rowToArr(row: GigaCopyRow): string[] {
   return [
@@ -107,17 +125,17 @@ function normalizeAmount(value: string): string {
   return value.trim().replace(/\.00$/, "");
 }
 
-function mapTransactionToRow(tx: ParsedTransaction): GigaCopyRow {
+function mapTransactionToRow(parsedTransaction: ParsedTransaction): GigaCopyRow {
   return {
-    nama: tx.trxId,
+    nama: parsedTransaction.trxId,
     nomorRekening: "NO ACC",
-    userId: tx.username,
+    userId: parsedTransaction.username,
     sub: GIGA_QRISHOKI_OUTPUT_SUB,
     kodeTransaksi: GIGA_QRISHOKI_OUTPUT_KODE_TRANSAKSI,
-    deposit: tx.amount,
+    deposit: parsedTransaction.amount,
     withdrawal: "",
     dpPulsa: "",
-    keterangan: tx.date,
+    keterangan: parsedTransaction.date,
     kodeBank: "",
     saldoAkhir: "",
     jamInput: "",
@@ -125,42 +143,230 @@ function mapTransactionToRow(tx: ParsedTransaction): GigaCopyRow {
   };
 }
 
+function formatCurrency(value: number): string {
+  return "Rp " + value.toLocaleString("id-ID");
+}
+
+function formatExcelAmount(raw: unknown): string {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw.toLocaleString("en-US");
+  }
+  const str = String(raw ?? "").trim();
+  if (!str) return "";
+  const numeric = Number(str.replace(/,/g, ""));
+  if (Number.isFinite(numeric)) return numeric.toLocaleString("en-US");
+  return str;
+}
+
+function formatExcelDate(raw: unknown): string {
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return (
+      `${raw.getFullYear()}-${pad(raw.getMonth() + 1)}-${pad(raw.getDate())} ` +
+      `${pad(raw.getHours())}:${pad(raw.getMinutes())}:${pad(raw.getSeconds())}`
+    );
+  }
+  return String(raw ?? "").trim();
+}
+
 export function parseGigaCopyDpHoki(rawText: string): ParsedTransaction[] {
   return parseGigaCopyDpHokiDetailed(rawText).transactions;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── HTML-table parser (panel copy carries a <table> on the clipboard) ───────
+//
+// When the user copies straight from the GIGA panel, the clipboard's `text/html`
+// is the real table. Reading columns by their header is far more reliable than
+// parsing the glued `text/plain` blob — the username comes from its own column,
+// so the account-digit split heuristic is no longer needed (no more wrong IDs).
+//
+// Rules (per ops): only "Confirmed" rows are taken; the DP amount is the Credit
+// column; the "New" member badge glued to the username is stripped.
+
+const normHeader = (s: string): string => s.toLowerCase().replace(/[^a-z]/g, "");
+
+function cleanQrishokiUsername(raw: string): string {
+  const s = String(raw ?? "").replace(/\s+/g, " ").trim();
+  // Strip the trailing "New" member badge concatenated to the username.
+  return s.replace(/\s*New$/, "").trim();
+}
+
+function cleanQrishokiTrxId(raw: string): string {
+  const s = String(raw ?? "").replace(/https?:\/\/\S+/gi, " ").replace(/\s+/g, " ").trim();
+  const m = s.match(/[A-Za-z0-9]{6,}/);
+  return m ? m[0] : s;
+}
+
+function extractQrishokiDate(raw: string): string {
+  const m = String(raw ?? "").match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/);
+  return m ? m[0].replace("T", " ") : "";
+}
+
+function extractQrishokiAmount(raw: string): string {
+  const m = String(raw ?? "").match(/[\d.,]+/);
+  return m ? normalizeAmount(m[0]) : "";
+}
+
+/**
+ * Parse a 2D grid (rows x cells, grid[0] = header row) from the QRISHOKI panel.
+ * Columns are matched by header name so column-order changes don't break it.
+ * Keeps only "Confirmed" rows that have a Credit amount (DP).
+ * Pure (no DOM) so it can be unit-tested.
+ */
+export function parseGigaQrishokiGrid(grid: string[][]): ParseResult {
+  const empty: ParseResult = { transactions: [], confirmedCount: 0, rejectedCount: 0, skippedCount: 0 };
+  if (!Array.isArray(grid) || grid.length < 1) return empty;
+
+  // Find the header row anywhere in the grid (copy may include a filter/checkbox
+  // row before it, or the header may not be the first <tr>).
+  let headerIdx = -1;
+  for (let i = 0; i < grid.length; i += 1) {
+    const hs = grid[i].map(normHeader);
+    if (hs.includes("username") && hs.includes("transactionid")) { headerIdx = i; break; }
+  }
+
+  let idxUser: number;
+  let idxTrx: number;
+  let idxDate: number;
+  let idxCredit: number;
+  let idxStatus: number;
+  let dataStart: number;
+
+  if (headerIdx >= 0) {
+    const headers = grid[headerIdx].map(normHeader);
+    idxUser = headers.indexOf("username");
+    idxTrx = headers.indexOf("transactionid");
+    idxDate = headers.indexOf("transactiondate");
+    idxCredit = headers.indexOf("credit");
+    idxStatus = headers.indexOf("status");
+    dataStart = headerIdx + 1;
+  } else {
+    // No header row detected (e.g. only data rows were copied). Fall back to the
+    // panel's standard column order.
+    idxDate = 1; idxTrx = 2; idxUser = 4; idxStatus = 9; idxCredit = 12;
+    dataStart = 0;
+  }
+
+  if (idxUser < 0 || idxTrx < 0 || idxCredit < 0) return empty;
+
+  const transactions: ParsedTransaction[] = [];
+  let confirmedCount = 0;
+  let rejectedCount = 0;
+  let skippedCount = 0;
+
+  for (let r = dataStart; r < grid.length; r += 1) {
+    const cells = grid[r];
+    if (!cells || cells.length === 0) continue;
+    try {
+      const status = idxStatus >= 0 ? String(cells[idxStatus] ?? "").trim().toLowerCase() : "";
+      if (status !== "confirmed") { rejectedCount += 1; continue; }
+
+      const username = cleanQrishokiUsername(cells[idxUser] ?? "");
+      const trxId = cleanQrishokiTrxId(cells[idxTrx] ?? "");
+      const amount = extractQrishokiAmount(cells[idxCredit] ?? "");
+      const date = idxDate >= 0 ? extractQrishokiDate(cells[idxDate] ?? "") : "";
+
+      if (!username || !trxId || !amount) { skippedCount += 1; continue; }
+      transactions.push({ date, trxId, username, amount });
+      confirmedCount += 1;
+    } catch {
+      skippedCount += 1;
+    }
+  }
+
+  return { transactions, confirmedCount, rejectedCount, skippedCount };
+}
+
+/** Read the panel's clipboard HTML (<table>) into a 2D grid of cell texts. */
+export function htmlTableToGrid(html: string): string[][] {
+  try {
+    if (!html || !/<table/i.test(html) || typeof DOMParser === "undefined") return [];
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const table = doc.querySelector("table");
+    if (!table) return [];
+    return Array.from(table.querySelectorAll("tr"))
+      .map((tr) =>
+        Array.from(tr.querySelectorAll("th,td")).map((cell) =>
+          (cell.textContent ?? "").replace(/\s+/g, " ").trim(),
+        ),
+      )
+      .filter((row) => row.some((c) => c !== ""));
+  } catch {
+    return [];
+  }
+}
+
+/** Read the panel's clipboard HTML (<table>) into a grid, then parse it. */
+export function parseGigaQrishokiHtmlTable(html: string): ParseResult {
+  return parseGigaQrishokiGrid(htmlTableToGrid(html));
+}
+
+/** Comparator for "YYYY-MM-DD HH:MM:SS" strings, ascending (oldest first; empty last). */
+export function sortByDateAsc(a: string, b: string): number {
+  const da = a || "";
+  const db = b || "";
+  if (!da && !db) return 0;
+  if (!da) return 1;
+  if (!db) return -1;
+  return da < db ? -1 : da > db ? 1 : 0;
+}
+
+/** Sort a grid's data rows by the Transaction Date column (oldest first). */
+export function sortGridByDateAsc(grid: string[][]): string[][] {
+  if (!Array.isArray(grid) || grid.length < 2) return grid;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+  let headerIdx = -1;
+  for (let i = 0; i < grid.length; i += 1) {
+    if (grid[i].map(norm).includes("transactiondate")) { headerIdx = i; break; }
+  }
+  if (headerIdx < 0) return grid;
+  const dateCol = grid[headerIdx].map(norm).indexOf("transactiondate");
+  if (dateCol < 0) return grid;
+  const getDate = (row: string[]): string => {
+    const m = String(row[dateCol] ?? "").match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/);
+    return m ? m[0].replace("T", " ") : "";
+  };
+  const head = grid.slice(0, headerIdx + 1);
+  const data = grid.slice(headerIdx + 1).sort((ra, rb) => sortByDateAsc(getDate(ra), getDate(rb)));
+  return [...head, ...data];
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // QRISHOKI Raw-Text Parser (anchor-based)
 //
 // Each transaction in the panel export looks like this (no whitespace between
-// most fields — they are concatenated in the source HTML/clipboard):
+// most fields â€” they are concatenated in the source HTML/clipboard):
 //
 //   <rowNo>Game Wallet <date1> <ip><tracking><trxId><customerName> /
 //   <BANK><accountNo><username><uuid>Bank / QRISHOKI...QRISHOKI<status>
 //   <amount><adminUser>qrishoki<date2>
 //
 // Stable anchors we exploit:
-//   • TRX ID  → /86a0[a-f0-9]{10}/  (14 chars, panel-specific prefix)
-//   • UUID    → /019e3[0-9a-f]-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
-//   • Bank    → fixed enum (DANA / BCA / BNI / BRI / MANDIRI / SEABANK / OVO /
+//   â€¢ TRX ID  â†’ /86a0[a-f0-9]{10}/  (14 chars, panel-specific prefix)
+//   â€¢ UUID    â†’ /019e3[0-9a-f]-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+//   â€¢ Bank    â†’ fixed enum (DANA / BCA / BNI / BRI / MANDIRI / SEABANK / OVO /
 //               BANK JAGO / GOPAY / LINKAJA)
-//   • Status  → /Confirmed|Rejected/
-//   • Date    → /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/
+//   â€¢ Status  â†’ /Confirmed|Rejected/
+//   â€¢ Date    â†’ /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/
 //
-// We do NOT rely on whitespace, IP shape, or UUID v4 layout — those are unreliable.
-// ─────────────────────────────────────────────────────────────────────────────
+// We do NOT rely on whitespace, IP shape, or UUID v4 layout â€” those are unreliable.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const TRX_ID_REGEX = /86a0[a-f0-9]{10}/i;
+// TRX ID format: panel emits a 14-char hex token starting with `86a` or `06a`,
+// where the 4th char is a UUIDv7 timestamp digit that increments over time
+// (`86a0...`, `86a1...`, ...). Earlier we hard-coded `86a0|06a0` but more
+// recent rows use `86a1`, `06a1`, etc., so we accept any hex 4th char.
+const TRX_ID_REGEX = /(?:86a|06a)[0-9a-f][a-f0-9]{10}/i;
 // Standard UUID format (v4/v7): 8-4-4-4-12 hex with hyphens.
 // Panel uses UUIDv7 with timestamp prefix that increments over time
 // (019e36XX, 019e37XX, 019e38XX, ...), so we match the generic shape.
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const IPV4_REGEX = /(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}/;
-// Require near-full IPv6 (≥7 segments) so we don't match HH:MM:SS time strings.
+// Require near-full IPv6 (â‰¥7 segments) so we don't match HH:MM:SS time strings.
 const IPV6_REGEX = /(?:[0-9a-f]{1,4}:){6,7}[0-9a-f]{1,4}/i;
 const DATE_REGEX = /\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/g;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Bank name detection
 //
 // Pattern: "<customer> / <BANK_NAME><account_digits><username><uuid>"
@@ -172,15 +378,26 @@ const DATE_REGEX = /\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/g;
 // changes.
 //
 // Banks observed in panel exports:
-//   • E-wallets: DANA, OVO, GOPAY, LINKAJA
-//   • Traditional: BCA, BNI, BRI, MANDIRI, BSI, BTN, CIMB, DANAMON, PERMATA
-//   • Digital: SEABANK, SUPERBANK, BANK JAGO, ALLO, KROM
+//   â€¢ E-wallets: DANA, OVO, GOPAY, LINKAJA
+//   â€¢ Traditional: BCA, BNI, BRI, MANDIRI, BSI, BTN, CIMB, DANAMON, PERMATA
+//   â€¢ Digital: SEABANK, SUPERBANK, BANK JAGO, ALLO, KROM, BLU BY BCA DIGITAL
 //
-// Min 3 chars to avoid matching stray initials like " / X 123".
-// ─────────────────────────────────────────────────────────────────────────────
-const BANK_REGEX = /\s\/\s([A-Z][A-Z0-9]{2,}(?:\s[A-Z][A-Z0-9]{2,})?)(?=\s*\d)/;
+// Word lengths:
+//   - First word: min 3 chars (avoids stray initials like " / X 123")
+//   - Subsequent words (up to 3 more): min 2 chars (handles "BLU BY BCA DIGITAL")
+//
+// Case-insensitive (`i` flag) so panels that emit mixed-case bank names like
+// "Blu BCA Digital" or "blu bca digital" still match. The captured bank name
+// is upper-cased downstream before BANK_ACCOUNT_LEN lookup so the digit-split
+// heuristic stays consistent.
+//
+// Subsequent words intentionally allow only letters (no digits) so the regex
+// stops cleanly at the account-number boundary instead of greedily eating
+// into the username portion when running case-insensitive.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const BANK_REGEX = /\s\/\s([A-Za-z]{3,}(?:\s[A-Za-z]{2,}){0,3})(?=\s*\d)/i;
 
-// Account length range per bank — used to disambiguate when the digit run
+// Account length range per bank â€” used to disambiguate when the digit run
 // between the bank name and the UUID could be split multiple ways.
 // Banks not in this map fall back to "strip all leading digits" behavior,
 // which is correct when the username doesn't start with a digit.
@@ -195,6 +412,10 @@ const BANK_ACCOUNT_LEN: Record<string, { min: number; max: number }> = {
   MANDIRI: { min: 13, max: 13 },
   SEABANK: { min: 12, max: 12 },
   "BANK JAGO": { min: 12, max: 12 },
+  "BLU BY BCA DIGITAL": { min: 12, max: 12 },
+  // Some panels render the same bank without the "BY" word
+  "BLU BCA DIGITAL": { min: 12, max: 12 },
+  "BLU": { min: 12, max: 12 },
   SUPERBANK: { min: 12, max: 13 },
   BSI: { min: 10, max: 10 },
   BTN: { min: 10, max: 10 },
@@ -231,14 +452,14 @@ const BANK_ACCOUNT_LEN: Record<string, { min: number; max: number }> = {
  * are NOT affected.
  *
  * Examples:
- *   "ragelku 1"      → "ragelku"      ✅
- *   "endah89 7"      → "endah89"      ✅ (only the trailing " 7" stripped)
- *   "jekpotmania6 7" → "jekpotmania6" ✅
- *   "user 10"        → "user"         ✅ (10 is valid remark code)
- *   "rivania02"      → "rivania02"    ✅ (no space, preserved)
- *   "404notfond"     → "404notfond"   ✅ (no space, preserved)
- *   "user 99"        → "user 99"      ✅ (99 not a valid remark code, preserved)
- *   "user 11"        → "user 11"      ✅ (11 not a valid remark code, preserved)
+ *   "ragelku 1"      â†’ "ragelku"      âœ…
+ *   "endah89 7"      â†’ "endah89"      âœ… (only the trailing " 7" stripped)
+ *   "jekpotmania6 7" â†’ "jekpotmania6" âœ…
+ *   "user 10"        â†’ "user"         âœ… (10 is valid remark code)
+ *   "rivania02"      â†’ "rivania02"    âœ… (no space, preserved)
+ *   "404notfond"     â†’ "404notfond"   âœ… (no space, preserved)
+ *   "user 99"        â†’ "user 99"      âœ… (99 not a valid remark code, preserved)
+ *   "user 11"        â†’ "user 11"      âœ… (11 not a valid remark code, preserved)
  */
 function stripRemarkColor(username: string): string {
   // Match trailing " 1" through " 9" or " 10" (with whitespace separator).
@@ -248,11 +469,11 @@ function stripRemarkColor(username: string): string {
 
 /**
  * Strip the "New" badge that the panel appends to new-member usernames
- * (e.g. "tiyara57New" → "tiyara57", "letjend3 New" → "letjend3").
+ * (e.g. "tiyara57New" â†’ "tiyara57", "letjend3 New" â†’ "letjend3").
  *
  * The panel renders a "New" badge next to new members which gets concatenated
  * into the username string when copied. We strip the trailing "New" marker
- * — note the case-sensitive capital N — to keep usernames clean.
+ * â€” note the case-sensitive capital N â€” to keep usernames clean.
  *
  * To avoid false positives we require the "New" to be preceded by a word
  * character or whitespace, and only strip the literal capitalization "New"
@@ -260,14 +481,14 @@ function stripRemarkColor(username: string): string {
  * left untouched (their lowercase "n" prevents the match).
  *
  * Examples:
- *   "tiyara57New"        → "tiyara57"     ✅
- *   "almizan12New"       → "almizan12"    ✅
- *   "melaniyNew"         → "melaniy"      ✅
- *   "letjend3 New"       → "letjend3"     ✅ (whitespace separator)
- *   "letjend3  New"      → "letjend3"     ✅
- *   "Andrew"             → "Andrew"       ✅ (lowercase n, no match)
- *   "userNEW"            → "userNEW"      ✅ (all caps, no match)
- *   "newuser"            → "newuser"      ✅ ("New" not at end)
+ *   "tiyara57New"        â†’ "tiyara57"     âœ…
+ *   "almizan12New"       â†’ "almizan12"    âœ…
+ *   "melaniyNew"         â†’ "melaniy"      âœ…
+ *   "letjend3 New"       â†’ "letjend3"     âœ… (whitespace separator)
+ *   "letjend3  New"      â†’ "letjend3"     âœ…
+ *   "Andrew"             â†’ "Andrew"       âœ… (lowercase n, no match)
+ *   "userNEW"            â†’ "userNEW"      âœ… (all caps, no match)
+ *   "newuser"            â†’ "newuser"      âœ… ("New" not at end)
  */
 function stripNewMemberMarker(username: string): string {
   return username.replace(/(\w)\s*New$/, "$1");
@@ -275,38 +496,44 @@ function stripNewMemberMarker(username: string): string {
 
 /**
  * Strip voucher/promo codes that the panel sometimes appends to a username
- * (e.g. "ongkyaisyahGS2AAAF00LJ" → "ongkyaisyah").
+ * (e.g. "ongkyaisyahGS2AAAF00LJ" â†’ "ongkyaisyah").
  *
  * Voucher pattern observed in panel exports:
  *   - All UPPERCASE
  *   - Length 8-15 chars
- *   - Contains at least 2 digits AND 2 letters
+ *   - Contains at least 2 digits AND 2 letters, OR starts with "AF" (referral code)
  *   - Appears as suffix to a lowercase/mixed-case username
- *   - May be separated by whitespace (HTML cell wrap → newline → normalized to space)
+ *   - May be separated by whitespace (HTML cell wrap â†’ newline â†’ normalized to space)
  *
  * Heuristic: If username ends with [optional whitespace + UPPERCASE-with-digits run]
- * AND the part before it ends with a lowercase letter, strip the UPPERCASE run.
+ * AND the part before it ends with a lowercase letter or digit, strip the
+ * UPPERCASE run.
  *
  * Examples:
- *   "ongkyaisyahGS2AAAF00LJ"     → "ongkyaisyah"   ✅ (no separator)
- *   "ongkyaisyah GS2AAAF00LJ"    → "ongkyaisyah"   ✅ (space separator from HTML wrap)
- *   "ongkyaisyah  GS2AAAF00LJ"   → "ongkyaisyah"   ✅ (multi-space)
- *   "GACOR123"                   → "GACOR123"      ✅ (no lowercase prefix)
- *   "user123"                    → "user123"       ✅ (no upper suffix)
- *   "userABC"                    → "userABC"       ✅ (no digit in suffix)
- *   "404notfond"                 → "404notfond"    ✅ (no upper suffix)
- *   "ragelku 1"                  → "ragelku 1"     ✅ ("1" not uppercase)
+ *   "ongkyaisyahGS2AAAF00LJ"     â†’ "ongkyaisyah"   âœ… (no separator)
+ *   "ongkyaisyah GS2AAAF00LJ"    â†’ "ongkyaisyah"   âœ… (space separator from HTML wrap)
+ *   "ongkyaisyah  GS2AAAF00LJ"   â†’ "ongkyaisyah"   âœ… (multi-space)
+ *   "GACOR123"                   â†’ "GACOR123"      âœ… (no lowercase prefix)
+ *   "user123"                    â†’ "user123"       âœ… (no upper suffix)
+ *   "mawarr AFFEFXAWQ"           â†’ "mawarr"        âœ… (AF referral code)
+ *   "userABC"                    â†’ "userABC"       âœ… (no digit and not AF referral)
+ *   "404notfond"                 â†’ "404notfond"    âœ… (no upper suffix)
+ *   "ragelku 1"                  â†’ "ragelku 1"     âœ… ("1" not uppercase)
  */
 function stripVoucherSuffix(username: string): string {
   // Allow optional whitespace between the lowercase prefix and the UPPERCASE
   // voucher suffix (panels sometimes wrap usernames across HTML cells which
   // becomes a space after whitespace normalization).
-  const match = username.match(/^(.*[a-z])\s*([A-Z][A-Z0-9]{7,})$/);
+  const match = username.match(/^(.*[a-z0-9])\s*([A-Z][A-Z0-9]{7,})$/);
   if (!match) return username;
 
   const suffix = match[2];
-  // Suffix must contain at least 2 digits AND 2 letters to be considered a
-  // voucher code (avoids stripping legitimate ALL-CAPS portions like "JOHN").
+  // Referral codes in the panel's adjacent column are AF-prefixed uppercase
+  // tokens and may contain no digits at all (e.g. AFFEFXAWQ, AFKRHDYBM).
+  if (/^AF[A-Z0-9]{6,13}$/.test(suffix)) return match[1];
+
+  // Other voucher suffixes must contain at least 2 digits AND 2 letters to be
+  // considered a code (avoids stripping legitimate ALL-CAPS portions like "JOHN").
   const digitCount = (suffix.match(/\d/g) || []).length;
   const letterCount = (suffix.match(/[A-Z]/g) || []).length;
   if (digitCount < 2 || letterCount < 2) return username;
@@ -326,12 +553,133 @@ function stripVoucherSuffix(username: string): string {
  *   - Voucher strip removes UPPERCASE-only suffixes, but "New" has lowercase
  *     letters so it's stripped separately.
  *   - Running all three in sequence handles complex edge cases like
- *     "userBONUS123XYZNew 7" → "user".
+/**
+ * Strip panel-rendered member-detail URLs that the new admin panel emits
+ * inline next to the username when copied as text.
+ *
+ * The panel can render the URL in a few shapes:
+ *   1. After the username:           "user (https://...)"
+ *   2. Around a "New" badge:         "user (https://...) New (https://...)"
+ *   3. Bare without parentheses:     "user https://..."
+ *   4. Multiple wrapped blocks:      "user (https://...) (extra)"
+ *
+ * We strip URL-containing parenthesized blocks GLOBALLY (anywhere in the
+ * string, not just trailing) so a "New" badge sandwiched between two URL
+ * blocks doesn't leave one of them stranded. We also strip bare http(s)
+ * URLs anywhere in the string. Non-URL parenthesized text is preserved
+ * (e.g. "user (BONUS)" stays as-is) so we don't over-strip legitimate
+ * trailing tokens.
+ *
+ * Examples:
+ *   "user (https://...)"               â†’ "user"
+ *   "user (https://...) New (https://...)" â†’ "user New"
+ *   "user (https://...) New"           â†’ "user New"
+ *   "user https://..."                 â†’ "user"
+ *   "user (BONUS)"                     â†’ "user (BONUS)"  âœ… preserved
  */
+function stripPanelUrl(username: string): string {
+  return username
+    // Remove every parenthesized block that contains an http(s) URL,
+    // anywhere in the string. The block-and-its-leading-whitespace get
+    // collapsed to a single space.
+    .replace(/\s*\([^)]*https?:\/\/[^)]*\)/gi, " ")
+    // Remove bare http(s) URLs anywhere in the string.
+    .replace(/\s*https?:\/\/\S+/gi, " ")
+    // Collapse the whitespace gaps left behind.
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Apply all panel-marker cleanups in order:
+ *   1. Strip panel URLs (member_details links and bare URLs, anywhere)
+ *   2. Strip remark color code (badge "1"-"10" with whitespace separator)
+ *   3. Strip "New" badge for new members
+ *   4. Strip voucher/promo code suffix
+ *
+ * URL strip runs first because the URL block is the outermost trailing
+ * element when the new panel pastes a member-details link next to the
+ * username; removing it lets the remaining cleanups work on a clean string.
+ */
+/**
+ * Final defensive scrub: strip any character that is not part of the
+ * canonical username alphabet `[A-Za-z0-9_]` from the beginning and end of
+ * the string. Trailing badge glyphs (â­, â†‘, âœ“), zero-width chars that
+ * survived earlier passes, stray punctuation, and the like all get peeled.
+ *
+ * The middle of the string is left alone because legitimate usernames
+ * never contain non-alphanumeric chars in the middle, but if they did this
+ * scrub wouldn't fix that anyway â€” it's a "best effort" peel of the edges.
+ */
+function scrubUsernameBoundary(username: string): string {
+  return username.replace(/^[^A-Za-z0-9_]+|[^A-Za-z0-9_]+$/g, "");
+}
+
 function cleanUsername(username: string): string {
-  return stripVoucherSuffix(
-    stripNewMemberMarker(stripRemarkColor(username)),
+  return scrubUsernameBoundary(
+    stripVoucherSuffix(
+      stripNewMemberMarker(stripRemarkColor(stripPanelUrl(username))),
+    ),
   );
+}
+
+/**
+ * Refine a regex-captured bank name when it greedily absorbed adjacent
+ * letter runs that aren't part of the bank.
+ *
+ * Why this is needed: BANK_REGEX matches `[A-Za-z]{3,}(?:\s[A-Za-z]{2,}){0,3}`
+ * which is great for "BLU BY BCA DIGITAL" or "DANA". But some panel rows have
+ * NO whitespace and NO account-number digits between the bank and the
+ * neighbouring fields, e.g.
+ *
+ *   "Fariz Al-Firdaus / firdausDANAhadingaji019e44fe-..."
+ *                       ^^^^^^^^^^^^^^^^^^^^
+ *                       captured as one "bank name"
+ *
+ * In that case the capture is `firdausDANAhadingaji` â€” unknown bank, and
+ * the substring between bank and UUID is empty, so extractUsername returns
+ * UNKNOWN. The actual data layout is:
+ *
+ *   <preceding garbage><known bank><username>
+ *
+ * Strategy: if the captured name is not a known bank, scan it for any known
+ * bank as a substring and pick the LAST occurrence (banks always sit between
+ * the customer-display block and the username). Return both the refined bank
+ * and the leftover suffix â€” the suffix is the username portion that the
+ * regex accidentally swallowed.
+ *
+ * Returns { bank, prefix, suffix }:
+ *   - bank   â€” the refined uppercase bank name (or original if no refinement)
+ *   - prefix â€” letters BEFORE the bank match (discarded by caller)
+ *   - suffix â€” letters AFTER the bank match (passed back as the "between"
+ *              portion so extractUsername can derive the username)
+ */
+function refineBankCapture(captured: string): { bank: string; prefix: string; suffix: string } {
+  const upper = captured.toUpperCase();
+  // Already a known bank â€” no refinement needed.
+  if (Object.prototype.hasOwnProperty.call(BANK_ACCOUNT_LEN, upper)) {
+    return { bank: upper, prefix: "", suffix: "" };
+  }
+
+  // Try every known bank as a substring; prefer the longest match, then the
+  // rightmost occurrence (banks live between the customer-display block and
+  // the username, so the LAST occurrence is the structurally correct one).
+  const knownBanks = Object.keys(BANK_ACCOUNT_LEN).sort((a, b) => b.length - a.length);
+  for (const bank of knownBanks) {
+    const idx = upper.lastIndexOf(bank);
+    if (idx !== -1) {
+      return {
+        bank,
+        prefix: captured.slice(0, idx),
+        suffix: captured.slice(idx + bank.length),
+      };
+    }
+  }
+
+  // No known bank substring â€” fall back to the original capture so existing
+  // behaviour (UNKNOWN-bank â†’ "strip all leading digits" in extractUsername)
+  // still applies.
+  return { bank: upper, prefix: "", suffix: "" };
 }
 
 /**
@@ -342,9 +690,9 @@ function cleanUsername(username: string): string {
  * accounts, so we cannot hardcode the split point. Instead we score every
  * plausible split:
  *
- *   • letter start    → quality 100 (almost certainly correct)
- *   • non-zero digit  → quality 50  (possible — usernames like "404notfond")
- *   • zero digit      → quality 10  (very rare — usually means we over-stripped)
+ *   â€¢ letter start    â†’ quality 100 (almost certainly correct)
+ *   â€¢ non-zero digit  â†’ quality 50  (possible â€” usernames like "404notfond")
+ *   â€¢ zero digit      â†’ quality 10  (very rare â€” usually means we over-stripped)
  *
  * Highest quality wins; ties resolve to the longest account (most conservative).
  * After splitting, voucher/promo suffix is stripped if detected.
@@ -359,7 +707,7 @@ function extractUsername(between: string, bankName: string): string {
   const totalDigits = digitMatch[0].length;
   const config = BANK_ACCOUNT_LEN[bankName];
 
-  // Unknown bank → strip the entire leading digit run.
+  // Unknown bank â†’ strip the entire leading digit run.
   if (!config) {
     return cleanUsername(trimmed.slice(totalDigits).trim() || "UNKNOWN");
   }
@@ -391,13 +739,25 @@ function extractUsername(between: string, bankName: string): string {
 }
 
 function parseGigaCopyDpHokiDetailed(rawText: string): ParseResult {
-  const cleanText = rawText.replace(/[\n\r\t]+/g, " ").replace(/\s{2,}/g, " ");
+  // Robust whitespace normalization. Browser copy-paste from HTML tables can
+  // emit non-breaking spaces (U+00A0), zero-width separators (U+200Bâ€“200D,
+  // U+FEFF), narrow no-break space (U+202F), and various Unicode spaces that
+  // a plain `\s` class doesn't always cover. We:
+  //   1. Strip zero-width characters entirely.
+  //   2. Map all known whitespace variants to a regular ASCII space.
+  //   3. Collapse runs of whitespace to a single space.
+  const cleanText = rawText
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\n\r\t]+/g, " ")
+    .replace(/\s{2,}/g, " ");
 
   // Split on the row-number prefix that separates each transaction
   // (e.g. "1Game Wallet ...", "1\tGame Wallet ...", "1 Game Wallet ..."). Some
   // panel exports use tabs/spaces between the row number and "Game Wallet".
   // After whitespace normalization the separator is collapsed to one space.
-  const blocks = cleanText.split(/(?=\d+\s?Game Wallet)/i);
+  // We also tolerate "GameWallet" with no space â€” this happens when zero-width
+  // separators sneak in from copy-paste and get stripped by normalization.
+  const blocks = cleanText.split(/(?=\d+\s?Game\s?Wallet)/i);
 
   const transactions: ParsedTransaction[] = [];
   let confirmedCount = 0;
@@ -406,13 +766,13 @@ function parseGigaCopyDpHokiDetailed(rawText: string): ParseResult {
 
   for (const rawBlock of blocks) {
     const block = rawBlock.trim();
-    if (block.length < 50 || !/Game Wallet/i.test(block)) {
+    if (block.length < 50 || !/Game\s?Wallet/i.test(block)) {
       if (block.length > 0) skippedCount += 1;
       continue;
     }
 
     // Wrap each block in try/catch so one corrupt transaction doesn't kill
-    // the entire parse — critical when processing thousands of rows.
+    // the entire parse â€” critical when processing thousands of rows.
     try {
       // --- GATEKEEPER ---
       if (!/Bank\s*\/\s*QRISHOKI/i.test(block)) {
@@ -481,17 +841,50 @@ function parseGigaCopyDpHokiDetailed(rawText: string): ParseResult {
         bankMatch &&
         bankMatch.index !== undefined
       ) {
-        const bankName = bankMatch[1].toUpperCase();
+        // Refine the bank capture: when the regex greedily absorbed a
+        // username/display-name into the bank match (no account digits or
+        // whitespace separating them), `refined.suffix` carries the leftover
+        // letters that should be treated as the username. Otherwise suffix
+        // is empty and we use the slice between bank and UUID as before.
+        const refined = refineBankCapture(bankMatch[1]);
+        const bankName = refined.bank;
         const bankNameEnd = bankMatch.index + bankMatch[0].length;
         const uuidStart = uuidMatch.index;
-        const between = block.slice(bankNameEnd, uuidStart);
+        const sliced = block.slice(bankNameEnd, uuidStart);
+        const between = refined.suffix
+          ? `${refined.suffix}${sliced}`
+          : sliced;
         username = extractUsername(between, bankName);
+      }
+
+      // Fallback: if the main path didn't yield a username (e.g. BANK_REGEX
+      // missed because the row used a separator the regex didn't expect),
+      // do a global scan of the substring between " / " and the UUID for
+      // any known bank name and try extraction with that segment.
+      if (username === "UNKNOWN" && uuidMatch && uuidMatch.index !== undefined) {
+        const slashIdx = block.indexOf(" / ");
+        if (slashIdx !== -1 && slashIdx < uuidMatch.index) {
+          const segment = block.slice(slashIdx + 3, uuidMatch.index);
+          const upper = segment.toUpperCase();
+          const knownBanks = Object.keys(BANK_ACCOUNT_LEN).sort((a, b) => b.length - a.length);
+          for (const bank of knownBanks) {
+            const bankIdx = upper.indexOf(bank);
+            if (bankIdx !== -1) {
+              const tail = segment.slice(bankIdx + bank.length);
+              const candidate = extractUsername(tail, bank);
+              if (candidate && candidate !== "UNKNOWN") {
+                username = candidate;
+                break;
+              }
+            }
+          }
+        }
       }
 
       confirmedCount += 1;
       transactions.push({ date, trxId, username, amount });
     } catch (err) {
-      // One row failed; log to console but keep going — robustness for bulk paste.
+      // One row failed; log to console but keep going â€” robustness for bulk paste.
       // eslint-disable-next-line no-console
       console.warn("[QRISHOKI parser] Skipped malformed transaction:", err);
       skippedCount += 1;
@@ -519,7 +912,12 @@ export default function GigaCopyDpHoki() {
     rejectedCount: 0,
     skippedCount: 0,
   });
+  const [gridPreview, setGridPreview] = useState<string[][]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // When the user pastes straight from the panel, the clipboard's text/html
+  // (the real table) is captured here and preferred over the glued text/plain.
+  const pastedHtmlRef = useRef<string>("");
+  const lastPastedPlainRef = useRef<string>("");
 
   const totalAmount = useMemo(() => {
     return rows.reduce((sum, row) => {
@@ -528,22 +926,28 @@ export default function GigaCopyDpHoki() {
     }, 0);
   }, [rows]);
 
-  const formatCurrency = (value: number): string => {
-    return "Rp " + value.toLocaleString("id-ID");
-  };
-
-  const processData = () => {
+  const processData = useCallback(() => {
     setIsProcessing(true);
     setError(null);
 
     window.setTimeout(() => {
       try {
-        const result = parseGigaCopyDpHokiDetailed(rawText);
-        const mappedRows = result.transactions.map(mapTransactionToRow);
+        const html = pastedHtmlRef.current;
+        const useHtml = !!html && /<table/i.test(html);
+        let result = useHtml
+          ? parseGigaQrishokiHtmlTable(html)
+          : parseGigaCopyDpHokiDetailed(rawText);
+        // Safety net: if the table-read found nothing, fall back to the old
+        // text parser so we never do worse than before.
+        if (useHtml && result.transactions.length === 0) {
+          result = parseGigaCopyDpHokiDetailed(rawText);
+        }
+        const sortedTxns = [...result.transactions].sort((a, b) => sortByDateAsc(a.date, b.date));
+        const mappedRows = sortedTxns.map(mapTransactionToRow);
         setParseStats(result);
         setRows(mappedRows);
 
-        if (!String(rawText ?? "").trim()) {
+        if (!useHtml && !String(rawText ?? "").trim()) {
           setError("Tempel raw text dari tabel dashboard terlebih dahulu.");
           toast.error("Input masih kosong.");
           return;
@@ -566,28 +970,34 @@ export default function GigaCopyDpHoki() {
         setIsProcessing(false);
       }
     }, 220);
-  };
+  }, [rawText]);
 
-  const clearData = () => {
+  const clearData = useCallback(() => {
     setRawText("");
     setRows([]);
     setError(null);
     setCopiedType(null);
+    pastedHtmlRef.current = "";
+    lastPastedPlainRef.current = "";
+    setGridPreview([]);
     setParseStats({ transactions: [], confirmedCount: 0, rejectedCount: 0, skippedCount: 0 });
-  };
+  }, []);
 
-  const useSample = () => {
+  const useSample = useCallback(() => {
     setRawText(SAMPLE_TEXT);
     setRows([]);
     setError(null);
+    pastedHtmlRef.current = "";
+    lastPastedPlainRef.current = "";
+    setGridPreview([]);
     setParseStats({ transactions: [], confirmedCount: 0, rejectedCount: 0, skippedCount: 0 });
-  };
+  }, []);
 
-  const handleCopyDocTrx = async () => {
+  const handleCopyDocTrx = useCallback(async () => {
     if (!rows.length) return;
 
     const tsv = rows.map(rowToDocTrxArr).map((arr) => arr.join("\t")).join("\n");
-    
+
     try {
       await navigator.clipboard.writeText(tsv);
       setCopiedType("trx");
@@ -613,9 +1023,9 @@ export default function GigaCopyDpHoki() {
         console.error("Fallback error:", fallbackErr);
       }
     }
-  };
+  }, [rows]);
 
-  const handleCopyDocQris = async () => {
+  const handleCopyDocQris = useCallback(async () => {
     if (!rows.length) return;
 
     const tsv = rows
@@ -640,31 +1050,37 @@ export default function GigaCopyDpHoki() {
     } catch {
       toast.error("Gagal menyalin Doc Qris.");
     }
-  };
+  }, [rows]);
 
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(() => {
     if (!rows.length) return;
 
-    const worksheet = XLSX.utils.json_to_sheet(
-      rows.map((row) => {
-        const obj: any = {};
-        OUTPUT_HEADERS.forEach((header, i) => {
-          obj[header] = rowToArr(row)[i];
-        });
-        return obj;
-      })
-    );
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(
+        rows.map((row) => {
+          const obj: Record<string, string> = {};
+          const cells = rowToArr(row);
+          OUTPUT_HEADERS.forEach((header, index) => {
+            obj[header] = cells[index];
+          });
+          return obj;
+        })
+      );
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Output QRISHOKI");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Output QRISHOKI");
 
-    // Auto-size columns
-    const colWidths = OUTPUT_HEADERS.map(() => ({ wch: 20 }));
-    worksheet["!cols"] = colWidths;
+      // Auto-size columns
+      const colWidths = OUTPUT_HEADERS.map(() => ({ wch: 20 }));
+      worksheet["!cols"] = colWidths;
 
-    XLSX.writeFile(workbook, "QRISHOKI_DP_Report_Extract.xlsx");
-    toast.success("File Excel berhasil didownload!");
-  };
+      XLSX.writeFile(workbook, "QRISHOKI_DP_Report_Extract.xlsx");
+      toast.success("File Excel berhasil didownload!");
+    } catch (err) {
+      console.error("Error exporting Excel:", err);
+      toast.error("Gagal mengekspor file Excel.");
+    }
+  }, [rows]);
 
   // --- Native .xlsx parser (GIGA GAMING Whitelabel System export) ---
   //
@@ -676,30 +1092,8 @@ export default function GigaCopyDpHoki() {
   //
   // Output is bridged through `mapTransactionToRow`, so SUB="BOT", KODE TRANSAKSI="DP",
   // and KODE BANK="" stay consistent with the text-based parser.
-  const formatExcelAmount = (raw: unknown): string => {
-    if (typeof raw === "number" && Number.isFinite(raw)) {
-      return raw.toLocaleString("en-US");
-    }
-    const str = String(raw ?? "").trim();
-    if (!str) return "";
-    const numeric = Number(str.replace(/,/g, ""));
-    if (Number.isFinite(numeric)) return numeric.toLocaleString("en-US");
-    return str;
-  };
-
-  const formatExcelDate = (raw: unknown): string => {
-    if (raw instanceof Date && !isNaN(raw.getTime())) {
-      const pad = (n: number) => String(n).padStart(2, "0");
-      return (
-        `${raw.getFullYear()}-${pad(raw.getMonth() + 1)}-${pad(raw.getDate())} ` +
-        `${pad(raw.getHours())}:${pad(raw.getMinutes())}:${pad(raw.getSeconds())}`
-      );
-    }
-    return String(raw ?? "").trim();
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
@@ -833,18 +1227,18 @@ export default function GigaCopyDpHoki() {
       toast.error("Gagal membuka file.");
       cleanupReader();
     }
-  };
+  }, []);
 
   return (
-    <section className="relative z-10 flex flex-col gap-lg text-slate-800">
+    <section className="relative z-10 flex flex-col gap-ds-lg text-slate-800">
       {/* TOP MODULE: Input Card */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-lg py-lg shadow-ds-lg backdrop-blur-2xl"
+        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-ds-lg py-ds-lg shadow-ds-lg backdrop-blur-2xl"
       >
-        <div className="mb-lg flex items-center justify-between gap-md flex-wrap">
-          <div className="flex items-center gap-md">
+        <div className="mb-ds-lg flex items-center justify-between gap-ds-md flex-wrap">
+          <div className="flex items-center gap-ds-md">
             <div className="flex items-center justify-center rounded-ds-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-2.5 shadow-ds-md shadow-indigo-500/25">
               <Layers size={22} className="text-white" />
             </div>
@@ -866,14 +1260,52 @@ export default function GigaCopyDpHoki() {
         <textarea
           value={rawText}
           onChange={(event) => {
-            setRawText(event.target.value);
+            const val = event.target.value;
+            setRawText(val);
             setError(null);
+            // Manual edit invalidates a previously-pasted HTML table.
+            if (val !== lastPastedPlainRef.current) pastedHtmlRef.current = "";
           }}
-          placeholder="Paste raw copied table text here..."
-          className="min-h-[390px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-indigo-200 bg-white/50 p-lg font-mono text-sm leading-7 text-slate-700 shadow-inner shadow-indigo-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white/80 focus:ring-4 focus:ring-indigo-100"
+          onPaste={(event) => {
+            const html = event.clipboardData.getData("text/html");
+            if (html && /<table/i.test(html)) {
+              event.preventDefault();
+              const plain = event.clipboardData.getData("text/plain") || "";
+              pastedHtmlRef.current = html;
+              lastPastedPlainRef.current = plain;
+              setRawText(plain);
+              setError(null);
+              const grid = sortGridByDateAsc(htmlTableToGrid(html));
+              setGridPreview(grid);
+              toast.success("Tabel panel terbaca. Klik Process Data untuk generate.");
+            }
+          }}
+          placeholder={INPUT_GUIDANCE}
+          className="min-h-[390px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-indigo-200 bg-white/50 p-ds-lg font-mono text-sm leading-7 text-slate-700 shadow-inner shadow-indigo-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white/80 focus:ring-4 focus:ring-indigo-100"
         />
 
-        <div className="mt-lg flex flex-col gap-md sm:flex-row">
+        {gridPreview.length > 0 && (
+          <div className="mt-ds-md rounded-ds-xl border border-indigo-200 bg-white/70 p-2 shadow-inner">
+            <p className="mb-1 px-1 text-[11px] font-bold text-indigo-700">
+              Grid sumber dari panel ({gridPreview.length} baris × {gridPreview[0]?.length ?? 0} kolom) — output diambil per kolom.
+            </p>
+            <div className="max-h-52 overflow-auto">
+              <table className="w-max border-collapse text-[10px]">
+                <tbody>
+                  {gridPreview.slice(0, 30).map((r, ri) => (
+                    <tr key={ri} className={ri === 0 ? "bg-indigo-100 font-bold" : "odd:bg-white even:bg-slate-50"}>
+                      {r.map((c, ci) => (
+                        <td key={ci} className="max-w-[160px] truncate border border-slate-200 px-1.5 py-0.5 text-slate-700" title={c}>{c}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-ds-lg flex flex-col gap-ds-md sm:flex-row">
           <motion.button
             type="button"
             whileHover={{ scale: 1.015 }}
@@ -918,7 +1350,7 @@ export default function GigaCopyDpHoki() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-start gap-md px-lg py-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
+            className="flex items-start gap-ds-md px-ds-lg py-ds-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
           >
             <AlertCircle size={20} className="mt-0.5 shrink-0" />
             <p className="text-sm font-medium">{error}</p>
@@ -931,16 +1363,16 @@ export default function GigaCopyDpHoki() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="flex flex-col gap-lg"
+          className="flex flex-col gap-ds-lg"
         >
           {/* MIDDLE MODULE: Summary Metrics Grid - 4 cards */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-ds-md"
           >
             {/* Card 1: JENIS DATA */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl glass shadow-ds-sm bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/20">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl glass shadow-ds-sm bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/20">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-ds-md shadow-amber-500/30 shrink-0">
                 <Layers size={20} className="text-white" />
               </div>
@@ -951,7 +1383,7 @@ export default function GigaCopyDpHoki() {
             </div>
 
             {/* Card 2: TOTAL DATA */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
                 <ListOrdered size={20} className="text-white" />
               </div>
@@ -962,7 +1394,7 @@ export default function GigaCopyDpHoki() {
             </div>
 
             {/* Card 3: TOTAL NOMINAL */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
                 <Banknote size={20} className="text-white" />
               </div>
@@ -975,7 +1407,7 @@ export default function GigaCopyDpHoki() {
             </div>
 
             {/* Card 4: ROW FINAL */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center shadow-ds-md shadow-fuchsia-500/30 shrink-0">
                 <FileText size={20} className="text-white" />
               </div>
@@ -993,12 +1425,12 @@ export default function GigaCopyDpHoki() {
             className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 shadow-ds-lg backdrop-blur-2xl"
           >
             {/* Action Bar Header */}
-            <div className="flex items-center justify-between gap-md px-lg py-md border-b border-slate-200 bg-slate-50/50 sticky top-0 flex-wrap">
-              <div className="flex items-center gap-md">
+            <div className="flex items-center justify-between gap-ds-md px-ds-lg py-ds-md border-b border-slate-200 bg-slate-50/50 sticky top-0 flex-wrap">
+              <div className="flex items-center gap-ds-md">
                 <h3 className="text-sm font-semibold text-slate-800">Output Preview</h3>
                 <p className="text-xs text-slate-500">Hasil mapping ke format spreadsheet.</p>
               </div>
-              <div className="flex items-center gap-sm flex-wrap">
+              <div className="flex items-center gap-ds-sm flex-wrap">
                 <motion.button
                   type="button"
                   whileHover={{ scale: rows.length ? 1.02 : 1 }}
@@ -1041,17 +1473,17 @@ export default function GigaCopyDpHoki() {
                 <thead>
                   <tr className="border-b-2 border-slate-200 bg-slate-50/50 sticky top-0">
                     {OUTPUT_HEADERS.map((header) => (
-                      <th key={header} className="px-md py-sm text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                      <th key={header} className="px-ds-md py-ds-sm text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                         {header}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 bg-white/40 hover:bg-indigo-50/30 transition-colors">
-                      {rowToArr(row).map((cell, cellIdx) => (
-                        <td key={cellIdx} className="px-md py-md text-sm text-slate-700 whitespace-nowrap">
+                  {rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-slate-100 bg-white/40 hover:bg-indigo-50/30 transition-colors">
+                      {rowToArr(row).map((cell, cellIndex) => (
+                        <td key={cellIndex} className="px-ds-md py-ds-md text-sm text-slate-700 whitespace-nowrap">
                           {cell || "-"}
                         </td>
                       ))}

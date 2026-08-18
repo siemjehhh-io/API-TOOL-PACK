@@ -44,7 +44,7 @@ export const authMiddleware = (
     req.userId = "user-from-token"; // Extract from token payload
 
     logger.info({ userId: req.userId, path: req.path }, "User authenticated");
-    next();
+    return next();
   } catch (error) {
     logger.error({ error, token: token.slice(0, 10) }, "Token validation failed");
     return res.status(401).json({
@@ -77,7 +77,7 @@ export const optionalAuth = (
     }
   }
 
-  next();
+  return next();
 };
 
 /**
@@ -104,6 +104,6 @@ export const authorize = (requiredRoles: string[]) => {
       });
     }
 
-    next();
+    return next();
   };
 };

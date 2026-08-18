@@ -1,0 +1,8 @@
+{
+  "buildCommand": "pnpm --filter @workspace/wd-data-extractor run build",
+  "outputDirectory": "artifacts/wd-data-extractor/dist/public",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

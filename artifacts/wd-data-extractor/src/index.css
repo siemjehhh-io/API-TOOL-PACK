@@ -1,5 +1,4 @@
 @import "./styles/design-tokens.css";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -10,6 +9,15 @@
   font-weight: 600;
   font-style: italic;
   font-display: swap;
+}
+
+/* Custom utility for the brand title font.
+ * Uses an explicit `.font-quadrillion` class instead of Tailwind's arbitrary
+ * `font-[Quadrillion]` so the family name (which can contain spaces in other
+ * font sources) is unambiguous and survives the Tailwind v4 generator
+ * regardless of theme key collisions. */
+.font-quadrillion {
+  font-family: "Quadrillion", "Inter", sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -80,16 +88,22 @@
    * ------------------------------------------------------------------
    * Maps the design-token spacing scale (defined in
    * styles/design-tokens.css) to Tailwind's `--spacing-*` theme keys
-   * so utilities like p-md, gap-lg, px-xl, m-xs, etc. are generated.
+   * so utilities like p-ds-md, gap-ds-lg, px-ds-xl, m-ds-xs, etc. are generated.
+   *
+   * IMPORTANT: We use the `ds-` prefix to avoid colliding with
+   * Tailwind v4's named container scale (max-w-sm/md/lg/xl/2xl), which
+   * shares the same utility namespace as `--spacing-*` keys. Without
+   * the prefix, defining `--spacing-md` would override `max-w-md`
+   * (28rem → 16px) and break shadcn/ui dialogs and other components.
    *
    * Spec: design.md — Section "1. Spacing & Padding System".
    * ------------------------------------------------------------------ */
-  --spacing-xs: var(--space-xs);
-  --spacing-sm: var(--space-sm);
-  --spacing-md: var(--space-md);
-  --spacing-lg: var(--space-lg);
-  --spacing-xl: var(--space-xl);
-  --spacing-xxl: var(--space-xxl);
+  --spacing-ds-xs: var(--space-xs);
+  --spacing-ds-sm: var(--space-sm);
+  --spacing-ds-md: var(--space-md);
+  --spacing-ds-lg: var(--space-lg);
+  --spacing-ds-xl: var(--space-xl);
+  --spacing-ds-xxl: var(--space-xxl);
 
   /* ------------------------------------------------------------------
    * Design System Color Palette (Tailwind v4 utilities)

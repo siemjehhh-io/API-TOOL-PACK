@@ -1,8 +1,27 @@
-import { useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Check, Copy, Eraser, FileText, Layers, Loader2, Sparkles, Wand2, Download, ListOrdered, Banknote, Upload } from "lucide-react";
+﻿import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertCircle,
+  Banknote,
+  Check,
+  Copy,
+  Download,
+  Eraser,
+  FileText,
+  Layers,
+  ListOrdered,
+  Loader2,
+  Sparkles,
+  Upload,
+  Wand2,
+} from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+
+// Reuse the column-precise table parser from QRISHOKI — the ZENPAY panel has the
+// same columns (Username, Transaction ID, Credit, Status, Transaction Date).
+import { htmlTableToGrid, parseGigaQrishokiGrid, sortByDateAsc, sortGridByDateAsc } from "./GigaCopyDpHoki";
 
 interface GigaCopyRow {
   nama: string;
@@ -46,7 +65,33 @@ const OUTPUT_HEADERS = [
 const GIGA_ZENPAY_OUTPUT_SUB = "BOT";
 const GIGA_ZENPAY_OUTPUT_KODE_TRANSAKSI = "DP";
 
-const SAMPLE_TEXT = "1\tGame Wallet 2026-05-04 23:52:00 114.122.43.157\t1CBG069f8ceb001764\tBangun simbolon sunjaya18\t\tPayment Gateway\t\nZENPAY88 / QRIS\nConfirmed\t\t100,000.00\tAuto System\t2026-05-04 23:56:25\t";
+export const SAMPLE_TEXT = `2
+Game Wallet 2026-06-04 23:19:31 114.8.207.16
+00MEF06a21a592cafbb (https://giga2-ns3-admin.net/transactions/t_depositform/00MEF06a21a592cafbb)
+Gunan
+ettu2008 (https://giga2-ns3-admin.net/member_details/DGAABAF00MEF)
+New (https://giga2-ns3-admin.net/member_details/DGAABAF00MEF)
+Payment Gateway
+ZENPAY88 / QRIS
+Confirmed
+33,000.00
+Auto System
+2026-06-04 23:20:29
+3
+Game Wallet 2026-06-04 21:29:49 114.5.102.85
+0080R06a218bdc6880c (https://giga2-ns3-admin.net/transactions/t_depositform/0080R06a218bdc6880c)
+M RIZKY PRAYOGA
+rizky5555 (https://giga2-ns3-admin.net/member_details/DGAABAF0080R)
+AFKRHDYBM
+Payment Gateway
+ZENPAY88 / QRIS
+Confirmed
+150,000.00
+Auto System
+2026-06-04 21:30:52`;
+
+const INPUT_GUIDANCE =
+  "Paste data hasil copy dari panel ZENPAY. Minimal harus berisi Game Wallet, Transaction ID, username, Payment Gateway, ZENPAY88 / QRIS, Confirmed, nominal, Auto System, dan waktu confirmed. Klik Use Sample untuk contoh valid.";
 
 function rowToArr(row: GigaCopyRow): string[] {
   return [
@@ -68,6 +113,32 @@ function rowToArr(row: GigaCopyRow): string[] {
 
 function normalizeAmount(value: string): string {
   return value.trim().replace(/\.00$/, "");
+}
+
+function formatCurrency(value: number): string {
+  return "Rp " + value.toLocaleString("id-ID");
+}
+
+function formatExcelAmount(raw: unknown): string {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw.toLocaleString("en-US");
+  }
+  const str = String(raw ?? "").trim();
+  if (!str) return "";
+  const numeric = Number(str.replace(/,/g, ""));
+  if (Number.isFinite(numeric)) return numeric.toLocaleString("en-US");
+  return str;
+}
+
+function formatExcelDate(raw: unknown): string {
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return (
+      `${raw.getFullYear()}-${pad(raw.getMonth() + 1)}-${pad(raw.getDate())} ` +
+      `${pad(raw.getHours())}:${pad(raw.getMinutes())}:${pad(raw.getSeconds())}`
+    );
+  }
+  return String(raw ?? "").trim();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,12 +170,15 @@ function stripNewMemberMarker(username: string): string {
 
 /**
  * Strip voucher/promo codes appended to a username (e.g.
- * "userGS2AAAF00LJ" → "user"). All UPPERCASE, ≥8 chars, ≥2 digits & 2 letters.
+ * "userGS2AAAF00LJ" → "user"). All UPPERCASE, ≥8 chars, ≥2 digits & 2 letters,
+ * or AF-prefixed referral codes copied from the adjacent Ref ID column.
  */
 function stripVoucherSuffix(username: string): string {
-  const match = username.match(/^(.*[a-z])\s*([A-Z][A-Z0-9]{7,})$/);
+  const match = username.match(/^(.*[a-z0-9])\s*([A-Z][A-Z0-9]{7,})$/);
   if (!match) return username;
   const suffix = match[2];
+  if (/^AF[A-Z0-9]{6,13}$/.test(suffix)) return match[1];
+
   const digitCount = (suffix.match(/\d/g) || []).length;
   const letterCount = (suffix.match(/[A-Z]/g) || []).length;
   if (digitCount < 2 || letterCount < 2) return username;
@@ -117,16 +191,47 @@ function stripVoucherSuffix(username: string): string {
  *   2. Strip "New" badge for new members
  *   3. Strip voucher/promo code suffix
  */
+/**
+ * Strip panel-rendered member-detail URLs (any shape, anywhere).
+ *
+ * Patterns handled:
+ *   "user (https://...)"                            â†’ "user"
+ *   "user (https://...) New (https://...)"          â†’ "user New"
+ *   "user https://..."                              â†’ "user"
+ *   "user (BONUS)"  (non-URL parens)                â†’ "user (BONUS)" preserved
+ */
+function stripPanelUrl(username: string): string {
+  return username
+    .replace(/\s*\([^)]*https?:\/\/[^)]*\)/gi, " ")
+    .replace(/\s*https?:\/\/\S+/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Final defensive scrub: strip any character that is not [A-Za-z0-9_] from
+ * the beginning and end of the string.
+ */
+function scrubUsernameBoundary(username: string): string {
+  return username.replace(/^[^A-Za-z0-9_]+|[^A-Za-z0-9_]+$/g, "");
+}
+
 function cleanUsername(username: string): string {
-  return stripVoucherSuffix(
-    stripNewMemberMarker(stripRemarkColor(username)),
+  return scrubUsernameBoundary(
+    stripVoucherSuffix(
+      stripNewMemberMarker(stripRemarkColor(stripPanelUrl(username))),
+    ),
   );
 }
 
 export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
-  // 1. Normalize spacing but keep the core text intact
+  // 1. Normalize spacing but keep the core text intact.
+  // Robust to non-breaking spaces, zero-width separators, and other Unicode
+  // whitespace browser copy-paste can introduce (see GigaCopyDpHoki for the
+  // full rationale).
   let cleanText = rawText
-    .replace(/[\n\r\t]+/g, " ")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\n\r\t]+/g, " ")
     .replace(/\s{2,}/g, " ");
 
   // Fix broken IPs (e.g., "192.168.1. 106" -> "192.168.1.106")
@@ -134,12 +239,13 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
 
   // 2. Split into individual transaction blocks
   // Use row-number-aware anchor like QRISHOKI to handle "1Game Wallet" etc.
-  const blocks = cleanText.split(/(?=\d+\s?Game Wallet)/i);
+  // Tolerate "GameWallet" without space (zero-width separators stripped).
+  const blocks = cleanText.split(/(?=\d+\s?Game\s?Wallet)/i);
   const transactions: ParsedTransaction[] = [];
 
   for (const rawBlock of blocks) {
     const block = rawBlock.trim();
-    if (block.length < 50 || !/Game Wallet/i.test(block)) continue;
+    if (block.length < 50 || !/Game\s?Wallet/i.test(block)) continue;
 
     // Per-block try/catch — robustness for bulk paste (100k+ rows).
     try {
@@ -160,9 +266,9 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
       const allDates = block.match(dateRegex);
       const date = allDates && allDates.length > 0 ? allDates[allDates.length - 1] : "";
 
-      // --- TRX ID EXTRACTION (anchor-based, ZENPAY prefix is "06a0") ---
+      // --- TRX ID EXTRACTION (anchor-based, ZENPAY prefix is "06a") ---
       let trxId = "-";
-      const trxIdAnchorMatch = block.match(/06a0[a-f0-9]{10}/i);
+      const trxIdAnchorMatch = block.match(/06a[0-9a-f][a-f0-9]{10}/i);
       if (trxIdAnchorMatch && trxIdAnchorMatch.index !== undefined) {
         const trxIdRaw = trxIdAnchorMatch[0];
         const trxIdStart = trxIdAnchorMatch.index;
@@ -173,8 +279,8 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
         let ipEnd = -1;
         if (ipv4 && ipv4.index !== undefined) ipEnd = ipv4.index + ipv4[0].length;
         if (ipv6 && ipv6.index !== undefined) {
-          const e = ipv6.index + ipv6[0].length;
-          if (e > ipEnd && e <= trxIdStart) ipEnd = e;
+          const ipv6End = ipv6.index + ipv6[0].length;
+          if (ipv6End > ipEnd && ipv6End <= trxIdStart) ipEnd = ipv6End;
         }
         if (ipEnd > 0 && ipEnd <= trxIdStart) {
           tracking = block.slice(ipEnd, trxIdStart).trim();
@@ -217,15 +323,17 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
       // This works because the panel ALWAYS puts customer name and username
       // in separate <td> cells which become whitespace-separated after copy.
       let username = "UNKNOWN";
-      const trxIdAnchorMatchForUser = block.match(/06a0[a-f0-9]{10}/i);
+      const trxIdAnchorMatchForUser = block.match(/06a[0-9a-f][a-f0-9]{10}/i);
       if (trxIdAnchorMatchForUser && trxIdAnchorMatchForUser.index !== undefined) {
-        const tEnd = trxIdAnchorMatchForUser.index + trxIdAnchorMatchForUser[0].length;
-        const pgMatch = block.slice(tEnd).match(/Payment\s+Gateway/i);
+        const trxIdEnd = trxIdAnchorMatchForUser.index + trxIdAnchorMatchForUser[0].length;
+        const pgMatch = block.slice(trxIdEnd).match(/Payment\s+Gateway/i);
         if (pgMatch && pgMatch.index !== undefined) {
-          let segment = block.slice(tEnd, tEnd + pgMatch.index).trim();
-          // Peel badges first so they don't end up as the "last word"
-          segment = stripRemarkColor(segment);
-          segment = stripNewMemberMarker(segment);
+          let segment = block.slice(trxIdEnd, trxIdEnd + pgMatch.index).trim();
+          // Peel URLs and badges from the entire customer+username segment
+          // before taking the last word. New panel copies can emit:
+          //   "Gunan ettu2008 (url) New (url)"
+          //   "M RIZKY PRAYOGA rizky5555 (url) AFKRHDYBM"
+          segment = cleanUsername(segment);
           // Username = last whitespace-separated word
           const parts = segment.split(/\s+/).filter(Boolean);
           if (parts.length > 0) {
@@ -235,9 +343,9 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
       }
 
       transactions.push({ date, trxId, username, amount });
-    } catch (err) {
+    } catch (parseError) {
       // eslint-disable-next-line no-console
-      console.warn("[ZENPAY parser] Skipped malformed transaction:", err);
+      console.warn("[ZENPAY parser] Skipped malformed transaction:", parseError);
     }
   }
 
@@ -251,17 +359,17 @@ export function parseGigaCopyDpZenpay(rawText: string): ParsedTransaction[] {
   return transactions;
 }
 
-function mapTransactionToRow(tx: ParsedTransaction): GigaCopyRow {
+function mapTransactionToRow(parsedTransaction: ParsedTransaction): GigaCopyRow {
   return {
-    nama: tx.trxId,
+    nama: parsedTransaction.trxId,
     nomorRekening: "NO ACC",
-    userId: tx.username,
+    userId: parsedTransaction.username,
     sub: GIGA_ZENPAY_OUTPUT_SUB,
     kodeTransaksi: GIGA_ZENPAY_OUTPUT_KODE_TRANSAKSI,
-    deposit: tx.amount,
+    deposit: parsedTransaction.amount,
     withdrawal: "",
     dpPulsa: "",
-    keterangan: tx.date,
+    keterangan: parsedTransaction.date,
     kodeBank: "",
     saldoAkhir: "",
     jamInput: "",
@@ -276,6 +384,9 @@ export default function GigaCopyDpZenpay() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pastedHtmlRef = useRef<string>("");
+  const lastPastedPlainRef = useRef<string>("");
+  const [gridPreview, setGridPreview] = useState<string[][]>([]);
 
   const totalAmount = useMemo(() => {
     return rows.reduce((sum, row) => {
@@ -284,21 +395,25 @@ export default function GigaCopyDpZenpay() {
     }, 0);
   }, [rows]);
 
-  const formatCurrency = (value: number): string => {
-    return "Rp " + value.toLocaleString("id-ID");
-  };
-
-  const processData = () => {
+  const processData = useCallback(() => {
     setIsProcessing(true);
     setError(null);
 
     window.setTimeout(() => {
       try {
-        const parsed = parseGigaCopyDpZenpay(rawText);
+        const html = pastedHtmlRef.current;
+        const useHtml = !!html && /<table/i.test(html);
+        let parsed = useHtml
+          ? parseGigaQrishokiGrid(htmlTableToGrid(html)).transactions
+          : parseGigaCopyDpZenpay(rawText);
+        if (useHtml && parsed.length === 0) {
+          parsed = parseGigaCopyDpZenpay(rawText); // safety-net fallback
+        }
+        parsed = [...parsed].sort((a, b) => sortByDateAsc(a.date, b.date));
         const mappedRows = parsed.map(mapTransactionToRow);
         setRows(mappedRows);
 
-        if (!String(rawText ?? "").trim()) {
+        if (!useHtml && !String(rawText ?? "").trim()) {
           setError("Tempel raw text dari tabel dashboard terlebih dahulu.");
           toast.error("Input masih kosong.");
           return;
@@ -311,8 +426,8 @@ export default function GigaCopyDpZenpay() {
         }
 
         toast.success(`${mappedRows.length} transaksi berhasil diproses.`);
-      } catch (err) {
-        console.error("Error processing ZENPAY text:", err);
+      } catch (processError) {
+        console.error("Error processing ZENPAY text:", processError);
         setRows([]);
         setError("Gagal memproses text. Pastikan data tidak corrupt dan format sesuai panel ZENPAY.");
         toast.error("Gagal memproses text.");
@@ -320,32 +435,38 @@ export default function GigaCopyDpZenpay() {
         setIsProcessing(false);
       }
     }, 220);
-  };
+  }, [rawText]);
 
-  const clearData = () => {
+  const clearData = useCallback(() => {
     setRawText("");
     setRows([]);
     setError(null);
     setCopiedType(null);
-  };
+    pastedHtmlRef.current = "";
+    lastPastedPlainRef.current = "";
+    setGridPreview([]);
+  }, []);
 
-  const useSample = () => {
+  const useSample = useCallback(() => {
     setRawText(SAMPLE_TEXT);
     setRows([]);
     setError(null);
-  };
+    pastedHtmlRef.current = "";
+    lastPastedPlainRef.current = "";
+    setGridPreview([]);
+  }, []);
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = useCallback(async () => {
     if (!rows.length) return;
 
     const tsv = rows.map(rowToArr).map((arr) => arr.join("\t")).join("\n");
-    
+
     try {
       await navigator.clipboard.writeText(tsv);
       setCopiedType("trx");
       toast.success("Data berhasil disalin ke Doc TRX!");
       window.setTimeout(() => setCopiedType(null), 2000);
-    } catch (err) {
+    } catch (clipboardError) {
       try {
         const textArea = document.createElement("textarea");
         textArea.value = tsv;
@@ -361,13 +482,13 @@ export default function GigaCopyDpZenpay() {
         window.setTimeout(() => setCopiedType(null), 2000);
       } catch (fallbackErr) {
         toast.error("Gagal menyalin ke clipboard.");
-        console.error("Clipboard error:", err);
+        console.error("Clipboard error:", clipboardError);
         console.error("Fallback error:", fallbackErr);
       }
     }
-  };
+  }, [rows]);
 
-  const handleCopyDocQris = async () => {
+  const handleCopyDocQris = useCallback(async () => {
     if (!rows.length) return;
 
     const tsv = rows
@@ -392,56 +513,39 @@ export default function GigaCopyDpZenpay() {
     } catch {
       toast.error("Gagal menyalin Doc Qris.");
     }
-  };
+  }, [rows]);
 
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(() => {
     if (!rows.length) return;
 
-    const worksheet = XLSX.utils.json_to_sheet(
-      rows.map((row) => {
-        const obj: any = {};
-        OUTPUT_HEADERS.forEach((header, i) => {
-          obj[header] = rowToArr(row)[i];
-        });
-        return obj;
-      })
-    );
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Output ZENPAY");
-
-    // Auto-size columns
-    const colWidths = OUTPUT_HEADERS.map(() => ({ wch: 20 }));
-    worksheet["!cols"] = colWidths;
-
-    XLSX.writeFile(workbook, "ZENPAY_DP_Report_Extract.xlsx");
-    toast.success("File Excel berhasil didownload!");
-  };
-
-  const formatExcelAmount = (raw: unknown): string => {
-    if (typeof raw === "number" && Number.isFinite(raw)) {
-      return raw.toLocaleString("en-US");
-    }
-    const str = String(raw ?? "").trim();
-    if (!str) return "";
-    const numeric = Number(str.replace(/,/g, ""));
-    if (Number.isFinite(numeric)) return numeric.toLocaleString("en-US");
-    return str;
-  };
-
-  const formatExcelDate = (raw: unknown): string => {
-    if (raw instanceof Date && !isNaN(raw.getTime())) {
-      const pad = (n: number) => String(n).padStart(2, "0");
-      return (
-        `${raw.getFullYear()}-${pad(raw.getMonth() + 1)}-${pad(raw.getDate())} ` +
-        `${pad(raw.getHours())}:${pad(raw.getMinutes())}:${pad(raw.getSeconds())}`
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(
+        rows.map((row) => {
+          const obj: Record<string, string> = {};
+          OUTPUT_HEADERS.forEach((header, index) => {
+            obj[header] = rowToArr(row)[index];
+          });
+          return obj;
+        })
       );
-    }
-    return String(raw ?? "").trim();
-  };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Output ZENPAY");
+
+      // Auto-size columns
+      const colWidths = OUTPUT_HEADERS.map(() => ({ wch: 20 }));
+      worksheet["!cols"] = colWidths;
+
+      XLSX.writeFile(workbook, "ZENPAY_DP_Report_Extract.xlsx");
+      toast.success("File Excel berhasil didownload!");
+    } catch (exportError) {
+      console.error("Error exporting Excel:", exportError);
+      toast.error("Gagal export Excel.");
+    }
+  }, [rows]);
+
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
@@ -455,9 +559,9 @@ export default function GigaCopyDpZenpay() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    reader.onload = (event) => {
+    reader.onload = (loadEvent) => {
       try {
-        const buffer = event.target?.result;
+        const buffer = loadEvent.target?.result;
         if (!(buffer instanceof ArrayBuffer)) throw new Error("Gagal membaca buffer file.");
 
         const data = new Uint8Array(buffer);
@@ -523,8 +627,8 @@ export default function GigaCopyDpZenpay() {
         } else {
           toast.success(`${mappedRows.length} transaksi Excel berhasil diproses.`);
         }
-      } catch (err) {
-        console.error("Error parsing Excel file:", err);
+      } catch (parseError) {
+        console.error("Error parsing Excel file:", parseError);
         setError("Gagal membaca file Excel. Pastikan file tidak corrupt dan format sesuai export GIGA.");
         toast.error("Gagal memproses file Excel.");
       } finally {
@@ -549,25 +653,25 @@ export default function GigaCopyDpZenpay() {
 
     try {
       reader.readAsArrayBuffer(file);
-    } catch (err) {
-      console.error("Error starting Excel file read:", err);
+    } catch (readError) {
+      console.error("Error starting Excel file read:", readError);
       setIsProcessing(false);
       setError("Gagal membuka file Excel.");
       toast.error("Gagal membuka file.");
       cleanupReader();
     }
-  };
+  }, []);
 
   return (
-    <section className="relative z-10 flex flex-col gap-lg text-slate-800">
+    <section className="relative z-10 flex flex-col gap-ds-lg text-slate-800">
       {/* TOP MODULE: Input Card */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-lg py-lg shadow-ds-lg backdrop-blur-2xl"
+        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-ds-lg py-ds-lg shadow-ds-lg backdrop-blur-2xl"
       >
-        <div className="mb-lg flex items-center justify-between gap-md flex-wrap">
-          <div className="flex items-center gap-md">
+        <div className="mb-ds-lg flex items-center justify-between gap-ds-md flex-wrap">
+          <div className="flex items-center gap-ds-md">
             <div className="flex items-center justify-center rounded-ds-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-2.5 shadow-ds-md shadow-indigo-500/25">
               <Layers size={22} className="text-white" />
             </div>
@@ -589,14 +693,50 @@ export default function GigaCopyDpZenpay() {
         <textarea
           value={rawText}
           onChange={(event) => {
-            setRawText(event.target.value);
+            const val = event.target.value;
+            setRawText(val);
             setError(null);
+            if (val !== lastPastedPlainRef.current) pastedHtmlRef.current = "";
           }}
-          placeholder="Paste raw copied table text here..."
-          className="min-h-[390px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-indigo-200 bg-white/50 p-lg font-mono text-sm leading-7 text-slate-700 shadow-inner shadow-indigo-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white/80 focus:ring-4 focus:ring-indigo-100"
+          onPaste={(event) => {
+            const html = event.clipboardData.getData("text/html");
+            if (html && /<table/i.test(html)) {
+              event.preventDefault();
+              const plain = event.clipboardData.getData("text/plain") || "";
+              pastedHtmlRef.current = html;
+              lastPastedPlainRef.current = plain;
+              setRawText(plain);
+              setError(null);
+              setGridPreview(sortGridByDateAsc(htmlTableToGrid(html)));
+              toast.success("Tabel panel terbaca. Klik Process Data untuk generate.");
+            }
+          }}
+          placeholder={INPUT_GUIDANCE}
+          className="min-h-[390px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-indigo-200 bg-white/50 p-ds-lg font-mono text-sm leading-7 text-slate-700 shadow-inner shadow-indigo-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white/80 focus:ring-4 focus:ring-indigo-100"
         />
 
-        <div className="mt-lg flex flex-col gap-md sm:flex-row">
+        {gridPreview.length > 0 && (
+          <div className="mt-ds-md rounded-ds-xl border border-indigo-200 bg-white/70 p-2 shadow-inner">
+            <p className="mb-1 px-1 text-[11px] font-bold text-indigo-700">
+              Grid sumber dari panel ({gridPreview.length} baris × {gridPreview[0]?.length ?? 0} kolom) — output diambil per kolom.
+            </p>
+            <div className="max-h-52 overflow-auto">
+              <table className="w-max border-collapse text-[10px]">
+                <tbody>
+                  {gridPreview.slice(0, 30).map((r, ri) => (
+                    <tr key={ri} className={ri === 0 ? "bg-indigo-100 font-bold" : "odd:bg-white even:bg-slate-50"}>
+                      {r.map((c, ci) => (
+                        <td key={ci} className="max-w-[160px] truncate border border-slate-200 px-1.5 py-0.5 text-slate-700" title={c}>{c}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-ds-lg flex flex-col gap-ds-md sm:flex-row">
           <motion.button
             type="button"
             whileHover={{ scale: 1.015 }}
@@ -641,7 +781,7 @@ export default function GigaCopyDpZenpay() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-start gap-md px-lg py-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
+            className="flex items-start gap-ds-md px-ds-lg py-ds-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
           >
             <AlertCircle size={20} className="mt-0.5 shrink-0" />
             <p className="text-sm font-medium">{error}</p>
@@ -654,16 +794,16 @@ export default function GigaCopyDpZenpay() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="flex flex-col gap-lg"
+          className="flex flex-col gap-ds-lg"
         >
           {/* MIDDLE MODULE: Summary Metrics Grid - 4 cards */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-ds-md"
           >
             {/* Card 1: JENIS DATA */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl glass shadow-ds-sm bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/20">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl glass shadow-ds-sm bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/20">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-ds-md shadow-amber-500/30 shrink-0">
                 <Layers size={20} className="text-white" />
               </div>
@@ -674,7 +814,7 @@ export default function GigaCopyDpZenpay() {
             </div>
 
             {/* Card 2: TOTAL DATA */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
                 <ListOrdered size={20} className="text-white" />
               </div>
@@ -685,7 +825,7 @@ export default function GigaCopyDpZenpay() {
             </div>
 
             {/* Card 3: TOTAL NOMINAL */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
                 <Banknote size={20} className="text-white" />
               </div>
@@ -698,7 +838,7 @@ export default function GigaCopyDpZenpay() {
             </div>
 
             {/* Card 4: ROW FINAL */}
-            <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
               <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center shadow-ds-md shadow-fuchsia-500/30 shrink-0">
                 <FileText size={20} className="text-white" />
               </div>
@@ -716,12 +856,12 @@ export default function GigaCopyDpZenpay() {
             className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 shadow-ds-lg backdrop-blur-2xl"
           >
             {/* Action Bar Header */}
-            <div className="flex items-center justify-between gap-md px-lg py-md border-b border-white/10 bg-white/40 flex-wrap">
-              <div className="flex items-center gap-md">
+            <div className="flex items-center justify-between gap-ds-md px-ds-lg py-ds-md border-b border-white/10 bg-white/40 flex-wrap">
+              <div className="flex items-center gap-ds-md">
                 <h3 className="text-sm font-semibold text-slate-800">Output Preview</h3>
                 <p className="text-xs text-slate-500">Hasil mapping ke format spreadsheet.</p>
               </div>
-              <div className="flex items-center gap-sm flex-wrap">
+              <div className="flex items-center gap-ds-sm flex-wrap">
                 <motion.button
                   type="button"
                   whileHover={{ scale: rows.length ? 1.02 : 1 }}
@@ -764,17 +904,17 @@ export default function GigaCopyDpZenpay() {
                 <thead>
                   <tr className="border-b-2 border-slate-200 bg-slate-50/50 sticky top-0">
                     {OUTPUT_HEADERS.map((header) => (
-                      <th key={header} className="px-md py-sm text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                      <th key={header} className="px-ds-md py-ds-sm text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                         {header}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 bg-white/40 hover:bg-indigo-50/30 transition-colors">
-                      {rowToArr(row).map((cell, cellIdx) => (
-                        <td key={cellIdx} className="px-md py-md text-sm text-slate-700 whitespace-nowrap">
+                  {rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-slate-100 bg-white/40 hover:bg-indigo-50/30 transition-colors">
+                      {rowToArr(row).map((cell, cellIndex) => (
+                        <td key={cellIndex} className="px-ds-md py-ds-md text-sm text-slate-700 whitespace-nowrap">
                           {cell || "-"}
                         </td>
                       ))}

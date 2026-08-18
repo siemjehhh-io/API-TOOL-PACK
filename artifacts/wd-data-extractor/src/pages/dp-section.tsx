@@ -1,33 +1,49 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import * as XLSX from "xlsx";
+﻿import { AnimatePresence, motion } from "framer-motion";
 import {
-  Upload, FileSpreadsheet, X, Check, AlertCircle,
-  ChevronsUpDown, Flag, FlagOff, Search, Hash,
-  Layers, Banknote, ListOrdered, Download, Copy, TriangleAlert,
+  AlertCircle,
+  Banknote,
+  Check,
+  ChevronsUpDown,
+  Copy,
+  Download,
+  FileSpreadsheet,
+  Flag,
+  FlagOff,
+  Hash,
+  Layers,
+  ListOrdered,
+  Search,
+  TriangleAlert,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
 
-// ─── Output row type ──────────────────────────────────────────────────────────
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { IdRangePicker } from "@/components/IdRangePicker";
+
+// â”€â”€â”€ Output row type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // Mirrors the same 13-column layout as WD (ExtractedRow in home.tsx).
-// Many fields are always empty for DP rows — they exist to keep the output
+// Many fields are always empty for DP rows â€” they exist to keep the output
 // format identical so the result can be pasted into the same spreadsheet.
 //
-// Source column → output field mapping (from deposit-report-*.xlsx):
-//   Whitelabel Transaction ID → nama         (col 1)
-//   Transaction Date          → nomorRekening (col 2, formatted as M/D/YYYY HH:MM:SS)
-//   Member ID                 → userId        (col 3)
-//   "BOT"                     → sub           (col 4)
-//   "DP" (hardcoded)          → kodeTransaksi (col 5)
-//   Amount                    → deposit       (col 6)
-//   (empty)                   → withdrawal    (col 7)
-//   (empty)                   → dpPulsa       (col 8)
-//   Finished Date             → keterangan    (col 9)
-//   (empty)                   → kodeBank      (col 10)
-//   (empty)                   → saldoAkhir    (col 11)
-//   Finished Date (time only) → jamInput      (col 12)
-//   Finished Date (time only) → inputKodeBank (col 13)
+// Source column â†’ output field mapping (from deposit-report-*.xlsx):
+//   Whitelabel Transaction ID â†’ nama         (col 1)
+//   Transaction Date          â†’ nomorRekening (col 2, formatted as M/D/YYYY HH:MM:SS)
+//   Member ID                 â†’ userId        (col 3)
+//   "BOT"                     â†’ sub           (col 4)
+//   "DP" (hardcoded)          â†’ kodeTransaksi (col 5)
+//   Amount                    â†’ deposit       (col 6)
+//   (empty)                   â†’ withdrawal    (col 7)
+//   (empty)                   â†’ dpPulsa       (col 8)
+//   Finished Date             â†’ keterangan    (col 9)
+//   (empty)                   â†’ kodeBank      (col 10)
+//   (empty)                   â†’ saldoAkhir    (col 11)
+//   Finished Date (time only) â†’ jamInput      (col 12)
+//   Finished Date (time only) â†’ inputKodeBank (col 13)
 
 interface DpRow {
   nama:          string;
@@ -45,7 +61,7 @@ interface DpRow {
   inputKodeBank: string;
 }
 
-// ─── Output column headers ────────────────────────────────────────────────────
+// â”€â”€â”€ Output column headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const OUTPUT_HEADERS = [
   "NAMA",
@@ -66,7 +82,7 @@ const OUTPUT_HEADERS = [
 const DP_OUTPUT_SUB = "BOT";
 const DP_OUTPUT_KODE_TRANSAKSI = "DP";
 
-// ─── Required source columns ──────────────────────────────────────────────────
+// â”€â”€â”€ Required source columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // These must exist in the deposit report sheet for processing to succeed.
 
 const REQUIRED_COLUMNS = [
@@ -78,7 +94,7 @@ const REQUIRED_COLUMNS = [
   "Transaction Date",
 ];
 
-// ─── Pure utility functions ───────────────────────────────────────────────────
+// â”€â”€â”€ Pure utility functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Serialize a DpRow to an ordered string array matching OUTPUT_HEADERS. */
 function rowToArr(row: DpRow): string[] {
@@ -102,7 +118,7 @@ function extractTime(dateValue: unknown): string {
 /**
  * Reformat a datetime string from "YYYY-MM-DD HH:MM:SS" to "M/D/YYYY HH:MM:SS".
  * Used for the nomorRekening (Transaction Date) column.
- * e.g. "2026-05-03 17:53:48" → "5/3/2026 17:53:48"
+ * e.g. "2026-05-03 17:53:48" â†’ "5/3/2026 17:53:48"
  */
 function formatTxDate(dateValue: unknown): string {
   if (!dateValue) return "";
@@ -150,9 +166,7 @@ function transformDpData(raw: Record<string, unknown>[]): DpRow[] {
       inputKodeBank: extractTime(finishedDate),
     }];
   });
-}
-
-/** Clamp a number within [min, max]. */
+}/** Clamp a number within [min, max]. */
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -168,11 +182,11 @@ function parseAmt(value: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-// ─── Shared small button component ───────────────────────────────────────────
+// â”€â”€â”€ Shared small button component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Glassmorphism toggle/action button used in the controls panel.
- * Identical to GlassBtn in home.tsx — consider extracting to a shared component
+ * Identical to GlassBtn in home.tsx â€” consider extracting to a shared component
  * if more pages are added in the future.
  */
 function GlassBtn({
@@ -202,12 +216,12 @@ function GlassBtn({
   );
 }
 
-// ─── DpSection component ──────────────────────────────────────────────────────
+// â”€â”€â”€ DpSection component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // Rendered inside Home when the "DP" tab is active.
 
 export function DpSection() {
-  // ── File state ────────────────────────────────────────────────────────────
+  // â”€â”€ File state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile]             = useState<File | null>(null);
@@ -222,21 +236,23 @@ export function DpSection() {
   const [selectedSheet, setSelectedSheet] = useState("");
   const wbRef                             = useRef<XLSX.WorkBook | null>(null);
 
-  // ── Row range state ───────────────────────────────────────────────────────
+  // â”€â”€ Row range state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const [startIndex, setStartIndex] = useState<number | null>(null);
   const [endIndex, setEndIndex]     = useState<number | null>(null);
   const [markMode, setMarkMode] = useState<"start" | "end" | null>(null);
 
-  // ── Search / filter state ─────────────────────────────────────────────────
+  // â”€â”€ Search / filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const [startTrxIdInput, setStartTrxIdInput] = useState("");
-  const [endTrxIdInput, setEndTrxIdInput]     = useState("");
+  const [startIdQuery, setStartIdQuery]   = useState("");
+  const [startMatchIdx, setStartMatchIdx] = useState(0);
+  const [endIdQuery, setEndIdQuery]       = useState("");
+  const [endMatchIdx, setEndMatchIdx]     = useState(0);
   const [tableFilter, setTableFilter] = useState("");
 
   const totalRows = data?.length ?? 0;
 
-  // ── Derived data ──────────────────────────────────────────────────────────
+  // â”€â”€ Derived data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Reset controls whenever a new file is loaded.
   useEffect(() => {
@@ -244,8 +260,10 @@ export function DpSection() {
       setStartIndex(0);
       setEndIndex(data.length - 1);
       setMarkMode(null);
-      setStartTrxIdInput("");
-      setEndTrxIdInput("");
+      setStartIdQuery("");
+      setStartMatchIdx(0);
+      setEndIdQuery("");
+      setEndMatchIdx(0);
       setTableFilter("");
     }
   }, [data]);
@@ -254,6 +272,8 @@ export function DpSection() {
     if (!data?.length) return { minIdx: 0, maxIdx: -1 };
     const start = startIndex ?? 0;
     const end = endIndex ?? data.length - 1;
+    // Penanda awal menunjuk SETELAH baris terakhir -> seleksi kosong.
+    if (start > data.length - 1) return { minIdx: 0, maxIdx: -1 };
     return {
       minIdx: Math.max(0, Math.min(start, end)),
       maxIdx: Math.min(data.length - 1, Math.max(start, end)),
@@ -265,7 +285,7 @@ export function DpSection() {
 
   // Slice the full dataset to the selected row range.
   const rangeData = useMemo(
-    () => (data ? data.slice(selectedBounds.minIdx, selectedBounds.maxIdx + 1) : []),
+    () => (data && data.length ? data.slice(selectedBounds.minIdx, selectedBounds.maxIdx + 1) : []),
     [data, selectedBounds]
   );
 
@@ -274,19 +294,19 @@ export function DpSection() {
     const q = tableFilter.trim().toLowerCase();
     if (!q) return rangeData;
     return rangeData.filter(
-      (r) =>
-        r.userId.toLowerCase().includes(q) ||
-        r.nama.toLowerCase().includes(q) ||
-        r.deposit.toLowerCase().includes(q) ||
-        r.keterangan.toLowerCase().includes(q)
+      (row) =>
+        row.userId.toLowerCase().includes(q) ||
+        row.nama.toLowerCase().includes(q) ||
+        row.deposit.toLowerCase().includes(q) ||
+        row.keterangan.toLowerCase().includes(q)
     );
   }, [rangeData, tableFilter]);
 
   // Set of Transaction IDs that appear more than once in the full extracted data.
   const duplicateTrxIds = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const r of data ?? []) {
-      const trxId = r.nama.trim();
+    for (const row of data ?? []) {
+      const trxId = row.nama.trim();
       if (trxId) counts[trxId] = (counts[trxId] ?? 0) + 1;
     }
     return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
@@ -305,19 +325,19 @@ export function DpSection() {
     if (!filteredData.length) return null;
     return {
       count:        filteredData.length,
-      totalNominal: filteredData.reduce((sum, r) => sum + parseAmt(r.deposit), 0),
-      dupCount:     filteredData.filter((r) => duplicateTrxIds.has(r.nama)).length,
+      totalNominal: filteredData.reduce((sum, row) => sum + parseAmt(row.deposit), 0),
+      dupCount:     filteredData.filter((row) => duplicateTrxIds.has(row.nama)).length,
     };
   }, [filteredData, duplicateTrxIds]);
 
-  // ── File processing ───────────────────────────────────────────────────────
+  // â”€â”€ File processing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /**
    * Parse a single sheet from an already-loaded workbook.
    * Validates that all required DP columns exist before calling transformDpData().
    */
-  const processSheet = (wb: XLSX.WorkBook, sheetName: string): DpRow[] => {
-    const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as Record<string, unknown>[];
+  const processSheet = useCallback((workbook: XLSX.WorkBook, sheetName: string): DpRow[] => {
+    const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]) as Record<string, unknown>[];
     if (!raw.length) throw new Error(`Sheet "${sheetName}" kosong.`);
 
     const missingCols = REQUIRED_COLUMNS.filter((col) => !(col in raw[0]));
@@ -328,11 +348,11 @@ export function DpSection() {
     }
 
     return transformDpData(raw);
-  };
+  }, []);
 
   /** Load a new .xlsx file: parse the workbook and process the first sheet. */
-  const processFile = async (f: File) => {
-    setFile(f);
+  const processFile = useCallback(async (incomingFile: File) => {
+    setFile(incomingFile);
     setError(null);
     setData(null);
     setSheetNames([]);
@@ -341,121 +361,174 @@ export function DpSection() {
     setIsParsing(true);
 
     try {
-      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
-      wbRef.current = wb;
+      const workbook = XLSX.read(await incomingFile.arrayBuffer(), { type: "array" });
+      wbRef.current = workbook;
 
-      if (!wb.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
+      if (!workbook.SheetNames.length) throw new Error("File Excel tidak memiliki sheet.");
 
-      setSheetNames(wb.SheetNames);
-      setSelectedSheet(wb.SheetNames[0]);
-      const processed = processSheet(wb, wb.SheetNames[0]);
+      setSheetNames(workbook.SheetNames);
+      setSelectedSheet(workbook.SheetNames[0]);
+      const processed = processSheet(workbook, workbook.SheetNames[0]);
       processed.sort((a, b) => {
         const tA = new Date(`${a.nomorRekening} ${a.jamInput}`).getTime();
         const tB = new Date(`${b.nomorRekening} ${b.jamInput}`).getTime();
         return tA - tB || a.nomorRekening.localeCompare(b.nomorRekening) || a.jamInput.localeCompare(b.jamInput);
       });
       setData(processed);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Gagal membaca file.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal membaca file.");
     } finally {
       setIsParsing(false);
     }
-  };
+  }, [processSheet]);
 
   /** Switch to a different sheet within the already-loaded workbook. */
-  const changeSheet = (name: string) => {
+  const changeSheet = useCallback((sheetName: string) => {
     if (!wbRef.current) return;
-    setSelectedSheet(name);
+    setSelectedSheet(sheetName);
     setError(null);
     setData(null);
     try {
-      const processed = processSheet(wbRef.current, name);
+      const processed = processSheet(wbRef.current, sheetName);
       processed.sort((a, b) => {
         const tA = new Date(`${a.nomorRekening} ${a.jamInput}`).getTime();
         const tB = new Date(`${b.nomorRekening} ${b.jamInput}`).getTime();
         return tA - tB || a.nomorRekening.localeCompare(b.nomorRekening) || a.jamInput.localeCompare(b.jamInput);
       });
       setData(processed);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Gagal membaca sheet.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal membaca sheet.");
     }
-  };
+  }, [processSheet]);
 
-  // ── Drag & drop / file input handlers ────────────────────────────────────
+  // â”€â”€ Drag & drop / file input handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
+    (event: React.DragEvent) => {
+      event.preventDefault();
       setIsDragging(false);
-      const f = e.dataTransfer.files?.[0];
-      if (!f) return;
-      if (f.name.endsWith(".xlsx")) {
-        processFile(f);
+      const file = event.dataTransfer.files?.[0];
+      if (!file) return;
+      if (file.name.endsWith(".xlsx")) {
+        processFile(file);
       } else {
         setError("Hanya file .xlsx yang didukung.");
       }
     },
-    []
+    [processFile]
   );
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) processFile(e.target.files[0]);
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files?.[0]) processFile(event.target.files[0]);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  }, [processFile]);
 
   /** Clear all DP state (called when removing a file). */
-  const reset = () => {
+  const reset = useCallback(() => {
     setFile(null);
     setData(null);
     setError(null);
     setCopiedType(null);
     setMarkMode(null);
-    setStartTrxIdInput("");
-    setEndTrxIdInput("");
+    setStartIdQuery("");
+    setStartMatchIdx(0);
+    setEndIdQuery("");
+    setEndMatchIdx(0);
     setTableFilter("");
     setSheetNames([]);
     setSelectedSheet("");
     wbRef.current = null;
-  };
+  }, []);
 
-  // ── Row range controls ────────────────────────────────────────────────────
+  // â”€â”€ Row range controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const setStartByTrxId = () => {
-    if (!data || !startTrxIdInput.trim()) return;
-    const q = startTrxIdInput.trim();
-    const idx = data.findIndex((r) => r.nama.trim() === q);
-    if (idx === -1) {
-      toast.error(`ID Transaksi "${q}" tidak ditemukan.`);
+  // ── ID search → live range boundaries (mirrors WD section) ─────────────────
+  //
+  // Find every row whose ID Transaksi (nama) contains `query`
+  // (case-insensitive). Returns 1-indexed row numbers paired with the ID.
+  const findIdMatches = useCallback(
+    (query: string): { row: number; id: string }[] => {
+      if (!data) return [];
+      const trimmed = query.trim().toLowerCase();
+      if (!trimmed) return [];
+      const matches: { row: number; id: string }[] = [];
+      for (let i = 0; i < data.length; i += 1) {
+        if (data[i].nama.toLowerCase().includes(trimmed)) {
+          matches.push({ row: i + 1, id: data[i].nama });
+        }
+      }
+      return matches;
+    },
+    [data],
+  );
+
+  const startMatches = useMemo(() => findIdMatches(startIdQuery), [findIdMatches, startIdQuery]);
+  const endMatches   = useMemo(() => findIdMatches(endIdQuery),   [findIdMatches, endIdQuery]);
+
+  useEffect(() => {
+    if (startMatchIdx >= startMatches.length) setStartMatchIdx(0);
+  }, [startMatches.length, startMatchIdx]);
+
+  useEffect(() => {
+    if (endMatchIdx >= endMatches.length) setEndMatchIdx(0);
+  }, [endMatches.length, endMatchIdx]);
+
+  const startMatch = startMatches.length ? startMatches[Math.min(startMatchIdx, startMatches.length - 1)] : null;
+  const endMatch   = endMatches.length   ? endMatches[Math.min(endMatchIdx, endMatches.length - 1)]       : null;
+
+  // Live boundary application. ID Awal marks the last-processed transaction, so
+  // the range starts 1 transaction AFTER it (marked row excluded). ID Akhir is
+  // inclusive (unchanged). Empty boxes restore the full range.
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+    const total = data.length;
+    const startTrimmed = startIdQuery.trim();
+    const endTrimmed   = endIdQuery.trim();
+
+    if (!startTrimmed && !endTrimmed) {
+      if (startIndex !== 0) setStartIndex(0);
+      if (endIndex !== total - 1) setEndIndex(total - 1);
       return;
     }
-    setStartIndex(idx);
-    toast.success(`Baris ${idx + 1} — set awal (ID: ${q})`);
-  };
 
-  const setEndByTrxId = () => {
-    if (!data || !endTrxIdInput.trim()) return;
-    const q = endTrxIdInput.trim();
-    const idx = data.findIndex((r) => r.nama.trim() === q);
-    if (idx === -1) {
-      toast.error(`ID Transaksi "${q}" tidak ditemukan.`);
-      return;
+    const startTarget = startMatch ? startMatch.row : null; // 1-based marked row
+    const endTarget   = endMatch   ? endMatch.row   : null;
+
+    let nextStartIdx = startIndex ?? 0;
+    let nextEndIdx   = endIndex ?? total - 1;
+
+    // startTarget is the 1-based marked row; as a 0-based index it already
+    // points to the row AFTER the marked one ("mulai setelah").
+    if (startTarget !== null) nextStartIdx = startTarget;
+    else if (!startTrimmed) nextStartIdx = 0;
+    if (endTarget !== null) nextEndIdx = endTarget - 1;
+    else if (!endTrimmed) nextEndIdx = total - 1;
+
+    const startIsLast = startTarget !== null && startTarget >= total;
+    if (startIsLast) {
+      nextStartIdx = total; // > last index -> empty via selectedBounds
+      toast("ID penanda adalah transaksi terakhir — tidak ada transaksi setelahnya.");
+    } else if (nextStartIdx > nextEndIdx) {
+      [nextStartIdx, nextEndIdx] = [nextEndIdx, nextStartIdx];
+      toast.success("Rentang ditukar otomatis (awal > akhir).");
     }
-    setEndIndex(idx);
-    toast.success(`Baris ${idx + 1} — set akhir (ID: ${q})`);
-  };
 
-  const handleRowClick = (rowIndex: number) => {
-    const rowNumber = rowIndex + 1;
+    if (nextStartIdx !== startIndex) setStartIndex(nextStartIdx);
+    if (nextEndIdx !== endIndex) setEndIndex(nextEndIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, startIdQuery, endIdQuery, startMatch?.row, endMatch?.row]);
+
+  const handleRowClick = useCallback((rowIndex: number) => {
     if (markMode === "start") {
       setStartIndex(rowIndex);
       setMarkMode(null);
@@ -463,33 +536,33 @@ export function DpSection() {
       setEndIndex(rowIndex);
       setMarkMode(null);
     }
-  };
+  }, [markMode]);
 
-  const handleStartInput = (value: string) => {
-    const n = parseInt(value, 10);
-    if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
+  const handleStartInput = useCallback((value: string) => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) return;
+    const clamped = clamp(parsed, 1, totalRows);
     setStartIndex(clamped - 1);
-  };
+  }, [totalRows]);
 
-  const handleEndInput = (value: string) => {
-    const n = parseInt(value, 10);
-    if (isNaN(n)) return;
-    const clamped = clamp(n, 1, totalRows);
+  const handleEndInput = useCallback((value: string) => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) return;
+    const clamped = clamp(parsed, 1, totalRows);
     setEndIndex(clamped - 1);
-  };
+  }, [totalRows]);
 
-  // ── Output actions ────────────────────────────────────────────────────────
+  // â”€â”€ Output actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const copyTSV = async () => {
+  const copyTSV = useCallback(async () => {
     if (!filteredData.length) return;
     try {
       const tsv = filteredData
-        .map((r) => {
-          const cleanTrxId = String(r.nama || "").replace(/[\t\n\r]/g, "").trim();
-          const cleanUsername = String(r.userId || "").replace(/[\t\n\r]/g, "").trim();
-          const cleanAmount = String(r.deposit || "0").replace(/[\t\n\r]/g, "").trim();
-          const cleanDate = String(r.nomorRekening || "").replace(/[\t\n\r]/g, " ").trim();
+        .map((row) => {
+          const cleanTrxId = String(row.nama || "").replace(/[\t\n\r]/g, "").trim();
+          const cleanUsername = String(row.userId || "").replace(/[\t\n\r]/g, "").trim();
+          const cleanAmount = String(row.deposit || "0").replace(/[\t\n\r]/g, "").trim();
+          const cleanDate = String(row.nomorRekening || "").replace(/[\t\n\r]/g, " ").trim();
 
           return [
             cleanTrxId,
@@ -511,18 +584,18 @@ export function DpSection() {
     } catch {
       toast.error("Gagal menyalin.");
     }
-  };
+  }, [filteredData]);
 
-  const handleCopyDocQris = async () => {
+  const handleCopyDocQris = useCallback(async () => {
     if (!filteredData.length) return;
     try {
       // 6-column TSV: NAMA, NOMINAL, (hidden C), STATUS, KODE EWALLET, KODE WEB
       const tsv = filteredData
         .map(
-          (r) =>
+          (row) =>
             [
-              r.nama,              // Column A: NAMA (trxId)
-              r.deposit,           // Column B: NOMINAL (amount)
+              row.nama,            // Column A: NAMA (trxId)
+              row.deposit,         // Column B: NOMINAL (amount)
               "",                  // Column C: HIDDEN (empty)
               "COMPLETED",         // Column D: STATUS
               "",
@@ -537,30 +610,30 @@ export function DpSection() {
     } catch {
       toast.error("Gagal menyalin Doc Qris.");
     }
-  };
+  }, [filteredData]);
 
-  const exportXlsx = () => {
+  const exportXlsx = useCallback(() => {
     if (!filteredData.length) return;
     try {
       const rows = filteredData.map(rowToArr);
       const ws = XLSX.utils.aoa_to_sheet([OUTPUT_HEADERS, ...rows]);
 
-      ws["!cols"] = OUTPUT_HEADERS.map((header, i) => ({
-        wch: Math.max(header.length, ...rows.map((r) => String(r[i] ?? "").length)) + 2,
+      ws["!cols"] = OUTPUT_HEADERS.map((header, columnIndex) => ({
+        wch: Math.max(header.length, ...rows.map((row) => String(row[columnIndex] ?? "").length)) + 2,
       }));
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Output DP");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, ws, "Output DP");
 
       const baseName = file?.name.replace(/\.xlsx$/i, "") ?? "dp-output";
-      XLSX.writeFile(wb, `${baseName}_output.xlsx`);
+      XLSX.writeFile(workbook, `${baseName}_output.xlsx`);
       toast.success(`"${baseName}_output.xlsx" berhasil diunduh!`);
     } catch {
       toast.error("Gagal ekspor Excel.");
     }
-  };
+  }, [filteredData, file]);
 
-  // ── Derived booleans & shared styles ─────────────────────────────────────
+  // â”€â”€ Derived booleans & shared styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const isFullRange = totalRows > 0 && selectedBounds.minIdx === 0 && selectedBounds.maxIdx === totalRows - 1;
 
@@ -569,10 +642,10 @@ export function DpSection() {
     "rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-400/40 transition-all",
   ].join(" ");
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
-    <div className="flex flex-col gap-lg">
+    <div className="flex flex-col gap-ds-lg">
 
       <motion.div
         initial={{ opacity: 0, y: -4 }}
@@ -583,15 +656,15 @@ export function DpSection() {
         <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
         <span className="text-sm font-semibold text-white/90">QRIS HOKI DP</span>
         <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-          SUB: {DP_OUTPUT_SUB} &nbsp;·&nbsp; KODE TRANSAKSI: {DP_OUTPUT_KODE_TRANSAKSI}
+          SUB: {DP_OUTPUT_SUB} &nbsp;Â·&nbsp; KODE TRANSAKSI: {DP_OUTPUT_KODE_TRANSAKSI}
         </span>
       </motion.div>
 
-      {/* ── UPLOAD ZONE ────────────────────────────────────────────────── */}
+      {/* â”€â”€ UPLOAD ZONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         data-testid="dp-upload-zone"
         className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
-          flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-md
+          flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-ds-md
           ${isDragging
             ? "border-emerald-400/70 scale-[1.01]"
             : file
@@ -631,7 +704,7 @@ export function DpSection() {
               className="flex flex-col items-center gap-4"
             >
               <div className="w-14 h-14 rounded-full border-4 border-emerald-400/20 border-t-emerald-400 animate-spin" />
-              <p className="text-white/60 font-medium">Memproses data deposit…</p>
+              <p className="text-white/60 font-medium">Memproses data depositâ€¦</p>
             </motion.div>
           )}
 
@@ -656,20 +729,20 @@ export function DpSection() {
               {sheetNames.length > 1 && (
                 <div
                   className="flex items-center gap-2 flex-wrap justify-center"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
                 >
                   <span className="text-xs text-white/40">Sheet:</span>
-                  {sheetNames.map((s) => (
+                  {sheetNames.map((sheetName) => (
                     <button
-                      key={s}
+                      key={sheetName}
                       type="button"
-                      onClick={() => changeSheet(s)}
+                      onClick={() => changeSheet(sheetName)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
-                        ${s === selectedSheet
+                        ${sheetName === selectedSheet
                           ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
                           : "border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"}`}
                     >
-                      {s}
+                      {sheetName}
                     </button>
                   ))}
                 </div>
@@ -677,7 +750,7 @@ export function DpSection() {
 
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); reset(); }}
+                onClick={(event) => { event.stopPropagation(); reset(); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40
                   hover:text-red-400 hover:bg-red-400/10 border border-white/8 hover:border-red-400/20 transition-all"
               >
@@ -715,7 +788,7 @@ export function DpSection() {
         </AnimatePresence>
       </div>
 
-      {/* ── ERROR BANNER ───────────────────────────────────────────────── */}
+      {/* â”€â”€ ERROR BANNER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -740,24 +813,24 @@ export function DpSection() {
         )}
       </AnimatePresence>
 
-      {/* ── DATA PREVIEW ───────────────────────────────────────────────── */}
+      {/* â”€â”€ DATA PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AnimatePresence>
         {data && !error && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="flex flex-col gap-lg"
+            className="flex flex-col gap-ds-lg"
           >
             {/* Stat cards */}
             {stats && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-ds-md"
               >
                 {/* Row count */}
-                <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
                   <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
                     <ListOrdered size={20} className="text-white" />
                   </div>
@@ -771,7 +844,7 @@ export function DpSection() {
                 </div>
 
                 {/* Total deposit */}
-                <div className="flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
+                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
                   <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-ds-md shadow-cyan-500/30 shrink-0">
                     <Banknote size={20} className="text-white" />
                   </div>
@@ -784,7 +857,7 @@ export function DpSection() {
                 </div>
 
                 {/* Duplicate IDs or Total File count */}
-                <div className={`flex items-center gap-md px-lg py-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
+                <div className={`flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
                   <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
                     ${stats.dupCount > 0
                       ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
@@ -815,14 +888,14 @@ export function DpSection() {
             )}
 
             {/* Top bar: title + export buttons */}
-            <div className="flex items-center justify-between gap-md flex-wrap">
-              <div className="flex items-center gap-md">
+            <div className="flex items-center justify-between gap-ds-md flex-wrap">
+              <div className="flex items-center gap-ds-md">
                 <h2 className="text-base font-semibold text-white/85">Pratinjau Data DP</h2>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold border border-emerald-400/20">
                   {totalRows} total
                 </span>
               </div>
-              <div className="flex items-center gap-sm flex-wrap">
+              <div className="flex items-center gap-ds-sm flex-wrap">
                 <button
                   type="button"
                   onClick={exportXlsx}
@@ -865,8 +938,8 @@ export function DpSection() {
               </div>
             </div>
 
-            {/* ── Controls panel: row range + ID search + table filter ── */}
-            <div className="flex flex-col gap-md px-lg py-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
+            {/* â”€â”€ Controls panel: row range + ID search + table filter â”€â”€ */}
+            <div className="flex flex-col gap-ds-md px-ds-lg py-ds-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
 
               {/* Row range inputs + mark mode buttons */}
               <div className="flex flex-wrap items-center gap-3">
@@ -880,12 +953,12 @@ export function DpSection() {
                     min={1}
                     max={totalRows}
                     value={startRow}
-                    onChange={(e) => handleStartInput(e.target.value)}
+                    onChange={(event) => handleStartInput(event.target.value)}
                     className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
                   />
                 </div>
 
-                <span className="text-white/20 text-xs">—</span>
+                <span className="text-white/20 text-xs">â€”</span>
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-white/30">Sampai</span>
@@ -894,26 +967,9 @@ export function DpSection() {
                     min={1}
                     max={totalRows}
                     value={endRow}
-                    onChange={(e) => handleEndInput(e.target.value)}
+                    onChange={(event) => handleEndInput(event.target.value)}
                     className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
                   />
-                </div>
-
-                <div className="flex gap-1.5">
-                  <GlassBtn
-                    active={markMode === "start"}
-                    activeClass="bg-emerald-500/15 border-emerald-400/40 text-emerald-300"
-                    onClick={() => setMarkMode((m) => m === "start" ? null : "start")}
-                  >
-                    <Flag size={11} />Tandai Awal
-                  </GlassBtn>
-                  <GlassBtn
-                    active={markMode === "end"}
-                    activeClass="bg-rose-500/15 border-rose-400/40 text-rose-300"
-                    onClick={() => setMarkMode((m) => m === "end" ? null : "end")}
-                  >
-                    <FlagOff size={11} />Tandai Akhir
-                  </GlassBtn>
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
@@ -934,59 +990,67 @@ export function DpSection() {
 
               <div className="border-t border-white/6" />
 
-              {/* Dual ID Transaksi search + table filter */}
-              <div className="flex flex-wrap items-center gap-4">
-                {/* Start ID group */}
-                <div className="flex items-center gap-2">
-                  <Flag size={13} className="text-emerald-400/60 shrink-0" />
-                  <span className="text-xs font-semibold text-white/40 shrink-0">Awal:</span>
-                  <input
-                    type="text"
-                    placeholder="Paste ID Transaksi Awal…"
-                    value={startTrxIdInput}
-                    onChange={(e) => setStartTrxIdInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setStartByTrxId()}
-                    className={`w-44 h-7 px-2.5 text-xs font-mono ${inputCls}`}
-                  />
-                  <GlassBtn
-                    disabled={!startTrxIdInput.trim()}
-                    active={false}
-                    onClick={setStartByTrxId}
-                  >
-                    <Flag size={11} />Set Awal
-                  </GlassBtn>
-                </div>
+              {/* ID range pickers (two independent boxes) — sama dengan WD */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-md">
+                <IdRangePicker
+                  label="ID Awal"
+                  accent="emerald"
+                  icon={<Flag size={12} />}
+                  query={startIdQuery}
+                  onQueryChange={(value) => { setStartIdQuery(value); setStartMatchIdx(0); }}
+                  matches={startMatches}
+                  matchIdx={startMatchIdx}
+                  onCycle={(direction) => {
+                    if (!startMatches.length) return;
+                    setStartMatchIdx((current) => {
+                      const next = current + direction;
+                      if (next < 0) return startMatches.length - 1;
+                      if (next >= startMatches.length) return 0;
+                      return next;
+                    });
+                  }}
+                  onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
+                  inputCls={inputCls}
+                  testidPrefix="start"
+                  excludeMarked
+                />
+                <IdRangePicker
+                  label="ID Akhir"
+                  accent="rose"
+                  icon={<FlagOff size={12} />}
+                  query={endIdQuery}
+                  onQueryChange={(value) => { setEndIdQuery(value); setEndMatchIdx(0); }}
+                  matches={endMatches}
+                  matchIdx={endMatchIdx}
+                  onCycle={(direction) => {
+                    if (!endMatches.length) return;
+                    setEndMatchIdx((current) => {
+                      const next = current + direction;
+                      if (next < 0) return endMatches.length - 1;
+                      if (next >= endMatches.length) return 0;
+                      return next;
+                    });
+                  }}
+                  onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
+                  inputCls={inputCls}
+                  testidPrefix="end"
+                />
+              </div>
 
-                {/* End ID group */}
-                <div className="flex items-center gap-2">
-                  <FlagOff size={13} className="text-rose-400/60 shrink-0" />
-                  <span className="text-xs font-semibold text-white/40 shrink-0">Akhir:</span>
-                  <input
-                    type="text"
-                    placeholder="Paste ID Transaksi Akhir…"
-                    value={endTrxIdInput}
-                    onChange={(e) => setEndTrxIdInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setEndByTrxId()}
-                    className={`w-44 h-7 px-2.5 text-xs font-mono ${inputCls}`}
-                  />
-                  <GlassBtn
-                    disabled={!endTrxIdInput.trim()}
-                    active={false}
-                    onClick={setEndByTrxId}
-                  >
-                    <FlagOff size={11} />Set Akhir
-                  </GlassBtn>
-                </div>
+              <div className="border-t border-white/6" />
 
-                {/* Table text filter (right-aligned) */}
+              {/* Table text filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Hash size={13} className="text-white/30 shrink-0" />
+                <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">FILTER:</span>
                 <div className="ml-auto flex items-center gap-2">
                   <div className="relative">
                     <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Filter tabel…"
+                      placeholder="Filter tabel..."
                       value={tableFilter}
-                      onChange={(e) => setTableFilter(e.target.value)}
+                      onChange={(event) => setTableFilter(event.target.value)}
                       className={`w-32 h-7 pl-7 pr-7 text-xs ${inputCls}`}
                     />
                     {tableFilter && (
@@ -1018,7 +1082,7 @@ export function DpSection() {
                       : "bg-rose-500/8 border-rose-400/20 text-rose-300"}`}
                 >
                   <Flag size={12} />
-                  Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris di tabel.
+                  Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> â€” klik nomor baris di tabel.
                   <button onClick={() => setMarkMode(null)} className="ml-auto opacity-60 hover:opacity-100">
                     <X size={12} />
                   </button>
@@ -1056,7 +1120,7 @@ export function DpSection() {
               </motion.div>
             )}
 
-            {/* ── Preview table ───────────────────────────────────────── */}
+            {/* â”€â”€ Preview table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
               <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
                 <table className="w-full text-sm text-left border-collapse">
@@ -1065,9 +1129,9 @@ export function DpSection() {
                     style={{ background: "rgba(5,46,22,0.75)", backdropFilter: "blur(20px)" }}
                   >
                     <tr>
-                      <th className="px-md py-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
-                      {OUTPUT_HEADERS.map((header, i) => (
-                        <th key={i} className="px-md py-sm font-semibold whitespace-nowrap border-b border-white/10">
+                      <th className="px-ds-md py-ds-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
+                      {OUTPUT_HEADERS.map((header, columnIndex) => (
+                        <th key={columnIndex} className="px-ds-md py-ds-sm font-semibold whitespace-nowrap border-b border-white/10">
                           {header}
                         </th>
                       ))}
@@ -1075,11 +1139,11 @@ export function DpSection() {
                   </thead>
 
                   <tbody className="font-mono text-xs divide-y divide-white/4">
-                    {data.map((row, i) => {
-                      const rowNumber = i + 1;
-                      const inRange   = i >= selectedBounds.minIdx && i <= selectedBounds.maxIdx;
-                      const isStart   = i === startIndex;
-                      const isEnd     = i === endIndex;
+                    {data.map((row, rowIndex) => {
+                      const rowNumber = rowIndex + 1;
+                      const inRange   = rowIndex >= selectedBounds.minIdx && rowIndex <= selectedBounds.maxIdx;
+                      const isStart   = rowIndex === startIndex;
+                      const isEnd     = rowIndex === endIndex;
                       const isDup = duplicateTrxIds.has(row.nama);
 
                       // Apply text filter
@@ -1095,7 +1159,7 @@ export function DpSection() {
 
                       return (
                         <tr
-                          key={i}
+                          key={rowIndex}
                           className={`transition-colors duration-100
                             ${inRange ? "hover:bg-white/3" : "opacity-20"}
                             ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
@@ -1105,7 +1169,7 @@ export function DpSection() {
                           {/* Row number / mark cell */}
                           <td
                             className={`px-3 py-2.5 text-center align-middle select-none ${markMode ? "cursor-pointer" : ""}`}
-                            onClick={() => markMode && handleRowClick(i)}
+                            onClick={() => markMode && handleRowClick(rowIndex)}
                           >
                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold transition-all
                               ${isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
