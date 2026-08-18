@@ -111,104 +111,108 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
     totalDuplicateCount: 0,
   };
 
-  if (!rawText || typeof rawText !== "string") return result;
+  if (!rawText || typeof rawText !== "string" || !rawText.trim()) return result;
 
-  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const rowBlocks: string[][] = [];
-  let currentBlock: string[] = [];
+  let chunks: string[] = [];
+  const rowPattern = /(?:^|\r?\n|\b|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s*(\d{1,4})?\s*((?:SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*[A-Za-z0-9]+)/gi;
+  const matchIndices: number[] = [];
+  let m: RegExpExecArray | null;
 
-  for (const line of lines) {
-    // A new table row begins with index digits + whitespace/tab + Category - Provider
-    const isNewRow = line.match(/^(\d+)\s+([A-Za-z0-9\s]+-\s*[\w\s]+)/i);
-    if (isNewRow) {
-      if (currentBlock.length > 0) {
-        rowBlocks.push(currentBlock);
-      }
-      currentBlock = [line];
-    } else {
-      if (currentBlock.length > 0) {
-        currentBlock.push(line);
-      }
-    }
+  while ((m = rowPattern.exec(rawText)) !== null) {
+    // If matched after IP, advance index to where the row index/category begins
+    const matchStr = m[0];
+    const catIdx = matchStr.search(/(?:\d{1,4}\s*)?(?:SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*/i);
+    matchIndices.push(m.index + (catIdx > 0 ? catIdx : 0));
   }
-  if (currentBlock.length > 0) {
-    rowBlocks.push(currentBlock);
+
+  if (matchIndices.length > 0) {
+    for (let i = 0; i < matchIndices.length; i++) {
+      const start = matchIndices[i];
+      const end = i + 1 < matchIndices.length ? matchIndices[i + 1] : rawText.length;
+      chunks.push(rawText.slice(start, end).trim());
+    }
+  } else {
+    const ticketPattern = /Ticket\s*:\s*\d+/gi;
+    const ticketIndices: number[] = [];
+    while ((m = ticketPattern.exec(rawText)) !== null) {
+      ticketIndices.push(m.index);
+    }
+    if (ticketIndices.length > 0) {
+      for (let i = 0; i < ticketIndices.length; i++) {
+        const start = ticketIndices[i];
+        const end = i + 1 < ticketIndices.length ? ticketIndices[i + 1] : rawText.length;
+        chunks.push(rawText.slice(start, end).trim());
+      }
+    } else {
+      chunks = [rawText.trim()];
+    }
   }
 
   const seenTickets = new Set<string>();
 
-  for (const block of rowBlocks) {
-    const firstLine = block[0] || "";
-    const firstMatch = firstLine.match(/^(\d+)\s+([A-Za-z0-9\s]+-\s*[\w\s]+)/i);
-    if (!firstMatch) continue;
+  for (const chunk of chunks) {
+    if (!chunk) continue;
 
-    const rowNumber = firstMatch[1];
-    const fullCategory = firstMatch[2].trim();
-    const catParts = fullCategory.split("-");
-    const category = catParts[0].trim().toUpperCase();
-    const provider = catParts.slice(1).join("-").trim();
+    const ticketMatch = chunk.match(/Ticket\s*:\s*(\d+)/i) || chunk.match(/\b(\d{14,25})\b/);
+    const ticketId = ticketMatch ? ticketMatch[1] : "";
 
-    let ticketId = "";
-    let gameName = "";
-    let transTime = "";
-    let settleTime = "";
+    let category = "SLOT";
+    let provider = "PGSOFT";
+    const catMatch = chunk.match(/\b(SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*([A-Za-z0-9]+)/i);
+    if (catMatch) {
+      category = catMatch[1].trim().toUpperCase();
+      provider = catMatch[2].trim().toUpperCase();
+    }
+
     let status = "WIN";
-    let memberWinRaw = "0";
-    let ipAddress = "";
+    const statusMatch = chunk.match(/\b(WIN|LOSE|CANCEL|DRAW)\b/i);
+    if (statusMatch) {
+      status = statusMatch[1].toUpperCase();
+    }
 
-    for (let i = 0; i < block.length; i++) {
-      const line = block[i];
+    const dateMatches = Array.from(chunk.matchAll(/\b(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\b/g));
+    const transTime = dateMatches[0] ? dateMatches[0][1] : "";
+    const confirmedTime = dateMatches.length > 1 ? dateMatches[dateMatches.length - 1][1] : transTime;
 
-      // 1. Ticket ID
-      const ticketMatch = line.match(/Ticket\s*:\s*(\d+)/i);
-      if (ticketMatch) {
-        ticketId = ticketMatch[1];
-      }
-
-      // 2. Trans Time & Game Name
-      const gameMatch = line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(.+)$/);
-      if (
-        gameMatch &&
-        !line.includes("WIN") &&
-        !line.includes("LOSE") &&
-        !line.includes("CANCEL") &&
-        !line.includes("DRAW")
-      ) {
-        transTime = gameMatch[1];
-        gameName = gameMatch[2].replace(/BET\s*Details/i, "").trim();
-      }
-
-      // 3. Settle Time, Status, and Win Amount
-      if (
-        line.includes("WIN") ||
-        line.includes("LOSE") ||
-        line.includes("CANCEL") ||
-        line.includes("DRAW")
-      ) {
-        const statusMatch = line.match(/\b(WIN|LOSE|CANCEL|DRAW)\b/i);
-        if (statusMatch) {
-          status = statusMatch[1].toUpperCase();
-        }
-
-        const settleMatch = line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/);
-        if (settleMatch) {
-          settleTime = settleMatch[1];
-        }
-
-        const amountMatch = line.match(
-          /\b(WIN|LOSE|CANCEL|DRAW)\b\s*([0-9,]+(?:\.\d{2})?)/i,
-        );
-        if (amountMatch) {
-          memberWinRaw = amountMatch[2];
-        }
-      }
-
-      // 4. IP Address
-      const ipMatch = line.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
-      if (ipMatch) {
-        ipAddress = ipMatch[0];
+    let gameName = "";
+    const gameMatch1 = chunk.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
+    if (gameMatch1 && gameMatch1[1].trim()) {
+      gameName = gameMatch1[1].trim();
+    }
+    if (!gameName) {
+      const gameMatch2 = chunk.match(/Ticket\s*:\s*\d+\s*(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
+      if (gameMatch2 && gameMatch2[1].trim()) {
+        gameName = gameMatch2[1].trim();
       }
     }
+    if (!gameName) {
+      const lines = chunk.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      for (let i = 0; i < lines.length; i++) {
+        if (/BET\s*Details/i.test(lines[i]) && i > 0) {
+          const prev = lines[i - 1].replace(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/, "").replace(/Ticket\s*:\s*\d+/, "").trim();
+          if (prev && !/WIN|LOSE|CANCEL|DRAW/i.test(prev)) {
+            gameName = prev;
+            break;
+          }
+        }
+      }
+    }
+
+    if (gameName) {
+      gameName = gameName.replace(/^\d+\s+/, "").trim();
+    }
+
+    let memberWinNum = 0;
+    let memberWinFormatted = "0";
+    const winAmountMatch = chunk.match(/(?:WIN|LOSE|CANCEL|DRAW)\s*([0-9,]+(?:\.\d{2})?)/i);
+    if (winAmountMatch) {
+      const rawAmt = winAmountMatch[1];
+      memberWinFormatted = rawAmt.replace(/\.00$/, "").replace(/\.\d+$/, "");
+      memberWinNum = Number(rawAmt.replace(/,/g, "")) || 0;
+    }
+
+    const ipMatch = chunk.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+    const ipAddress = ipMatch ? ipMatch[0] : "";
 
     if (status !== "WIN") {
       result.totalNonWinCount++;
@@ -220,28 +224,25 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
       continue;
     }
 
-    if (ticketId) {
-      seenTickets.add(ticketId);
+    if (ticketId) seenTickets.add(ticketId);
+
+    if (ticketId || gameName) {
+      result.totalWinCount++;
+      result.rows.push({
+        no: String(result.rows.length + 1),
+        category,
+        provider,
+        ticketId,
+        transTime,
+        gameName: gameName || "Game Details",
+        settleTime: confirmedTime || transTime,
+        status,
+        memberWinRaw: memberWinFormatted,
+        memberWinFormatted,
+        memberWinNum,
+        ipAddress,
+      });
     }
-
-    const cleanNum = Number(memberWinRaw.replace(/,/g, "")) || 0;
-    const formattedWin = memberWinRaw.replace(/\.\d+$/, "");
-
-    result.totalWinCount++;
-    result.rows.push({
-      no: rowNumber,
-      category,
-      provider,
-      ticketId,
-      transTime,
-      gameName: gameName || "Game Details",
-      settleTime: settleTime || transTime,
-      status,
-      memberWinRaw,
-      memberWinFormatted: formattedWin,
-      memberWinNum: cleanNum,
-      ipAddress,
-    });
   }
 
   return result;
@@ -286,18 +287,17 @@ export function renderCheckPusatTemplate(
   if (!groups.length) return "";
 
   const parts: string[] = [];
-  parts.push(options.idPlayer.trim());
+  if (options.idPlayer.trim()) {
+    parts.push(options.idPlayer.trim());
+  }
 
   for (const group of groups) {
-    parts.push(""); // blank line before group
+    if (parts.length > 0) parts.push("");
     parts.push(group.header.toUpperCase());
     parts.push(group.game);
-    parts.push(""); // blank line before tickets
     for (const ticket of group.tickets) {
-      const base = `-Ticket : ${ticket.ticketId} | ${ticket.memberWinFormatted}`;
-      parts.push(
-        ticket.settleTime ? `${base} | ${ticket.settleTime}` : base,
-      );
+      const base = `Ticket : ${ticket.ticketId} | ${ticket.memberWinFormatted}`;
+      parts.push(ticket.settleTime ? `${base} | ${ticket.settleTime}` : base);
     }
   }
 
@@ -309,6 +309,87 @@ export function renderCheckPusatTemplate(
 
 function formatCurrency(value: number): string {
   return "Rp " + value.toLocaleString("id-ID");
+}
+
+export function parseCheckPusat(rawText: string) {
+  const parsed = parseCheckPusatRows(rawText);
+  const tickets = parsed.rows.map((r) => ({
+    ticketId: r.ticketId,
+    category: r.category,
+    provider: r.provider,
+    game: r.gameName,
+    transTime: r.transTime,
+    confirmedTime: r.settleTime,
+    status: r.status,
+    memberWin: r.memberWinNum,
+    memberWinFormatted: r.memberWinFormatted,
+    ipAddress: r.ipAddress,
+  }));
+  return {
+    tickets,
+    skippedNonWin: parsed.totalNonWinCount,
+    skippedDuplicate: parsed.totalDuplicateCount,
+    totalParsed: parsed.totalWinCount + parsed.totalNonWinCount,
+  };
+}
+
+export function groupTickets(tickets: any[]) {
+  const converted: CheckPusatRow[] = tickets.map((t, idx) => ({
+    no: String(idx + 1),
+    category: t.category,
+    provider: t.provider,
+    ticketId: t.ticketId,
+    transTime: t.transTime,
+    gameName: t.game || t.gameName,
+    settleTime: t.confirmedTime || t.settleTime,
+    status: t.status || "WIN",
+    memberWinRaw: t.memberWinFormatted || String(t.memberWin),
+    memberWinFormatted: t.memberWinFormatted || String(t.memberWin),
+    memberWinNum: t.memberWin || 0,
+    ipAddress: t.ipAddress || "",
+  }));
+  const groups = groupCheckPusatRows(converted);
+  return groups.map((g) => ({
+    header: g.header,
+    game: g.game,
+    tickets: g.tickets.map((r) => ({
+      ticketId: r.ticketId,
+      category: r.category,
+      provider: r.provider,
+      game: r.gameName,
+      transTime: r.transTime,
+      confirmedTime: r.settleTime,
+      status: r.status,
+      memberWin: r.memberWinNum,
+      memberWinFormatted: r.memberWinFormatted,
+      ipAddress: r.ipAddress,
+    })),
+  }));
+}
+
+export function renderTemplate(
+  tickets: any[],
+  options: { idPlayer?: string; closingLine?: string } = {},
+) {
+  if (!tickets || !tickets.length) return "";
+  const converted: CheckPusatRow[] = tickets.map((t, idx) => ({
+    no: String(idx + 1),
+    category: t.category,
+    provider: t.provider,
+    ticketId: t.ticketId,
+    transTime: t.transTime,
+    gameName: t.game || t.gameName,
+    settleTime: t.confirmedTime || t.settleTime,
+    status: t.status || "WIN",
+    memberWinRaw: t.memberWinFormatted || String(t.memberWin),
+    memberWinFormatted: t.memberWinFormatted || String(t.memberWin),
+    memberWinNum: t.memberWin || 0,
+    ipAddress: t.ipAddress || "",
+  }));
+  return renderCheckPusatTemplate(converted, {
+    idPlayer: options.idPlayer || "",
+    closingLine: options.closingLine || CLOSING_LINE_DEFAULT,
+  });
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
