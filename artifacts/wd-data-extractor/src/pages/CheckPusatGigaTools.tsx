@@ -132,7 +132,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
       chunks.push(rawText.slice(start, end).trim());
     }
   } else {
-    const ticketPattern = /Ticket\s*:\s*\d+/gi;
+    const ticketPattern = /Ticket\s*:\s*[A-Za-z0-9_\-]+/gi;
     const ticketIndices: number[] = [];
     while ((m = ticketPattern.exec(rawText)) !== null) {
       ticketIndices.push(m.index);
@@ -153,7 +153,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
   for (const chunk of chunks) {
     if (!chunk) continue;
 
-    const ticketMatch = chunk.match(/Ticket\s*:\s*(\d+)/i) || chunk.match(/\b(\d{14,25})\b/);
+    const ticketMatch = chunk.match(/Ticket\s*:\s*([A-Za-z0-9_\-]+)/i) || chunk.match(/\b([A-Za-z0-9]{14,35})\b/);
     const ticketId = ticketMatch ? ticketMatch[1] : "";
 
     let category = "SLOT";
@@ -180,7 +180,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
       gameName = gameMatch1[1].trim();
     }
     if (!gameName) {
-      const gameMatch2 = chunk.match(/Ticket\s*:\s*\d+\s*(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
+      const gameMatch2 = chunk.match(/Ticket\s*:\s*[A-Za-z0-9_\-]+\s*(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
       if (gameMatch2 && gameMatch2[1].trim()) {
         gameName = gameMatch2[1].trim();
       }
@@ -189,7 +189,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
       const lines = chunk.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       for (let i = 0; i < lines.length; i++) {
         if (/BET\s*Details/i.test(lines[i]) && i > 0) {
-          const prev = lines[i - 1].replace(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/, "").replace(/Ticket\s*:\s*\d+/, "").trim();
+          const prev = lines[i - 1].replace(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/, "").replace(/Ticket\s*:\s*[A-Za-z0-9_\-]+/i, "").trim();
           if (prev && !/WIN|LOSE|CANCEL|DRAW/i.test(prev)) {
             gameName = prev;
             break;

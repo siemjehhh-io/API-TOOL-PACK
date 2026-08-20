@@ -280,6 +280,36 @@ describe("parseCheckPusat — CHECK PUSAT GIGA panel parser", () => {
       expect(result.tickets[0].confirmedTime).toBe("2026-06-04 14:46:43");
     });
 
+    it("parses CQ9 rows with alphanumeric ticket ids (e.g. VPCQS...)", () => {
+      const FIXTURE_CQ9_ALPHANUMERIC = `1	SLOT - CQ9
+Ticket : VPCQS28JleELtF6YpYyk708868
+2026-08-19 19:15:14	Mahjong Wilds
+BET Details
+2026-08-20 07:12:12	18,000.00	18,000.00	0.00	WIN	2,137,800.00
+0.00	-1,710,240.00
+0.00
+0.00	-427,560.00
+0.00	80%	0.000%	114.8.234.141
+2	SLOT - CQ9
+Ticket : VPCQS28qmHsG2VFnVXpo436664
+2026-08-19 17:24:31	Mahjong Wilds
+BET Details
+2026-08-20 05:22:36	15,000.00	15,000.00	0.00	WIN	1,312,500.00
+0.00	-1,050,000.00
+0.00
+0.00	-262,500.00
+0.00	80%	0.000%	114.8.234.141`;
+
+      const result = parseCheckPusat(FIXTURE_CQ9_ALPHANUMERIC);
+      expect(result.tickets).toHaveLength(2);
+      expect(result.tickets[0].ticketId).toBe("VPCQS28JleELtF6YpYyk708868");
+      expect(result.tickets[0].memberWinFormatted).toBe("2,137,800");
+      expect(result.tickets[0].provider).toBe("CQ9");
+      expect(result.tickets[0].game).toBe("Mahjong Wilds");
+      expect(result.tickets[1].ticketId).toBe("VPCQS28qmHsG2VFnVXpo436664");
+      expect(result.tickets[1].memberWinFormatted).toBe("1,312,500");
+    });
+
     it("extracts ticket id, category, provider, game, member win", () => {
       const result = parseCheckPusat(FIXTURE_NINE_PGSOFT_WINS);
       const first = result.tickets.find(
