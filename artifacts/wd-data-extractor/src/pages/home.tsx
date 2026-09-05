@@ -17,6 +17,7 @@ import {
   Hash,
   Layers,
   ListOrdered,
+  QrCode,
   Search,
   Shield,
   TableProperties,
@@ -24,6 +25,7 @@ import {
   Trophy,
   Upload,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
