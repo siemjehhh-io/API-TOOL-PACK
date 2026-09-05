@@ -24,8 +24,37 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-// Reuse html table helper and sorter from GigaCopyDpHoki
-import { htmlTableToGrid, sortByDateAsc } from "./GigaCopyDpHoki";
+function htmlTableToGrid(html: string): string[][] {
+  if (typeof DOMParser === "undefined") return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const table = doc.querySelector("table");
+    if (!table) {
+      return html
+        .split(/\r?\n/)
+        .map((line) => line.split("\t").map((cell) => cell.trim()))
+        .filter((row) => row.some(Boolean));
+    }
+    const rows = Array.from(table.querySelectorAll("tr"));
+    return rows.map((tr) =>
+      Array.from(tr.querySelectorAll("th, td")).map((td) => (td.textContent || "").trim())
+    );
+  } catch {
+    return html
+      .split(/\r?\n/)
+      .map((line) => line.split("\t").map((cell) => cell.trim()))
+      .filter((row) => row.some(Boolean));
+  }
+}
+
+function sortByDateAsc<T extends { date?: string; keterangan?: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const da = new Date(a.date || a.keterangan || 0).getTime();
+    const db = new Date(b.date || b.keterangan || 0).getTime();
+    return (isNaN(da) ? 0 : da) - (isNaN(db) ? 0 : db);
+  });
+}
 
 export interface QrisAjaibOzzoRow {
   nama: string;
