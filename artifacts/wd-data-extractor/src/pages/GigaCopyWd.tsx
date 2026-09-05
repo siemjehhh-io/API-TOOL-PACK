@@ -620,7 +620,7 @@ export default function GigaCopyWd() {
       }
 
       // Chronological sort if dates are present
-      rows = sortByDateAsc(rows);
+      rows = [...rows].sort((a, b) => sortByDateAsc(a.jamInput, b.jamInput));
 
       setParsedRows(rows);
       setIsProcessing(false);
