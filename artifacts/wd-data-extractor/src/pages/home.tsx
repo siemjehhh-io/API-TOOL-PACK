@@ -44,6 +44,7 @@ const GigaCopyDpZenpay = lazy(() => import("@/pages/GigaCopyDpZenpay"));
 const GigaCopyWd = lazy(() => import("@/pages/GigaCopyWd"));
 const GigaSmartMutasi = lazy(() => import("@/pages/GigaSmartMutasi"));
 const CheckPusatGigaTools = lazy(() => import("@/pages/CheckPusatGigaTools"));
+const WdQrisAjaibOzzo = lazy(() => import("@/pages/WdQrisAjaibOzzo"));
 const PhishShield = lazy(() => import("@/pages/PhishShield"));
 
 // Lightweight spinner shown while a tab's chunk is being fetched.
@@ -343,7 +344,7 @@ export default function Home() {
   const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
   const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "giga-smart-mutasi" | "check-pusat">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
-  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd">("qrishoki");
+  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd" | "qris-ozzo">("qrishoki");
 
   // â”€â”€ WD extractor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -873,6 +874,17 @@ export default function Home() {
                   >
                     <ArrowUpFromLine size={13} />
                     WD GIGA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("qris-ozzo")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "qris-ozzo"
+                        ? "bg-amber-600 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <Zap size={13} />
+                    WD QRIS AJAIB OZZO
                   </button>
                 </div>
                 <span className="text-[11px] font-mono text-white/30 hidden md:inline">
@@ -1569,6 +1581,7 @@ export default function Home() {
               {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
               {activeGigaTab === "bonus" && <GigaCopyBonus />}
               {activeGigaTab === "wd" && <GigaCopyWd />}
+              {activeGigaTab === "qris-ozzo" && <WdQrisAjaibOzzo />}
             </Suspense>
           </>
         )}
