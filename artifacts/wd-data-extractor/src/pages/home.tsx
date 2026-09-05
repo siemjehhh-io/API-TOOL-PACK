@@ -342,9 +342,10 @@ export default function Home() {
   // ── Category & Tab ────────────────────────────────────────────────────────────
 
   const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
-  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "giga-smart-mutasi" | "check-pusat">("giga");
+  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi" | "check-pusat">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
-  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd" | "qris-ozzo">("qrishoki");
+  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd">("qrishoki");
+  const [activeOzzoTab, setActiveOzzoTab] = useState<"qris-ajaib">("qris-ajaib");
 
   // â”€â”€ WD extractor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -801,6 +802,17 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setActiveCategory("ozzo")}
+                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
+                    ${activeCategory === "ozzo"
+                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/25 ring-1 ring-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                >
+                  <Zap size={14} />
+                  OZZO TOOLS
+                </button>
+                <button
+                  type="button"
                   onClick={() => setActiveCategory("qris-hoki")}
                   className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
                     ${activeCategory === "qris-hoki"
@@ -824,7 +836,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Sub-Tab Bar (Only for Giga Panel & QRIS Hoki) */}
+            {/* Sub-Tab Bar (For Giga Panel, Ozzo & QRIS Hoki) */}
             {activeCategory === "giga" && (
               <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
                 <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -875,20 +887,33 @@ export default function Home() {
                     <ArrowUpFromLine size={13} />
                     WD GIGA
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("qris-ozzo")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "qris-ozzo"
-                        ? "bg-amber-600 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <Zap size={13} />
-                    WD QRIS AJAIB OZZO
-                  </button>
                 </div>
                 <span className="text-[11px] font-mono text-white/30 hidden md:inline">
                   GIGA PANEL TOOLS
+                </span>
+              </div>
+            )}
+
+            {activeCategory === "ozzo" && (
+              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
+                    PILIH PANEL:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveOzzoTab("qris-ajaib")}
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeOzzoTab === "qris-ajaib"
+                        ? "bg-amber-600 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <QrCode size={13} />
+                    WD QRIS AJAIB OZZO
+                  </button>
+                </div>
+                <span className="text-[11px] font-mono text-amber-400/50 hidden md:inline">
+                  OZZO TOOLS
                 </span>
               </div>
             )}
@@ -1581,9 +1606,15 @@ export default function Home() {
               {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
               {activeGigaTab === "bonus" && <GigaCopyBonus />}
               {activeGigaTab === "wd" && <GigaCopyWd />}
-              {activeGigaTab === "qris-ozzo" && <WdQrisAjaibOzzo />}
             </Suspense>
           </>
+        )}
+
+        {/* OZZO category content */}
+        {mainSection === "formula" && activeCategory === "ozzo" && (
+          <Suspense fallback={<TabLoadingFallback />}>
+            {activeOzzoTab === "qris-ajaib" && <WdQrisAjaibOzzo />}
+          </Suspense>
         )}
 
         {mainSection === "mutasi" && (
