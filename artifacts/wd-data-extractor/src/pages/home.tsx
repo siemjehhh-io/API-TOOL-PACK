@@ -804,17 +804,6 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveCategory("ozzo")}
-                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
-                    ${activeCategory === "ozzo"
-                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/25 ring-1 ring-white/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                >
-                  <Zap size={14} />
-                  OZZO TOOLS
-                </button>
-                <button
-                  type="button"
                   onClick={() => setActiveCategory("qris-hoki")}
                   className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
                     ${activeCategory === "qris-hoki"
@@ -834,6 +823,17 @@ export default function Home() {
                 >
                   <Trophy size={14} />
                   CHECK PUSAT GIGA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory("ozzo")}
+                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
+                    ${activeCategory === "ozzo"
+                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/25 ring-1 ring-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                >
+                  <Zap size={14} />
+                  OZZO TOOLS
                 </button>
               </div>
             </div>
