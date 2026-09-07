@@ -238,31 +238,45 @@
   }
 }
 
-/* ── Eye-Friendly Soft Neumorphism Utilities (Anti-Glare) ── */
+/* ── Tactile 3D Neumorphism & Claymorphism Utilities ── */
 .neu-flat {
   background: #FDFBD4;
-  box-shadow: 4px 4px 12px rgba(125, 115, 65, 0.14), -3px -3px 10px rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(210, 202, 148, 0.45);
+  box-shadow:
+    0 8px 20px -3px rgba(85, 75, 25, 0.16),
+    0 3px 6px -2px rgba(85, 75, 25, 0.1),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.6);
+  border: 2px solid #D5C988;
 }
 
 .neu-card {
-  background: linear-gradient(145deg, #FDFBD4 0%, #F5F1B8 100%);
-  box-shadow: 6px 6px 18px rgba(125, 115, 65, 0.16), -4px -4px 12px rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(210, 202, 148, 0.45);
+  background: linear-gradient(145deg, #FEFDE8 0%, #F5F0B5 100%);
+  box-shadow:
+    0 10px 24px -4px rgba(85, 75, 25, 0.18),
+    0 4px 8px -2px rgba(85, 75, 25, 0.12),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(160, 150, 90, 0.2);
+  border: 2px solid #D5C988;
 }
 
 .neu-inset {
-  background: #F5F1BD;
-  box-shadow: inset 3px 3px 8px rgba(125, 115, 65, 0.18), inset -3px -3px 8px rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(210, 202, 148, 0.45);
+  background: #F3EEA8;
+  box-shadow:
+    inset 3px 3px 8px rgba(95, 85, 30, 0.2),
+    inset -2px -2px 6px rgba(255, 255, 255, 0.6),
+    0 1px 2px rgba(255, 255, 255, 0.8);
+  border: 2px solid #CDBF78;
 }
 
 /* ── Light Claymorphism Ornaments & Buttons ── */
 .clay-card {
-  background: linear-gradient(160deg, #FDFBD4 0%, #F3EFB2 100%);
+  background: linear-gradient(160deg, #FFFFFF 0%, #F5F0B5 100%);
   border-radius: 1.75rem;
-  box-shadow: 8px 8px 20px rgba(125, 115, 65, 0.14), -4px -4px 12px rgba(255, 255, 255, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(210, 202, 148, 0.45);
+  box-shadow:
+    0 12px 28px -6px rgba(85, 75, 25, 0.22),
+    0 4px 10px -2px rgba(85, 75, 25, 0.12),
+    inset 0 2px 3px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 4px rgba(160, 150, 90, 0.25);
+  border: 2px solid #D5C988;
 }
 
 .clay-btn-green {
@@ -270,23 +284,29 @@
   color: #FFFFFF;
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  box-shadow: 0 8px 18px -4px rgba(116, 163, 85, 0.35), inset 0 1.5px 2px rgba(255, 255, 255, 0.35), inset 0 -2px 3px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 10px 22px -4px rgba(116, 163, 85, 0.45),
+    inset 0 2px 3px rgba(255, 255, 255, 0.45),
+    inset 0 -3px 4px rgba(0, 0, 0, 0.2);
+  border: 2px solid #56833E;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .clay-btn-green:hover {
   transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 12px 24px -4px rgba(116, 163, 85, 0.45), inset 0 2px 3px rgba(255, 255, 255, 0.4), inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 14px 28px -4px rgba(116, 163, 85, 0.55),
+    inset 0 2.5px 4px rgba(255, 255, 255, 0.5),
+    inset 0 -3px 4px rgba(0, 0, 0, 0.2);
 }
 .clay-btn-green:active {
   transform: translateY(1px) scale(0.98);
-  box-shadow: 0 4px 10px rgba(116, 163, 85, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 10px rgba(116, 163, 85, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .clay-badge {
   background: linear-gradient(135deg, #74A355 0%, #5E8843 100%);
   color: #FFFFFF;
-  box-shadow: 0 4px 10px rgba(116, 163, 85, 0.28), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(116, 163, 85, 0.35), inset 0 1.5px 2px rgba(255, 255, 255, 0.4);
 }
 
 /* ── Eye-Friendly Soft Ambient Background (Anti-Glare) ── */
@@ -296,17 +316,17 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #EBE7AB;
+  background: #E5DF9E;
 }
 .bg-scene-light::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(225, 218, 155, 0.3) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 5%,  rgba(190, 210, 155, 0.25) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(225, 218, 155, 0.3) 0%, transparent 60%),
-    #EBE7AB;
+    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(220, 212, 145, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 5%,  rgba(180, 205, 145, 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(220, 212, 145, 0.35) 0%, transparent 60%),
+    #E5DF9E;
 }
 
 /* ── Scooped Active Tab Notch (Travel Flight Dashboard Style) ── */
