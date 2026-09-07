@@ -225,12 +225,12 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
               scale: { type: "spring", stiffness: 300, damping: 15 },
             }}
             onClick={handleGreetingClick}
-            className="neu-card bg-[#FDFBD4]/90 backdrop-blur-md px-5 py-2.5 rounded-2xl border-2 border-[#74A355] shadow-lg cursor-pointer flex items-center gap-2 group hover:bg-[#74A355] hover:text-white transition-colors"
+            className="neu-card bg-[#3A592B] px-5 py-2.5 rounded-2xl border-2 border-[#82B660] shadow-xl cursor-pointer flex items-center gap-2.5 group hover:bg-[#74A355] hover:border-white transition-all"
           >
-            <span className="text-sm sm:text-base font-bold text-[#3A592B] group-hover:text-white transition-colors">
+            <span className="text-sm sm:text-base font-extrabold text-white">
               {greetingText}
             </span>
-            <span className="text-[10px] font-extrabold text-[#74A355] group-hover:text-white uppercase tracking-wider bg-[#74A355]/15 px-2 py-0.5 rounded-lg group-hover:bg-white/20">
+            <span className="text-[10px] font-black text-[#23321B] uppercase tracking-wider bg-[#82B660] px-2.5 py-1 rounded-xl shadow-sm">
               Klik Saya!
             </span>
           </motion.div>
@@ -248,10 +248,10 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
             {/* Center Pulsing Badge */}
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 backdrop-blur-md border border-[#E8E2B5] shadow-md mb-3"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3A592B] text-white backdrop-blur-md border border-[#82B660] shadow-md mb-3"
             >
-              <span className="w-2.5 h-2.5 rounded-full bg-[#74A355] animate-ping" />
-              <span className="text-xs font-bold text-[#23321B]">INTELLIGENT DATA EXTRACTOR HUB</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#82B660] animate-ping" />
+              <span className="text-xs font-bold text-white">INTELLIGENT DATA EXTRACTOR HUB</span>
             </motion.div>
 
             <h1 className="text-2xl sm:text-4xl font-thertole text-[#23321B] tracking-wider max-w-xl leading-tight">
