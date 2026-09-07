@@ -838,10 +838,10 @@ export default function Home() {
       <div className="bg-scene-light" aria-hidden />
 
       {/* ── UNIFIED FLIGHT DASHBOARD INNER CONTAINER (Matching Photo Sample) ── */}
-      <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row gap-6 shadow-2xl shadow-[#4A4215]/25 border-2 border-[#D5C988] overflow-hidden relative z-10">
+      <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row items-start gap-6 shadow-2xl shadow-[#4A4215]/25 border-2 border-[#D5C988] overflow-hidden relative z-10">
 
         {/* ── 1. LEFT CURVED SIDEBAR PANEL (Dark Forest Green Card #3A592B) ── */}
-        <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-2xl shadow-[#1F3317]/50 border-2 border-[#2B4420] relative overflow-hidden">
+        <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-2xl shadow-[#1F3317]/50 border-2 border-[#2B4420] relative overflow-hidden lg:sticky lg:top-7 lg:self-start lg:max-h-[calc(100vh-5rem)] overflow-y-auto">
           
           {/* Top Brand / User Profile Section */}
           <div className="flex flex-col items-center text-center gap-2 pb-6 border-b border-white/15">
