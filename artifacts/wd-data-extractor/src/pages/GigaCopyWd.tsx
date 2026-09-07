@@ -92,7 +92,13 @@ Confirmed
 const INPUT_GUIDANCE =
   "Paste data form Withdrawal dari panel Giga (API22 / PIN88). Sistem otomatis memetakan kolom secara presisi (Nama, Nomor Rekening, User ID, Withdrawal) tanpa tertukar dengan ID Transaksi / IP.";
 
+export function cleanTrxId(rawTrxId: string): string {
+  if (!rawTrxId) return "";
+  return rawTrxId.replace(/^0[01]/, "").trim();
+}
+
 function rowToArr(row: GigaWdRow): string[] {
+  const cleanedTrxId = cleanTrxId(row.dpPulsa || row.keterangan || "");
   return [
     row.nama,
     row.nomorRekening,
@@ -101,8 +107,8 @@ function rowToArr(row: GigaWdRow): string[] {
     row.kodeTransaksi,
     row.deposit,
     row.withdrawal,
-    row.dpPulsa,
-    row.keterangan,
+    cleanedTrxId,
+    cleanedTrxId,
     row.kodeBank,
     row.saldoAkhir,
     row.jamInput,
@@ -257,51 +263,60 @@ function parseAccountInfo(
   let bankName = "";
   let accNo = "";
 
-  // 1. Scan for line with slash and bank name: e.g. "apip / DANA081235908910"
+  // 1. Scan for line with slash and bank name: e.g. "arifin / SEABANK901721838243" or "apip / DANA081235908910"
   for (const rawLine of lines) {
-    // Strip URLs first to prevent URL slashes from triggering
     const lineWithoutUrl = rawLine.replace(/https?:\/\/\S+/gi, "").replace(/[\[\]]/g, "").trim();
     if (!lineWithoutUrl) continue;
     if (lineWithoutUrl.toLowerCase().includes("game wallet")) continue;
-    if (lineWithoutUrl.toLowerCase().includes("e-wallet") || lineWithoutUrl.toLowerCase().includes("bank /")) continue;
+    if (lineWithoutUrl.toLowerCase().includes("e-wallet /") || lineWithoutUrl.toLowerCase().includes("bank /")) continue;
 
     if (lineWithoutUrl.includes("/")) {
       const parts = lineWithoutUrl.split("/");
       const left = parts[0].trim();
       const right = parts[1]?.trim() || "";
 
-      // Check if right side contains a recognized bank
-      const hasBank = KNOWN_BANKS.some((b) => right.toUpperCase().includes(b));
-      if (hasBank && left && left !== trxId && !isBadgeOrGarbage(left)) {
+      if (left && left !== trxId && !isBadgeOrGarbage(left)) {
         nama = left.toUpperCase();
 
         // Extract bank name and account digits from right side
         for (const b of KNOWN_BANKS) {
-          if (right.toUpperCase().includes(b)) {
+          const idx = right.toUpperCase().indexOf(b);
+          if (idx !== -1) {
             bankName = b;
+            const afterBank = right.slice(idx + b.length);
+            const digitMatch = afterBank.match(/(\d{6,25})/);
+            if (digitMatch) {
+              accNo = digitMatch[1].trim();
+            }
             break;
           }
         }
-        const digitMatch = right.match(/(\d{6,25})/);
-        if (digitMatch) accNo = digitMatch[1].trim();
-        break;
+
+        if (!accNo) {
+          const digitMatch = right.match(/(\d{6,25})/);
+          if (digitMatch) accNo = digitMatch[1].trim();
+        }
+
+        if (nama && (bankName || accNo)) break;
       }
     }
   }
 
-  // 2. If nama is still missing, scan Bank Details section:
-  // In Giga panel, after Fund Method (e.g. "E-wallet / DANA"), the next lines are Name and AccNo
+  // 2. Scan Bank Details section fallback:
+  // In Giga panel, line 1 = Name ("arifin"), line 2 = AccNo ("901721838243")
   if (!nama || !accNo) {
     let foundFundMethod = false;
     for (const rawLine of lines) {
       const cleanLine = rawLine.replace(/https?:\/\/\S+/gi, "").replace(/[\[\]]/g, "").trim();
       if (/^(E-wallet\s*\/\s*|Bank\s*\/\s*)/i.test(cleanLine)) {
         foundFundMethod = true;
+        const bankPart = cleanLine.split("/")[1]?.trim();
+        if (bankPart && !bankName) bankName = bankPart.toUpperCase();
         continue;
       }
       if (foundFundMethod) {
         if (isBadgeOrGarbage(cleanLine) || cleanLine === trxId) continue;
-        if (!nama && /^[A-Za-z\s\.\,\'\-]+$/.test(cleanLine) && cleanLine.length > 2) {
+        if (!nama && /^[A-Za-z\s\.\,\'\-]+$/.test(cleanLine) && cleanLine.length >= 2) {
           nama = cleanLine.toUpperCase();
         } else if (!accNo && /^\d{6,25}$/.test(cleanLine)) {
           accNo = cleanLine;
@@ -326,7 +341,7 @@ function parseAccountInfo(
     if (digitMatch) accNo = digitMatch[1];
   }
 
-  // Cleanup nama: ensure it does NOT contain IP or Game Wallet
+  // Cleanup nama: ensure it does NOT contain IP or Game Wallet or TrxID
   if (nama) {
     nama = nama.replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, "");
     nama = nama.replace(/GAME\s*WALLET/gi, "");
@@ -342,7 +357,7 @@ function parseAccountInfo(
 /**
  * Grid-based Parser for HTML table paste
  */
-function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
+export function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
   if (!grid.length) return [];
 
   let headerRowIdx = -1;
@@ -385,12 +400,16 @@ function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
     const rowText = row.join(" ");
     const brand = detectBrandFromText(rowText);
 
-    // Extract Date & IP
+    // Extract Date & IP & Jam
     let date = "";
+    let jamInput = "";
     let ip = "";
     const dateCell = colTrxDate >= 0 ? row[colTrxDate] : rowText;
-    const dateMatch = dateCell.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/);
-    if (dateMatch) date = dateMatch[0];
+    const dateMatch = dateCell.match(/\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2}:\d{2})/);
+    if (dateMatch) {
+      date = dateMatch[0];
+      jamInput = dateMatch[1];
+    }
     const ipMatch = dateCell.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
     if (ipMatch) ip = ipMatch[0];
 
@@ -400,11 +419,12 @@ function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
       trxId = extractTrxId(row[colTrxId]);
     }
     if (!trxId) trxId = extractTrxId(rowText);
+    const cleanedTrxId = cleanTrxId(trxId);
 
     // Extract Account Info
     const accCell = colAccountName >= 0 ? row[colAccountName] : "";
     const bankDetailsCell = colBankDetails >= 0 ? row[colBankDetails] : "";
-    const { nama, nomorRekening } = parseAccountInfo(accCell, [bankDetailsCell, ...row], trxId);
+    const { nama, nomorRekening } = parseAccountInfo(accCell, [bankDetailsCell, accCell, ...row], trxId);
 
     // Extract Username
     let username = "";
@@ -454,11 +474,11 @@ function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
         kodeTransaksi: "WD",
         deposit: "",
         withdrawal,
-        dpPulsa: "",
-        keterangan: trxId,
+        dpPulsa: cleanedTrxId,
+        keterangan: cleanedTrxId,
         kodeBank: "",
         saldoAkhir: "",
-        jamInput: "",
+        jamInput,
         inputKodeBank: "",
         brand,
         date,
@@ -476,21 +496,28 @@ function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[] {
 /**
  * Text-based Parser for plain-text / markdown pastes
  */
-function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
-  if (!rawText.trim()) return [];
+export function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
+  if (!rawText || !rawText.trim()) return [];
 
   const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const blocks: string[][] = [];
   let currentBlock: string[] = [];
 
-  for (const line of lines) {
-    if (/^\d{1,4}$/.test(line) && currentBlock.length > 2) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nextLine = lines[i + 1] || "";
+
+    const isRowNumber = /^\d+$/.test(line);
+    const isNextDateOrIp = /\d{4}-\d{2}-\d{2}/.test(nextLine) || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(nextLine);
+
+    if (isRowNumber && isNextDateOrIp && currentBlock.length > 2) {
       blocks.push(currentBlock);
       currentBlock = [line];
     } else {
       currentBlock.push(line);
     }
   }
+
   if (currentBlock.length > 0) {
     blocks.push(currentBlock);
   }
@@ -501,16 +528,21 @@ function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
     const blockText = block.join("\n");
     const brand = detectBrandFromText(blockText);
 
-    // Date & IP
+    // Date & IP & Jam
     let date = "";
+    let jamInput = "";
     let ip = "";
-    const dateMatch = blockText.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/);
-    if (dateMatch) date = dateMatch[0];
+    const dateMatch = blockText.match(/\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2}:\d{2})/);
+    if (dateMatch) {
+      date = dateMatch[0];
+      jamInput = dateMatch[1];
+    }
     const ipMatch = blockText.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
     if (ipMatch) ip = ipMatch[0];
 
     // Transaction ID
     const trxId = extractTrxId(blockText);
+    const cleanedTrxId = cleanTrxId(trxId);
 
     // Username
     const username = extractCleanUsername(blockText, block, trxId);
@@ -520,13 +552,10 @@ function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
 
     // Fund Method
     let fundMethod = "";
-    if (/E-wallet\s*\/\s*DANA/i.test(blockText)) fundMethod = "E-wallet / DANA";
-    else if (/E-wallet\s*\/\s*GOPAY/i.test(blockText)) fundMethod = "E-wallet / GOPAY";
-    else if (/Bank\s*\/\s*BCA/i.test(blockText)) fundMethod = "Bank / BCA";
-    else if (/Bank\s*\/\s*BRI/i.test(blockText)) fundMethod = "Bank / BRI";
-    else if (/Bank\s*\/\s*BNI/i.test(blockText)) fundMethod = "Bank / BNI";
-    else if (/Bank\s*\/\s*MANDIRI/i.test(blockText)) fundMethod = "Bank / MANDIRI";
-    else if (/Bank\s*\/\s*SEABANK/i.test(blockText)) fundMethod = "Bank / SEABANK";
+    const fundMatch = blockText.match(/(?:E-wallet|Bank)\s*\/\s*([A-Za-z0-9]+)/i);
+    if (fundMatch) {
+      fundMethod = fundMatch[0];
+    }
 
     // Status
     let status = "In Progess";
@@ -547,9 +576,10 @@ function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
     }
 
     if (!withdrawal) {
-      const amtMatch = blockText.match(/(\d{1,3}(?:,\d{3})+(?:\.\d{2})?)/);
-      if (amtMatch) {
-        withdrawal = normalizeAmount(amtMatch[1]);
+      const amtMatches = Array.from(blockText.matchAll(/(\d{1,3}(?:,\d{3})+(?:\.\d{2})?)/g));
+      if (amtMatches.length > 0) {
+        const lastAmt = amtMatches[amtMatches.length - 1][1];
+        withdrawal = normalizeAmount(lastAmt);
         rawAmount = Number(withdrawal.replace(/,/g, "")) || 0;
       }
     }
@@ -563,11 +593,11 @@ function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
         kodeTransaksi: "WD",
         deposit: "",
         withdrawal,
-        dpPulsa: "",
-        keterangan: trxId,
+        dpPulsa: cleanedTrxId,
+        keterangan: cleanedTrxId,
         kodeBank: "",
         saldoAkhir: "",
-        jamInput: "",
+        jamInput,
         inputKodeBank: "",
         brand,
         date,
