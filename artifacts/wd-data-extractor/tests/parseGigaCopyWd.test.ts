@@ -91,4 +91,50 @@ Confirmed
     expect(row.jamInput).toBe("17:02:02");
     expect(row.brand).toBe("PIN88");
   });
+
+  it("parses user's 2-entry raw input (indra saputra and hendra antoni)", () => {
+    const rawInput = `1\t2026-09-08 00:01:38
+103.161.162.106
+Game Wallet\t00C5K06a9eedf2f3fb8
+indra saputra / DANA
+082124978105
+indra77
+E-wallet / DANA\t
+indra saputra
+082124978105
+In Progess
+150,500.00
+
+2\t2026-09-08 00:02:13
+114.10.99.187
+Game Wallet\t024EN06a9eee15ad4ff
+hendra antoni / SEABANK
+901033581899
+First Time
+salwa478
+Bank / SEABANK\t
+hendra antoni
+901033581899
+In Progess
+300,000.00`;
+
+    const results = parseGigaWdText(rawInput, "MJ");
+    expect(results).toHaveLength(2);
+
+    // Entry 1
+    expect(results[0].nama).toBe("INDRA SAPUTRA");
+    expect(results[0].nomorRekening).toBe("DANA 082124978105");
+    expect(results[0].userId).toBe("indra77");
+    expect(results[0].withdrawal).toBe("150,500");
+    expect(results[0].dpPulsa).toBe("C5K06a9eedf2f3fb8");
+    expect(results[0].jamInput).toBe("00:01:38");
+
+    // Entry 2 (with 'First Time' badge)
+    expect(results[1].nama).toBe("HENDRA ANTONI");
+    expect(results[1].nomorRekening).toBe("SEABANK 901033581899");
+    expect(results[1].userId).toBe("salwa478");
+    expect(results[1].withdrawal).toBe("300,000");
+    expect(results[1].dpPulsa).toBe("4EN06a9eee15ad4ff");
+    expect(results[1].jamInput).toBe("00:02:13");
+  });
 });

@@ -94,7 +94,7 @@ const INPUT_GUIDANCE =
 
 export function cleanTrxId(rawTrxId: string): string {
   if (!rawTrxId) return "";
-  return rawTrxId.replace(/^0[01]/, "").trim();
+  return rawTrxId.replace(/^0[0-9]/, "").trim();
 }
 
 function rowToArr(row: GigaWdRow): string[] {
@@ -171,7 +171,7 @@ const BADGE_PATTERNS = [
 function isBadgeOrGarbage(line: string): boolean {
   const trimmed = line.trim();
   if (!trimmed) return true;
-  if (/^0[01][0-9A-Za-z]{15,25}$/.test(trimmed)) return true; // Trx ID
+  if (/^0[0-9][0-9A-Za-z]{15,25}$/.test(trimmed)) return true; // Trx ID
   if (trimmed.toLowerCase().includes("game wallet")) return true;
   if (trimmed.toLowerCase().includes("giga") && trimmed.toLowerCase().includes(".net")) return true;
   return BADGE_PATTERNS.some((p) => p.test(trimmed));
@@ -192,12 +192,12 @@ export function detectBrandFromText(text: string): "API22" | "PIN88" | "UNKNOWN"
  * Extracts Transaction ID safely
  */
 function extractTrxId(blockText: string): string {
-  // Look for 18-22 char alphanumeric token starting with 00 or 01
-  const m1 = blockText.match(/\[(0[01][0-9A-Za-z]{16,22})\]/);
+  // Look for 18-22 char alphanumeric token starting with 00, 01, 02, etc.
+  const m1 = blockText.match(/\[(0[0-9][0-9A-Za-z]{16,22})\]/);
   if (m1) return m1[1];
-  const m2 = blockText.match(/\b(0[01][0-9A-Za-z]{16,22})\b/);
+  const m2 = blockText.match(/\b(0[0-9][0-9A-Za-z]{16,22})\b/);
   if (m2) return m2[1];
-  const m3 = blockText.match(/withdrawalform\/(0[01][0-9A-Za-z]{16,22})/i);
+  const m3 = blockText.match(/withdrawalform\/(0[0-9][0-9A-Za-z]{16,22})/i);
   if (m3) return m3[1];
   return "";
 }
@@ -345,7 +345,7 @@ function parseAccountInfo(
   if (nama) {
     nama = nama.replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, "");
     nama = nama.replace(/GAME\s*WALLET/gi, "");
-    nama = nama.replace(/0[01][0-9A-Z]{15,22}/gi, "");
+    nama = nama.replace(/0[0-9][0-9A-Z]{15,22}/gi, "");
     nama = nama.trim().toUpperCase();
   }
 
@@ -496,6 +496,30 @@ export function parseGigaWdGrid(grid: string[][], subValue: string): GigaWdRow[]
 /**
  * Text-based Parser for plain-text / markdown pastes
  */
+function isBlockStartLine(line: string, nextLine: string): boolean {
+  const trimmed = line.trim();
+  // Case 1: Standalone row number, e.g. "1" or "2", followed by date/IP/Game Wallet on next line
+  if (/^\d+$/.test(trimmed)) {
+    return (
+      /\d{4}-\d{2}-\d{2}/.test(nextLine) ||
+      /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(nextLine) ||
+      /Game\s*Wallet/i.test(nextLine)
+    );
+  }
+  // Case 2: Row number combined with tab/space and date/IP/Game Wallet on the same line, e.g. "1\t2026-09-08 00:01:38" or "2\t114.10.99.187"
+  if (/^\d+[\t\s]+/.test(trimmed)) {
+    return (
+      /\d{4}-\d{2}-\d{2}/.test(trimmed) ||
+      /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(trimmed) ||
+      /Game\s*Wallet/i.test(trimmed)
+    );
+  }
+  return false;
+}
+
+/**
+ * Text-based Parser for plain-text / markdown pastes
+ */
 export function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] {
   if (!rawText || !rawText.trim()) return [];
 
@@ -507,10 +531,7 @@ export function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] 
     const line = lines[i];
     const nextLine = lines[i + 1] || "";
 
-    const isRowNumber = /^\d+$/.test(line);
-    const isNextDateOrIp = /\d{4}-\d{2}-\d{2}/.test(nextLine) || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(nextLine);
-
-    if (isRowNumber && isNextDateOrIp && currentBlock.length > 2) {
+    if (isBlockStartLine(line, nextLine) && currentBlock.length > 2) {
       blocks.push(currentBlock);
       currentBlock = [line];
     } else {
