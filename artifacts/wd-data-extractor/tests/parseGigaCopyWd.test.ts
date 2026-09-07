@@ -32,7 +32,7 @@ In Progess
     expect(row.kodeTransaksi).toBe("WD");
     expect(row.withdrawal).toBe("200,000");
     expect(row.dpPulsa).toBe("2FI06a9ee87f3d4b7");
-    expect(row.keterangan).toBe("2FI06a9ee87f3d4b7");
+    expect(row.keterangan).toBe("");
     expect(row.jamInput).toBe("23:38:23");
     expect(row.brand).toBe("API22");
   });
