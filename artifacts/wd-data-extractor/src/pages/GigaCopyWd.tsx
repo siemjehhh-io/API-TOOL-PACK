@@ -108,7 +108,7 @@ function rowToArr(row: GigaWdRow): string[] {
     row.deposit,
     row.withdrawal,
     cleanedTrxId,
-    cleanedTrxId,
+    "",
     row.kodeBank,
     row.saldoAkhir,
     row.jamInput,
