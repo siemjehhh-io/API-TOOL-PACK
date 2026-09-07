@@ -129,7 +129,7 @@ function rowToArr(row: GigaWdRow): string[] {
     row.deposit,
     row.withdrawal,
     cleanedTrxId,
-    cleanedTrxId,
+    "",
   ];
 }
 
@@ -1075,61 +1075,72 @@ export default function GigaCopyWd() {
                   <th className="py-3 px-3">C: USER ID</th>
                   <th className="py-3 px-3 text-center">D: SUB</th>
                   <th className="py-3 px-3 text-center">E: KODE</th>
+                  <th className="py-3 px-3 text-center">F: DEPOSIT</th>
                   <th className="py-3 px-3 text-right">G: WITHDRAWAL</th>
+                  <th className="py-3 px-3">H: DP PULSA</th>
                   <th className="py-3 px-3">I: KETERANGAN / SN</th>
                   <th className="py-3 px-3 text-center w-16">AKSI</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8E2B5] font-mono">
-                {parsedRows.map((row, idx) => (
-                  <tr
-                    key={`out-${row.keterangan}-${idx}`}
-                    className="hover:bg-[#F5F0C2] bg-[#FDFBD4] transition-colors group"
-                  >
-                    <td className="py-3 px-3 text-center text-[#596B4F] text-[11px]">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-[#23321B] uppercase whitespace-nowrap font-sans">
-                      {row.nama || <span className="text-[#596B4F]">-</span>}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-[#74A355] whitespace-nowrap">
-                      {row.nomorRekening || <span className="text-[#596B4F]">-</span>}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-[#23321B] whitespace-nowrap">
-                      {row.userId || <span className="text-[#596B4F]">-</span>}
-                    </td>
-                    <td className="py-3 px-3 text-center font-sans">
-                      <span className="px-2 py-0.5 rounded-md bg-[#74A355]/15 text-[#74A355] font-bold text-[10px] border border-[#74A355]/30">
-                        {row.sub}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-center font-sans">
-                      <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] border border-rose-300">
-                        {row.kodeTransaksi}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-black text-[#74A355] whitespace-nowrap">
-                      {row.withdrawal}
-                    </td>
-                    <td className="py-3 px-3 text-[11px] text-[#596B4F] whitespace-nowrap">
-                      {row.keterangan || <span className="text-[#596B4F]">-</span>}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleCopySingleRow(row, idx)}
-                        className={`p-1.5 rounded-lg border transition-all ${
-                          copiedRowIdx === idx
-                            ? "bg-[#74A355] text-white border-[#567C3E]"
-                            : "neu-flat text-[#23321B] hover:bg-white"
-                        }`}
-                        title="Copy Baris Ini"
-                      >
-                        {copiedRowIdx === idx ? <Check size={13} /> : <Copy size={13} />}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {parsedRows.map((row, idx) => {
+                  const cleanedTrxId = cleanTrxId(row.dpPulsa || row.keterangan || "");
+                  return (
+                    <tr
+                      key={`out-${cleanedTrxId || idx}-${idx}`}
+                      className="hover:bg-[#F5F0C2] bg-[#FDFBD4] transition-colors group"
+                    >
+                      <td className="py-3 px-3 text-center text-[#596B4F] text-[11px]">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-[#23321B] uppercase whitespace-nowrap font-sans">
+                        {row.nama || <span className="text-[#596B4F]">-</span>}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-[#74A355] whitespace-nowrap">
+                        {row.nomorRekening || <span className="text-[#596B4F]">-</span>}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-[#23321B] whitespace-nowrap">
+                        {row.userId || <span className="text-[#596B4F]">-</span>}
+                      </td>
+                      <td className="py-3 px-3 text-center font-sans">
+                        <span className="px-2 py-0.5 rounded-md bg-[#74A355]/15 text-[#74A355] font-bold text-[10px] border border-[#74A355]/30">
+                          {row.sub}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center font-sans">
+                        <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] border border-rose-300">
+                          {row.kodeTransaksi}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center text-[#596B4F] font-sans">
+                        {row.deposit || "-"}
+                      </td>
+                      <td className="py-3 px-3 text-right font-black text-[#74A355] whitespace-nowrap">
+                        {row.withdrawal}
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold text-[#23321B] whitespace-nowrap">
+                        {cleanedTrxId || <span className="text-[#596B4F]">-</span>}
+                      </td>
+                      <td className="py-3 px-3 text-[11px] text-[#596B4F] whitespace-nowrap">
+                        {row.keterangan || <span className="text-[#596B4F]">-</span>}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleCopySingleRow(row, idx)}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            copiedRowIdx === idx
+                              ? "bg-[#74A355] text-white border-[#567C3E]"
+                              : "neu-flat text-[#23321B] hover:bg-white"
+                          }`}
+                          title="Copy Baris Ini"
+                        >
+                          {copiedRowIdx === idx ? <Check size={13} /> : <Copy size={13} />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
