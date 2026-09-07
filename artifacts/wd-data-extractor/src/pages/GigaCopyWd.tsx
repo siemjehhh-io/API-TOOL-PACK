@@ -57,10 +57,6 @@ const OUTPUT_HEADERS = [
   "WITHDRAWAL",
   "DP PULSA",
   "KETERANGAN / KODE SN",
-  "KODE BANK",
-  "SALDO AKHIR",
-  "JAM INPUT WD",
-  "INPUT KODE BANK",
 ];
 
 export const SAMPLE_TEXT_API22 = `1
@@ -133,11 +129,7 @@ function rowToArr(row: GigaWdRow): string[] {
     row.deposit,
     row.withdrawal,
     cleanedTrxId,
-    "",
-    row.kodeBank,
-    row.saldoAkhir,
-    row.jamInput,
-    row.inputKodeBank,
+    cleanedTrxId,
   ];
 }
 
@@ -757,7 +749,7 @@ export default function GigaCopyWd() {
     navigator.clipboard.writeText(tsvContent).then(() => {
       setIsCopied(true);
       toast.success(
-        `✅ ${parsedRows.length} baris WD berhasil disalin! (13 Kolom A-M siap paste ke Google Sheet).`
+        `✅ ${parsedRows.length} baris WD berhasil disalin! (9 Kolom A-I siap paste ke Google Sheet).`
       );
       setTimeout(() => setIsCopied(false), 2500);
     });
@@ -944,7 +936,7 @@ export default function GigaCopyWd() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 clay-btn-green disabled:opacity-35 disabled:cursor-not-allowed"
               >
                 {isCopied ? <Check size={16} /> : <Copy size={16} />}
-                <span>{isCopied ? "BERHASIL DISALIN!" : "COPY KE SPREADSHEET (TSV 13 KOLOM)"}</span>
+                <span>{isCopied ? "BERHASIL DISALIN!" : "COPY KE SPREADSHEET (TSV 9 KOLOM)"}</span>
               </button>
 
               <button
@@ -1055,13 +1047,13 @@ export default function GigaCopyWd() {
         </div>
       )}
 
-      {/* ── STEP 2: SPREADSHEET TSV OUTPUT TABLE (KOLOM A S/D M) ── */}
+      {/* ── STEP 2: SPREADSHEET TSV OUTPUT TABLE (KOLOM A S/D I) ── */}
       {parsedRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#23321B] flex items-center gap-2">
               <ListOrdered size={14} className="text-[#74A355]" />
-              <span>STEP 2: PREVIEW OUTPUT SPREADSHEET (KOLOM A S/D M)</span>
+              <span>STEP 2: PREVIEW OUTPUT SPREADSHEET (KOLOM A S/D I)</span>
             </h3>
             <button
               type="button"
@@ -1069,7 +1061,7 @@ export default function GigaCopyWd() {
               className="text-xs font-bold text-[#74A355] hover:text-[#567C3E] flex items-center gap-1.5"
             >
               <Copy size={12} />
-              <span>Salin Semua Baris (13 Kolom)</span>
+              <span>Salin Semua Baris (9 Kolom)</span>
             </button>
           </div>
 
