@@ -849,9 +849,9 @@ export default function Home() {
               <img
                 src="/logo.png"
                 alt="API GROUP"
-                className="w-16 h-16 rounded-2xl border-2 border-[#D9B038] object-cover shadow-md"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#D9B038] bg-[#FDFBD4] p-1.5 object-contain shadow-lg hover:scale-105 transition-transform"
               />
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#82B660] border-2 border-[#3A592B]" />
+              <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#82B660] border-2 border-[#3A592B] shadow-sm" />
             </div>
             <h2 className="text-lg font-thertole tracking-wider text-white uppercase mt-1 drop-shadow-sm">
               API GROUP TOOLS
