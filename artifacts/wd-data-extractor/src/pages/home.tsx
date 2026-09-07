@@ -843,114 +843,179 @@ export default function Home() {
         {/* ── 1. LEFT CURVED SIDEBAR PANEL (Dark Forest Green Card #3A592B) ── */}
         <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-2xl shadow-[#1F3317]/50 border-2 border-[#2B4420] relative overflow-hidden lg:sticky lg:top-7 lg:self-start lg:max-h-[calc(100vh-5rem)] overflow-y-auto">
           
+          {/* Ambient Decorative Background Glows */}
+          <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#82B660]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#D9B038]/15 rounded-full blur-3xl pointer-events-none" />
+
           {/* Top Brand / User Profile Section */}
-          <div className="flex flex-col items-center text-center gap-2 pb-6 border-b border-white/15">
-            <div className="relative">
+          <div className="flex flex-col items-center text-center gap-2 pb-6 border-b border-white/15 relative z-10">
+            <motion.div
+              whileHover={{ scale: 1.08, rotateY: 10, rotateX: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="relative cursor-pointer group"
+              onClick={() => {
+                toast.success("API Group Tools v2.0", {
+                  description: "Sistem Ekstraksi & Formula Mutasi Standar Industri",
+                });
+              }}
+            >
               <img
                 src="/logo.png"
                 alt="API GROUP"
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#D9B038] bg-[#FDFBD4] p-1.5 object-contain shadow-lg hover:scale-105 transition-transform"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-[#D9B038] bg-[#FDFBD4] p-1.5 object-contain shadow-xl group-hover:shadow-2xl group-hover:border-white transition-all"
               />
-              <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#82B660] border-2 border-[#3A592B] shadow-sm" />
-            </div>
-            <h2 className="text-lg font-thertole tracking-wider text-white uppercase mt-1 drop-shadow-sm">
+              <span className="absolute bottom-1 right-1 flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#82B660] opacity-75" />
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-[#82B660] border-2 border-[#3A592B] shadow-sm" />
+              </span>
+            </motion.div>
+
+            <motion.h2
+              whileHover={{ scale: 1.03 }}
+              className="text-lg font-thertole tracking-wider text-white uppercase mt-1 drop-shadow-sm cursor-default"
+            >
               API GROUP TOOLS
-            </h2>
-            <p className="text-[11px] text-white/80 font-mono font-bold tracking-wide">apitool.gwk.web.id</p>
+            </motion.h2>
+
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                navigator.clipboard.writeText("https://apitool.gwk.web.id");
+                toast.success("Domain apitool.gwk.web.id berhasil disalin!");
+              }}
+              className="text-[11px] text-white/80 hover:text-[#D9B038] font-mono font-bold tracking-wide transition-colors cursor-pointer flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-full border border-white/10"
+              title="Klik untuk menyalin domain"
+            >
+              <span>apitool.gwk.web.id</span>
+              <Copy size={11} className="opacity-70" />
+            </motion.button>
           </div>
 
-          {/* Vertical Navigation Menu with Scooped Active Tab Cutout */}
-          <nav className="flex flex-col gap-1.5 my-6 pr-0">
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection(null);
-              }}
-              className={mainSection === null
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <Zap size={16} />
-              <span>DASHBOARD</span>
-            </button>
+          {/* Vertical Navigation Menu with Fluid Scooped Active Cutout & Hover Effects */}
+          <nav className="flex flex-col gap-1.5 my-6 pr-0 relative z-10">
+            {[
+              {
+                id: "dashboard",
+                label: "DASHBOARD",
+                icon: Zap,
+                action: () => setMainSection(null),
+                isActive: mainSection === null,
+              },
+              {
+                id: "giga",
+                label: "GIGA PANEL",
+                icon: ClipboardList,
+                action: () => {
+                  setMainSection("formula");
+                  setActiveCategory("giga");
+                },
+                isActive: mainSection === "formula" && activeCategory === "giga",
+              },
+              {
+                id: "qris-hoki",
+                label: "QRIS HOKI",
+                icon: ArrowDownToLine,
+                action: () => {
+                  setMainSection("formula");
+                  setActiveCategory("qris-hoki");
+                },
+                isActive: mainSection === "formula" && activeCategory === "qris-hoki",
+              },
+              {
+                id: "ozzo",
+                label: "OZZO TOOLS",
+                icon: Zap,
+                action: () => {
+                  setMainSection("formula");
+                  setActiveCategory("ozzo");
+                },
+                isActive: mainSection === "formula" && activeCategory === "ozzo",
+              },
+              {
+                id: "smart-mutasi",
+                label: "SMART MUTASI",
+                icon: TableProperties,
+                action: () => {
+                  setMainSection("mutasi");
+                  setActiveCategory("giga-smart-mutasi");
+                },
+                isActive: mainSection === "mutasi",
+              },
+              {
+                id: "phish-shield",
+                label: "PHISH SHIELD",
+                icon: Shield,
+                action: () => setMainSection("phishing"),
+                isActive: mainSection === "phishing",
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.id} className="relative">
+                  {item.isActive && (
+                    <motion.div
+                      layoutId="activeNavScoopBg"
+                      transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      className="absolute inset-0 nav-scoop-active -mr-6 pointer-events-none"
+                    />
+                  )}
+                  <motion.button
+                    type="button"
+                    whileHover={{ x: item.isActive ? 0 : 5, scale: 1.01 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={item.action}
+                    className={`w-full px-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center justify-between transition-colors relative z-10 cursor-pointer ${
+                      item.isActive
+                        ? "-mr-6 pr-8 pl-5 text-[#3A592B]"
+                        : "text-white/70 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        animate={item.isActive ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] } : { scale: 1, rotate: 0 }}
+                        transition={{ duration: 0.4 }}
+                      >
+                        <Icon size={16} className={item.isActive ? "text-[#3A592B]" : "text-[#82B660] group-hover:text-white"} />
+                      </motion.div>
+                      <span>{item.label}</span>
+                    </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection("formula");
-                setActiveCategory("giga");
-              }}
-              className={mainSection === "formula" && activeCategory === "giga"
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <ClipboardList size={16} />
-              <span>GIGA PANEL</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection("formula");
-                setActiveCategory("qris-hoki");
-              }}
-              className={mainSection === "formula" && activeCategory === "qris-hoki"
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <ArrowDownToLine size={16} />
-              <span>QRIS HOKI</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection("formula");
-                setActiveCategory("ozzo");
-              }}
-              className={mainSection === "formula" && activeCategory === "ozzo"
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <Zap size={16} />
-              <span>OZZO TOOLS</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection("mutasi");
-                setActiveCategory("giga-smart-mutasi");
-              }}
-              className={mainSection === "mutasi"
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <TableProperties size={16} />
-              <span>SMART MUTASI</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMainSection("phishing");
-              }}
-              className={mainSection === "phishing"
-                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
-                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
-            >
-              <Shield size={16} />
-              <span>PHISH SHIELD</span>
-            </button>
+                    {item.isActive && (
+                      <motion.span
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="w-2.5 h-2.5 rounded-full bg-[#3A592B] shadow-sm ml-2 shrink-0"
+                      />
+                    )}
+                  </motion.button>
+                </div>
+              );
+            })}
           </nav>
 
-          {/* Bottom Server Information & Status Widget */}
-          <div className="pt-4 border-t border-white/15">
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-between gap-2.5">
+          {/* Bottom Server Information & Status Widget with Hover Tilt & Click Pulse */}
+          <div className="pt-4 border-t border-white/15 relative z-10">
+            <motion.div
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                toast.success("STATUS SYSTEM: ONLINE & OPERATIONAL", {
+                  description: "Seluruh 6 Modul Layanan Siap Beroperasi (0 Errors)",
+                });
+              }}
+              className="p-3.5 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/20 hover:border-[#82B660]/40 transition-all flex items-center justify-between gap-2.5 cursor-pointer shadow-md group"
+            >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-[#82B660]/20 text-[#82B660] flex items-center justify-center shrink-0 border border-[#82B660]/30">
+                <motion.div
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  className="w-8 h-8 rounded-xl bg-[#82B660]/20 text-[#82B660] flex items-center justify-center shrink-0 border border-[#82B660]/30 group-hover:bg-[#82B660] group-hover:text-[#3A592B] transition-colors"
+                >
                   <Activity size={16} />
-                </div>
+                </motion.div>
                 <div className="min-w-0">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-[#D9B038] block leading-tight">
                     STATUS SYSTEM
@@ -960,11 +1025,14 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 bg-[#82B660]/20 border border-[#82B660]/40 px-2.5 py-1 rounded-full shrink-0">
-                <span className="w-2 h-2 rounded-full bg-[#82B660] animate-pulse" />
+              <div className="flex items-center gap-1.5 bg-[#82B660]/20 border border-[#82B660]/40 px-2.5 py-1 rounded-full shrink-0 group-hover:bg-[#82B660]/40 transition-colors">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#82B660] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#82B660]" />
+                </span>
                 <span className="text-[10px] font-mono font-extrabold text-[#82B660] tracking-wider">ONLINE</span>
               </div>
-            </div>
+            </motion.div>
           </div>
 
         </aside>
