@@ -89,8 +89,33 @@ Confirmed
 68,000.00
 2026-08-13 17:05:25`;
 
+export const SAMPLE_TEXT_GIGA = `1\t2026-09-08 00:01:38
+103.161.162.106
+Game Wallet\t00C5K06a9eedf2f3fb8
+indra saputra / DANA
+082124978105
+indra77
+E-wallet / DANA\t
+indra saputra
+082124978105
+In Progess
+150,500.00
+
+2\t2026-09-08 00:02:13
+114.10.99.187
+Game Wallet\t024EN06a9eee15ad4ff
+hendra antoni / SEABANK
+901033581899
+First Time
+salwa478
+Bank / SEABANK\t
+hendra antoni
+901033581899
+In Progess
+300,000.00`;
+
 const INPUT_GUIDANCE =
-  "Paste data form Withdrawal dari panel Giga (API22 / PIN88). Sistem otomatis memetakan kolom secara presisi (Nama, Nomor Rekening, User ID, Withdrawal) tanpa tertukar dengan ID Transaksi / IP.";
+  "Paste data form Withdrawal dari panel Giga. Sistem otomatis memetakan kolom secara presisi (Nama, Nomor Rekening, User ID, Withdrawal) tanpa tertukar dengan ID Transaksi / IP.";
 
 export function cleanTrxId(rawTrxId: string): string {
   if (!rawTrxId) return "";
@@ -635,8 +660,12 @@ export function parseGigaWdText(rawText: string, subValue: string): GigaWdRow[] 
 
 export default function GigaCopyWd() {
   const [inputText, setInputText] = useState("");
-  const [subValue, setSubValue] = useState("PNG");
-  const [brandOverride, setBrandOverride] = useState<"AUTO" | "API22" | "PIN88">("AUTO");
+  const [subValue, setSubValue] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("giga_wd_sub_value") || "PNG";
+    }
+    return "PNG";
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [parsedRows, setParsedRows] = useState<GigaWdRow[]>([]);
   const [isCopied, setIsCopied] = useState(false);
@@ -645,7 +674,7 @@ export default function GigaCopyWd() {
 
   // Parse input whenever text changes or sub changes
   const handleParse = useCallback(
-    (text: string, customSub: string, overrideBrand: "AUTO" | "API22" | "PIN88") => {
+    (text: string, customSub: string) => {
       if (!text.trim()) {
         setParsedRows([]);
         return;
@@ -665,11 +694,6 @@ export default function GigaCopyWd() {
         rows = parseGigaWdText(text, customSub);
       }
 
-      // Apply brand override if set
-      if (overrideBrand !== "AUTO") {
-        rows = rows.map((r) => ({ ...r, brand: overrideBrand }));
-      }
-
       // Chronological sort if dates are present
       rows = [...rows].sort((a, b) => sortByDateAsc(a.jamInput, b.jamInput));
 
@@ -682,28 +706,15 @@ export default function GigaCopyWd() {
   const onTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInputText(val);
-
-    const detected = detectBrandFromText(val);
-    let currentSub = subValue;
-    if (detected === "API22" && subValue === "MJ") {
-      currentSub = "NG+EA";
-      setSubValue("NG+EA");
-    } else if (detected === "PIN88" && subValue === "NG+EA") {
-      currentSub = "MJ";
-      setSubValue("MJ");
-    }
-
-    handleParse(val, currentSub, brandOverride);
+    handleParse(val, subValue);
   };
 
   const onSubChange = (newSub: string) => {
     setSubValue(newSub);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("giga_wd_sub_value", newSub);
+    }
     setParsedRows((prev) => prev.map((r) => ({ ...r, sub: newSub })));
-  };
-
-  const onBrandOverrideChange = (brand: "AUTO" | "API22" | "PIN88") => {
-    setBrandOverride(brand);
-    handleParse(inputText, subValue, brand);
   };
 
   // Clipboard Paste handler for rich HTML tables
@@ -716,8 +727,7 @@ export default function GigaCopyWd() {
         const textFallback = e.clipboardData.getData("text/plain");
         setInputText(textFallback || html);
         const rows = parseGigaWdGrid(grid, subValue);
-        const brand = brandOverride !== "AUTO" ? brandOverride : rows[0]?.brand || "UNKNOWN";
-        setParsedRows(rows.map((r) => ({ ...r, brand })));
+        setParsedRows(rows);
         toast.success(`Berhasil mengekstrak ${rows.length} baris form WD dari tabel HTML!`);
         return;
       }
@@ -726,11 +736,10 @@ export default function GigaCopyWd() {
 
   // Detected overall brand summary
   const detectedBrandSummary = useMemo(() => {
-    if (brandOverride !== "AUTO") return brandOverride;
     if (parsedRows.some((r) => r.brand === "API22")) return "API22";
     if (parsedRows.some((r) => r.brand === "PIN88")) return "PIN88";
     return detectBrandFromText(inputText);
-  }, [brandOverride, parsedRows, inputText]);
+  }, [parsedRows, inputText]);
 
   // Statistics
   const totalAmount = useMemo(() => {
@@ -790,14 +799,11 @@ export default function GigaCopyWd() {
     textareaRef.current?.focus();
   };
 
-  // Sample Loader
-  const handleUseSample = (brand: "API22" | "PIN88") => {
-    const text = brand === "API22" ? SAMPLE_TEXT_API22 : SAMPLE_TEXT_PIN88;
-    const defaultSub = brand === "API22" ? "PNG" : "MJ";
-    setInputText(text);
-    setSubValue(defaultSub);
-    handleParse(text, defaultSub, brand);
-    toast.success(`Sample data WD ${brand} dimuat!`);
+  // Sample Loader (Single universal sample)
+  const handleUseSample = () => {
+    setInputText(SAMPLE_TEXT_GIGA);
+    handleParse(SAMPLE_TEXT_GIGA, subValue);
+    toast.success("Sample data WD GIGA dimuat!");
   };
 
   return (
@@ -834,28 +840,19 @@ export default function GigaCopyWd() {
                   WD GIGA EXTRACTOR
                 </h2>
                 {/* Brand Badge */}
-                <span
-                  className={`px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase border shadow-sm transition-all duration-300 ${
-                    detectedBrandSummary === "API22"
-                      ? "bg-violet-500/20 border-violet-400/40 text-violet-300"
-                      : detectedBrandSummary === "PIN88"
-                      ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-300"
-                      : "bg-slate-500/20 border-slate-400/40 text-slate-300"
-                  }`}
-                >
-                  {detectedBrandSummary === "UNKNOWN" ? "MULTI-BRAND" : detectedBrandSummary}
+                <span className="px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase border border-slate-400/40 bg-slate-500/20 text-slate-300">
+                  PANEL GIGA
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Ekstraksi otomatis form penarikan (Withdrawal) GIGA untuk website API22 &amp; PIN88
+                Formula Ekstraksi form WD giga
               </p>
             </div>
           </div>
 
-          {/* Brand Switcher & SUB input */}
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            {/* SUB input */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10">
+          {/* SUB Input (Persisted) */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 shadow-inner">
               <Tag size={13} className="text-amber-400" />
               <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
                 KOLOM SUB:
@@ -865,45 +862,8 @@ export default function GigaCopyWd() {
                 value={subValue}
                 onChange={(e) => onSubChange(e.target.value)}
                 placeholder="SUB (PNG / MJ / NG+EA)"
-                className="w-24 px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-xs font-bold text-amber-300 text-center uppercase focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="w-24 px-2.5 py-1 rounded-md bg-white/10 border border-white/10 text-xs font-bold text-amber-300 text-center uppercase focus:outline-none focus:ring-1 focus:ring-amber-400"
               />
-            </div>
-
-            {/* Brand Toggle Filter */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-black/40 border border-white/10">
-              <button
-                type="button"
-                onClick={() => onBrandOverrideChange("AUTO")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  brandOverride === "AUTO"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                AUTO
-              </button>
-              <button
-                type="button"
-                onClick={() => onBrandOverrideChange("API22")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  brandOverride === "API22"
-                    ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                API22
-              </button>
-              <button
-                type="button"
-                onClick={() => onBrandOverrideChange("PIN88")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  brandOverride === "PIN88"
-                    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/30"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                PIN88
-              </button>
             </div>
           </div>
         </div>
@@ -921,17 +881,11 @@ export default function GigaCopyWd() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleUseSample("API22")}
-                className="text-[11px] font-bold text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 px-2.5 py-1 rounded-lg border border-violet-500/20 transition-all"
+                onClick={handleUseSample}
+                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/20 transition-all flex items-center gap-1"
               >
-                Sample API22
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUseSample("PIN88")}
-                className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 transition-all"
-              >
-                Sample PIN88
+                <Sparkles size={11} />
+                Use Sample
               </button>
               {inputText && (
                 <button
