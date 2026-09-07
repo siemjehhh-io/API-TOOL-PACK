@@ -894,8 +894,8 @@ export default function Home() {
             </motion.button>
           </div>
 
-          {/* Vertical Navigation Menu with Fluid Scooped Active Cutout & Hover Effects */}
-          <nav className="flex flex-col gap-1.5 my-6 pr-0 relative z-10">
+          {/* Vertical Navigation Menu with Fluid Floating Cream Active Pill */}
+          <nav className="flex flex-col gap-2 my-6 relative z-10">
             {[
               {
                 id: "dashboard",
@@ -957,20 +957,20 @@ export default function Home() {
                 <div key={item.id} className="relative">
                   {item.isActive && (
                     <motion.div
-                      layoutId="activeNavScoopBg"
-                      transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                      className="absolute inset-0 nav-scoop-active -mr-6 pointer-events-none"
+                      layoutId="activeNavPillBg"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      className="absolute inset-0 bg-[#FDFBD4] rounded-2xl shadow-lg shadow-[#152410]/50 border-2 border-[#D5C988] pointer-events-none"
                     />
                   )}
                   <motion.button
                     type="button"
-                    whileHover={{ x: item.isActive ? 0 : 5, scale: 1.01 }}
+                    whileHover={{ x: item.isActive ? 0 : 4, scale: 1.01 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={item.action}
-                    className={`w-full px-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center justify-between transition-colors relative z-10 cursor-pointer ${
+                    className={`w-full px-4 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center justify-between transition-colors relative z-10 cursor-pointer rounded-2xl ${
                       item.isActive
-                        ? "-mr-6 pr-8 pl-5 text-[#3A592B]"
-                        : "text-white/70 hover:text-white"
+                        ? "text-[#3A592B]"
+                        : "text-white/75 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -978,7 +978,7 @@ export default function Home() {
                         animate={item.isActive ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] } : { scale: 1, rotate: 0 }}
                         transition={{ duration: 0.4 }}
                       >
-                        <Icon size={16} className={item.isActive ? "text-[#3A592B]" : "text-[#82B660] group-hover:text-white"} />
+                        <Icon size={17} className={item.isActive ? "text-[#3A592B]" : "text-[#82B660] group-hover:text-white"} />
                       </motion.div>
                       <span>{item.label}</span>
                     </div>
@@ -987,7 +987,7 @@ export default function Home() {
                       <motion.span
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="w-2.5 h-2.5 rounded-full bg-[#3A592B] shadow-sm ml-2 shrink-0"
+                        className="w-2.5 h-2.5 rounded-full bg-[#3A592B] border border-[#74A355] shadow-sm ml-2 shrink-0"
                       />
                     )}
                   </motion.button>
