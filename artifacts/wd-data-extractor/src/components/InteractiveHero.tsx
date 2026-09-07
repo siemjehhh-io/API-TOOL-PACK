@@ -146,6 +146,8 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
         onClick={handleCanvasClick}
         style={{
           perspective: 1200,
+          WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+          isolation: "isolate",
         }}
         className="relative w-full rounded-[2.5rem] overflow-hidden neu-card border-2 border-[#D5C988] shadow-2xl shadow-[#4A4215]/20 cursor-crosshair min-h-[440px] flex flex-col justify-between p-6 sm:p-8 select-none transition-all duration-300"
       >
@@ -154,10 +156,10 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
           animate={{
             rotateX: isHovered ? tiltX : 0,
             rotateY: isHovered ? tiltY : 0,
-            scale: isHovered ? 1.03 : 1,
+            scale: isHovered ? 1.05 : 1.02,
           }}
           transition={{ type: "spring", stiffness: 120, damping: 18 }}
-          className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+          className="absolute -inset-5 z-0 bg-cover bg-center pointer-events-none rounded-[2.5rem] overflow-hidden"
           style={{
             backgroundImage: `url('/hero-landscape.png')`,
             transformStyle: "preserve-3d",
