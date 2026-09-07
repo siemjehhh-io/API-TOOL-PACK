@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-function htmlTableToGrid(html: string): string[][] {
+export function htmlTableToGrid(html: string): string[][] {
   if (typeof DOMParser === "undefined") return [];
   try {
     const parser = new DOMParser();
@@ -134,12 +134,15 @@ function rowToArr(row: QrisAjaibOzzoRow): string[] {
 }
 
 function normalizeAmount(value: string | number): string {
-  if (typeof value === "number") {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value.toLocaleString("en-US");
   }
-  return String(value)
-    .trim()
-    .replace(/\.00$/, "");
+  const str = String(value ?? "").trim().replace(/\.00$/, "");
+  const num = Number(str.replace(/,/g, ""));
+  if (Number.isFinite(num) && num > 0) {
+    return num.toLocaleString("en-US");
+  }
+  return str;
 }
 
 function formatCurrency(value: number): string {
@@ -159,7 +162,7 @@ function findHeaderIndex(headers: string[], candidates: string[]): number {
 /**
  * Parses Excel worksheet rows or 2D grid into structured QrisAjaibOzzoRow objects
  */
-function parseExcelGrid(grid: (string | number)[][], subValue: string): QrisAjaibOzzoRow[] {
+export function parseExcelGrid(grid: (string | number)[][], subValue: string): QrisAjaibOzzoRow[] {
   if (!grid || grid.length < 2) return [];
 
   // 1. Locate header row
