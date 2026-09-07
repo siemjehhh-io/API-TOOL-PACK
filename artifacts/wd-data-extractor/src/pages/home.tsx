@@ -344,9 +344,9 @@ export default function Home() {
   // ── Category & Tab ────────────────────────────────────────────────────────────
 
   const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
-  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi" | "check-pusat">("giga");
+  const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
-  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "wd">("qrishoki");
+  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "check-pusat" | "wd">("qrishoki");
   const [activeOzzoTab, setActiveOzzoTab] = useState<"qris-ajaib">("qris-ajaib");
 
   // â”€â”€ WD extractor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -815,17 +815,6 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveCategory("check-pusat")}
-                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
-                    ${activeCategory === "check-pusat"
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                >
-                  <Trophy size={14} />
-                  CHECK PUSAT GIGA
-                </button>
-                <button
-                  type="button"
                   onClick={() => setActiveCategory("ozzo")}
                   className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
                     ${activeCategory === "ozzo"
@@ -877,6 +866,17 @@ export default function Home() {
                   >
                     <Banknote size={13} />
                     BONUS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGigaTab("check-pusat")}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                      ${activeGigaTab === "check-pusat"
+                        ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  >
+                    <Trophy size={13} />
+                    CHECK PUSAT
                   </button>
                   <button
                     type="button"
@@ -1601,12 +1601,12 @@ export default function Home() {
         {/* GIGA category content */}
         {mainSection === "formula" && activeCategory === "giga" && (
           <>
-
             {/* GIGA sub-tab content */}
             <Suspense fallback={<TabLoadingFallback />}>
               {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
               {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
               {activeGigaTab === "bonus" && <GigaCopyBonus />}
+              {activeGigaTab === "check-pusat" && <CheckPusatGigaTools />}
               {activeGigaTab === "wd" && <GigaCopyWd />}
             </Suspense>
           </>
@@ -1622,12 +1622,6 @@ export default function Home() {
         {mainSection === "mutasi" && (
           <Suspense fallback={<TabLoadingFallback />}>
             <GigaSmartMutasi />
-          </Suspense>
-        )}
-
-        {mainSection === "formula" && activeCategory === "check-pusat" && (
-          <Suspense fallback={<TabLoadingFallback />}>
-            <CheckPusatGigaTools />
           </Suspense>
         )}
 
