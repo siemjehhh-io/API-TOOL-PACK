@@ -1,4 +1,4 @@
-﻿import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   Banknote,
@@ -638,11 +638,11 @@ export function DpSection() {
   const isFullRange = totalRows > 0 && selectedBounds.minIdx === 0 && selectedBounds.maxIdx === totalRows - 1;
 
   const inputCls = [
-    "bg-white/5 border border-white/10 text-white/90 placeholder:text-white/25",
-    "rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-400/40 transition-all",
+    "neu-inset text-[#23321B] placeholder:text-[#596B4F]/60",
+    "rounded-xl focus:outline-none focus:ring-2 focus:ring-[#74A355] transition-all px-3 py-1.5",
   ].join(" ");
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-ds-lg">
@@ -650,40 +650,30 @@ export function DpSection() {
       <motion.div
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-4 py-3 rounded-2xl glass border-emerald-400/20"
-        style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.04) 100%)" }}
+        className="flex items-center gap-3 px-4 py-3 rounded-2xl neu-flat border border-white/80 bg-[#FDFBD4]"
       >
-        <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/60" />
-        <span className="text-sm font-semibold text-white/90">QRIS HOKI DP</span>
-        <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-          SUB: {DP_OUTPUT_SUB} &nbsp;Â·&nbsp; KODE TRANSAKSI: {DP_OUTPUT_KODE_TRANSAKSI}
+        <div className="w-2.5 h-2.5 rounded-full bg-[#74A355] shrink-0 shadow-sm" />
+        <span className="text-sm font-semibold text-[#23321B]">QRIS HOKI DP</span>
+        <span className="text-xs text-[#596B4F] ml-1 hidden sm:inline font-medium">
+          SUB: {DP_OUTPUT_SUB} &nbsp;·&nbsp; KODE TRANSAKSI: {DP_OUTPUT_KODE_TRANSAKSI}
         </span>
       </motion.div>
 
-      {/* â”€â”€ UPLOAD ZONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── UPLOAD ZONE ── */}
       <div
         data-testid="dp-upload-zone"
-        className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
+        className={`relative group w-full rounded-2xl border-2 border-dashed transition-all duration-300
           flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-ds-md
           ${isDragging
-            ? "border-emerald-400/70 scale-[1.01]"
+            ? "border-[#74A355] bg-[#74A355]/10 scale-[1.01]"
             : file
-            ? "border-white/15 glass"
-            : "border-white/15 glass hover:border-emerald-400/40 cursor-pointer"}`}
-        style={isDragging ? { background: "rgba(16,185,129,0.1)" } : undefined}
+            ? "border-[#E8E2B5] neu-card"
+            : "border-[#E8E2B5] neu-card hover:border-[#74A355]/60 cursor-pointer"}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !file && fileInputRef.current?.click()}
       >
-        {/* Drag-active glow overlay */}
-        {isDragging && (
-          <div
-            className="absolute inset-0 rounded-2xl pointer-events-none"
-            style={{ boxShadow: "inset 0 0 60px rgba(16,185,129,0.18)" }}
-          />
-        )}
-
         <input
           type="file"
           accept=".xlsx"
@@ -703,8 +693,8 @@ export function DpSection() {
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-4"
             >
-              <div className="w-14 h-14 rounded-full border-4 border-emerald-400/20 border-t-emerald-400 animate-spin" />
-              <p className="text-white/60 font-medium">Memproses data depositâ€¦</p>
+              <div className="w-14 h-14 rounded-full border-4 border-[#74A355]/20 border-t-[#74A355] animate-spin" />
+              <p className="text-[#596B4F] font-medium">Memproses data deposit…</p>
             </motion.div>
           )}
 
@@ -717,12 +707,12 @@ export function DpSection() {
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-4 w-full"
             >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 border border-emerald-400/20 flex items-center justify-center">
-                <FileSpreadsheet size={30} className="text-emerald-300" />
+              <div className="w-16 h-16 rounded-2xl bg-[#74A355]/15 border border-[#74A355]/30 flex items-center justify-center">
+                <FileSpreadsheet size={30} className="text-[#74A355]" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-white">{file.name}</h3>
-                <p className="text-xs text-white/40 mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
+                <h3 className="text-base font-semibold text-[#23321B]">{file.name}</h3>
+                <p className="text-xs text-[#596B4F] mt-0.5 font-mono">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
 
               {/* Sheet picker (shown only when workbook has multiple sheets) */}
@@ -731,7 +721,7 @@ export function DpSection() {
                   className="flex items-center gap-2 flex-wrap justify-center"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <span className="text-xs text-white/40">Sheet:</span>
+                  <span className="text-xs text-[#596B4F]">Sheet:</span>
                   {sheetNames.map((sheetName) => (
                     <button
                       key={sheetName}
@@ -739,8 +729,8 @@ export function DpSection() {
                       onClick={() => changeSheet(sheetName)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
                         ${sheetName === selectedSheet
-                          ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-200"
-                          : "border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"}`}
+                          ? "bg-[#74A355] text-white border-[#567C3E]"
+                          : "border-[#E8E2B5] text-[#596B4F] hover:bg-white/60 text-[#23321B]"}`}
                     >
                       {sheetName}
                     </button>
@@ -751,8 +741,8 @@ export function DpSection() {
               <button
                 type="button"
                 onClick={(event) => { event.stopPropagation(); reset(); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40
-                  hover:text-red-400 hover:bg-red-400/10 border border-white/8 hover:border-red-400/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#CC2936]
+                  hover:bg-red-500/10 border border-red-300 transition-all"
               >
                 <X size={13} />
                 Hapus file
@@ -772,15 +762,15 @@ export function DpSection() {
               <div
                 className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 border
                   ${isDragging
-                    ? "bg-emerald-500 border-emerald-400 text-white"
-                    : "bg-white/5 border-white/10 text-white/40 group-hover:bg-emerald-500/15 group-hover:border-emerald-400/30 group-hover:text-emerald-300"}`}
+                    ? "bg-[#74A355] border-[#567C3E] text-white"
+                    : "bg-[#74A355]/10 border-[#74A355]/30 text-[#74A355] group-hover:bg-[#74A355]/20"}`}
               >
                 <Upload size={26} />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-white/85">Drop file Deposit Report di sini</h3>
-                <p className="text-sm text-white/35 mt-1.5">
-                  Format: <span className="text-emerald-300/80">deposit-report-*.xlsx</span>
+                <h3 className="text-base font-semibold text-[#23321B]">Drop file Deposit Report di sini</h3>
+                <p className="text-sm text-[#596B4F] mt-1.5 font-medium">
+                  Format: <span className="text-[#74A355] font-bold">deposit-report-*.xlsx</span>
                 </p>
               </div>
             </motion.div>
@@ -788,7 +778,7 @@ export function DpSection() {
         </AnimatePresence>
       </div>
 
-      {/* â”€â”€ ERROR BANNER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── ERROR BANNER ── */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -796,15 +786,15 @@ export function DpSection() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <div className="flex items-start gap-4 p-5 rounded-2xl border border-red-400/20 bg-red-500/8 backdrop-blur-sm">
-              <AlertCircle size={22} className="text-red-400 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-4 p-5 rounded-2xl border border-red-300 bg-red-50 text-[#CC2936]">
+              <AlertCircle size={22} className="text-[#CC2936] mt-0.5 shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-red-300 mb-1">Proses Gagal</p>
-                <p className="text-xs text-red-300/70">{error}</p>
+                <p className="text-sm font-semibold text-[#CC2936] mb-1">Proses Gagal</p>
+                <p className="text-xs text-[#CC2936]/80">{error}</p>
               </div>
               <button
                 onClick={() => setError(null)}
-                className="text-red-400/60 hover:text-red-300 transition-colors"
+                className="text-[#CC2936]/60 hover:text-[#CC2936] transition-colors"
               >
                 <X size={16} />
               </button>
@@ -813,7 +803,7 @@ export function DpSection() {
         )}
       </AnimatePresence>
 
-      {/* â”€â”€ DATA PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── DATA PREVIEW ── */}
       <AnimatePresence>
         {data && !error && (
           <motion.div
@@ -830,56 +820,56 @@ export function DpSection() {
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-ds-md"
               >
                 {/* Row count */}
-                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-                  <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
+                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-2xl neu-card border border-white/80">
+                  <div className="w-12 h-12 rounded-xl clay-badge flex items-center justify-center shrink-0">
                     <ListOrdered size={20} className="text-white" />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Baris Dipilih</p>
-                    <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
+                    <p className="text-xs uppercase tracking-wide text-[#596B4F] font-semibold">Baris Dipilih</p>
+                    <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">
                       {stats.count}
-                      <span className="text-sm text-white/30 font-normal ml-1">/ {totalRows}</span>
+                      <span className="text-sm text-[#596B4F] font-normal ml-1">/ {totalRows}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Total deposit */}
-                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-                  <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-ds-md shadow-cyan-500/30 shrink-0">
+                <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-2xl neu-card border border-white/80">
+                  <div className="w-12 h-12 rounded-xl clay-badge flex items-center justify-center shrink-0">
                     <Banknote size={20} className="text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Deposit</p>
-                    <p className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate">
+                    <p className="text-xs uppercase tracking-wide text-[#596B4F] font-semibold">Total Deposit</p>
+                    <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1 truncate">
                       {fmt(stats.totalNominal)}
                     </p>
                   </div>
                 </div>
 
                 {/* Duplicate IDs or Total File count */}
-                <div className={`flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
-                  <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
+                <div className={`flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-2xl neu-card border border-white/80 transition-colors ${stats.dupCount > 0 ? "border-amber-400" : ""}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white font-bold
                     ${stats.dupCount > 0
-                      ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
-                      : "bg-gradient-to-br from-violet-500 to-purple-600 shadow-violet-500/30"}`}
+                      ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-md"
+                      : "clay-badge"}`}
                   >
                     {stats.dupCount > 0
-                      ? <TriangleAlert size={20} className="text-white" />
-                      : <Layers size={20} className="text-white" />
+                      ? <TriangleAlert size={20} />
+                      : <Layers size={20} />
                     }
                   </div>
                   <div>
                     {stats.dupCount > 0 ? (
                       <>
-                        <p className="text-xs uppercase tracking-wide text-amber-400/70 font-medium">ID Duplikat</p>
-                        <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-1">
+                        <p className="text-xs uppercase tracking-wide text-[#C87A14] font-semibold">ID Duplikat</p>
+                        <p className="text-2xl font-bold text-[#C87A14] leading-tight font-mono mt-1">
                           {stats.dupCount} <span className="text-sm font-normal">baris</span>
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total File</p>
-                        <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{totalRows}</p>
+                        <p className="text-xs uppercase tracking-wide text-[#596B4F] font-semibold">Total File</p>
+                        <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">{totalRows}</p>
                       </>
                     )}
                   </div>
@@ -890,8 +880,8 @@ export function DpSection() {
             {/* Top bar: title + export buttons */}
             <div className="flex items-center justify-between gap-ds-md flex-wrap">
               <div className="flex items-center gap-ds-md">
-                <h2 className="text-base font-semibold text-white/85">Pratinjau Data DP</h2>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold border border-emerald-400/20">
+                <h2 className="text-base font-semibold text-[#23321B]">Pratinjau Data DP</h2>
+                <span className="px-3 py-1 rounded-full bg-[#74A355]/15 text-[#74A355] text-xs font-bold border border-[#74A355]/30">
                   {totalRows} total
                 </span>
               </div>
@@ -900,7 +890,7 @@ export function DpSection() {
                   type="button"
                   onClick={exportXlsx}
                   disabled={filteredData.length === 0}
-                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all disabled:opacity-35 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold neu-flat text-[#23321B] hover:bg-white transition-all disabled:opacity-35 disabled:cursor-not-allowed"
                 >
                   <Download size={15} />
                   <span className="hidden sm:inline">Export</span>
@@ -909,11 +899,7 @@ export function DpSection() {
                   type="button"
                   onClick={copyTSV}
                   disabled={filteredData.length === 0}
-                  className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
-                    disabled:opacity-35 disabled:cursor-not-allowed
-                    ${copiedType === "trx"
-                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30"
-                      : "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30 hover:from-amber-400 hover:to-orange-400"}`}
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all clay-btn-green disabled:opacity-35 disabled:cursor-not-allowed"
                 >
                   {copiedType === "trx"
                     ? <><Check size={15} />Tersalin!</>
@@ -924,11 +910,7 @@ export function DpSection() {
                   type="button"
                   onClick={handleCopyDocQris}
                   disabled={filteredData.length === 0}
-                  className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
-                    disabled:opacity-35 disabled:cursor-not-allowed
-                    ${copiedType === "qris"
-                      ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-cyan-500/30"
-                      : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-cyan-500/30 hover:from-cyan-500 hover:to-blue-500"}`}
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all clay-btn-green disabled:opacity-35 disabled:cursor-not-allowed"
                 >
                   {copiedType === "qris"
                     ? <><Check size={15} />Tersalin!</>
@@ -938,16 +920,16 @@ export function DpSection() {
               </div>
             </div>
 
-            {/* â”€â”€ Controls panel: row range + ID search + table filter â”€â”€ */}
-            <div className="flex flex-col gap-ds-md px-ds-lg py-ds-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
+            {/* ── Controls panel: row range + ID search + table filter ── */}
+            <div className="flex flex-col gap-ds-md p-5 rounded-2xl neu-card border border-white/80">
 
               {/* Row range inputs + mark mode buttons */}
               <div className="flex flex-wrap items-center gap-3">
-                <ChevronsUpDown size={14} className="text-white/30 shrink-0" />
-                <span className="text-xs font-semibold text-white/50 shrink-0">RENTANG:</span>
+                <ChevronsUpDown size={14} className="text-[#596B4F] shrink-0" />
+                <span className="text-xs font-semibold text-[#596B4F] shrink-0">RENTANG:</span>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/30">Mulai</span>
+                  <span className="text-xs text-[#596B4F]">Mulai</span>
                   <input
                     type="number"
                     min={1}
@@ -958,10 +940,10 @@ export function DpSection() {
                   />
                 </div>
 
-                <span className="text-white/20 text-xs">â€”</span>
+                <span className="text-[#596B4F] text-xs">—</span>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/30">Sampai</span>
+                  <span className="text-xs text-[#596B4F]">Sampai</span>
                   <input
                     type="number"
                     min={1}
@@ -976,19 +958,19 @@ export function DpSection() {
                   {!isFullRange && (
                     <button
                       onClick={() => { setStartIndex(0); setEndIndex(totalRows - 1); setMarkMode(null); }}
-                      className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors"
+                      className="text-xs text-[#596B4F] hover:text-[#23321B] underline underline-offset-2 transition-colors font-medium"
                     >
                       Reset
                     </button>
                   )}
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border
-                    ${isFullRange ? "bg-white/5 border-white/8 text-white/30" : "bg-amber-500/12 border-amber-400/25 text-amber-300"}`}>
+                    ${isFullRange ? "bg-[#FDFBD4] border-[#E8E2B5] text-[#596B4F]" : "bg-amber-100 border-amber-300 text-amber-800"}`}>
                     {rangeData.length} dipilih
                   </span>
                 </div>
               </div>
 
-              <div className="border-t border-white/6" />
+              <div className="border-t border-[#E8E2B5]" />
 
               {/* ID range pickers (two independent boxes) — sama dengan WD */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-md">
@@ -1037,15 +1019,15 @@ export function DpSection() {
                 />
               </div>
 
-              <div className="border-t border-white/6" />
+              <div className="border-t border-[#E8E2B5]" />
 
               {/* Table text filter */}
               <div className="flex flex-wrap items-center gap-2">
-                <Hash size={13} className="text-white/30 shrink-0" />
-                <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">FILTER:</span>
+                <Hash size={13} className="text-[#596B4F] shrink-0" />
+                <span className="text-xs font-semibold text-[#596B4F] shrink-0 hidden sm:inline">FILTER:</span>
                 <div className="ml-auto flex items-center gap-2">
                   <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#596B4F] pointer-events-none" />
                     <input
                       type="text"
                       placeholder="Filter tabel..."
@@ -1056,14 +1038,14 @@ export function DpSection() {
                     {tableFilter && (
                       <button
                         onClick={() => setTableFilter("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#596B4F] hover:text-[#23321B]"
                       >
                         <X size={11} />
                       </button>
                     )}
                   </div>
                   {tableFilter && (
-                    <span className="text-[11px] text-white/30">{filteredData.length} hasil</span>
+                    <span className="text-[11px] text-[#596B4F]">{filteredData.length} hasil</span>
                   )}
                 </div>
               </div>
@@ -1078,11 +1060,11 @@ export function DpSection() {
                   exit={{ opacity: 0, height: 0 }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs overflow-hidden
                     ${markMode === "start"
-                      ? "bg-emerald-500/8 border-emerald-400/20 text-emerald-300"
-                      : "bg-rose-500/8 border-rose-400/20 text-rose-300"}`}
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                      : "bg-rose-50 border-rose-300 text-rose-800"}`}
                 >
                   <Flag size={12} />
-                  Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> â€” klik nomor baris di tabel.
+                  Mode aktif: <strong>Tandai Baris {markMode === "start" ? "Awal" : "Akhir"}</strong> — klik nomor baris di tabel.
                   <button onClick={() => setMarkMode(null)} className="ml-auto opacity-60 hover:opacity-100">
                     <X size={12} />
                   </button>
@@ -1094,11 +1076,11 @@ export function DpSection() {
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-2 px-4 py-3 rounded-2xl border border-amber-400/35 bg-amber-500/12 shadow-lg shadow-amber-500/10"
+                className="flex flex-col gap-2 px-4 py-3 rounded-2xl border border-amber-300 bg-amber-50 shadow-sm"
               >
-                <div className="flex items-center gap-2 text-amber-200">
-                  <TriangleAlert size={16} className="shrink-0" />
-                  <span className="text-sm font-black">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <TriangleAlert size={16} className="shrink-0 text-amber-600" />
+                  <span className="text-sm font-bold">
                     WARNING: Ditemukan {duplicateTrxSummary.count} ID Transaksi Duplikat!
                   </span>
                 </div>
@@ -1106,13 +1088,13 @@ export function DpSection() {
                   {duplicateTrxSummary.preview.map((trxId) => (
                     <span
                       key={trxId}
-                      className="px-2 py-1 rounded-lg bg-amber-300/10 border border-amber-300/20 text-[11px] font-mono text-amber-100"
+                      className="px-2 py-1 rounded-lg bg-amber-100 border border-amber-300 text-[11px] font-mono text-amber-900"
                     >
                       {trxId}
                     </span>
                   ))}
                   {duplicateTrxSummary.count > duplicateTrxSummary.preview.length && (
-                    <span className="px-2 py-1 text-[11px] text-amber-200/70">
+                    <span className="px-2 py-1 text-[11px] text-amber-800 font-medium">
                       +{duplicateTrxSummary.count - duplicateTrxSummary.preview.length} lainnya
                     </span>
                   )}
@@ -1120,25 +1102,22 @@ export function DpSection() {
               </motion.div>
             )}
 
-            {/* â”€â”€ Preview table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
+            {/* ── Preview table ── */}
+            <div className="rounded-2xl overflow-hidden neu-card border border-white/80">
               <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
                 <table className="w-full text-sm text-left border-collapse">
-                  <thead
-                    className="text-[10px] uppercase tracking-wider text-white/50 sticky top-0 z-10"
-                    style={{ background: "rgba(5,46,22,0.75)", backdropFilter: "blur(20px)" }}
-                  >
+                  <thead className="text-[10px] uppercase tracking-wider text-[#23321B] bg-[#EFEBA9] sticky top-0 z-10 border-b border-[#E8E2B5]">
                     <tr>
-                      <th className="px-ds-md py-ds-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
+                      <th className="px-ds-md py-ds-sm text-center w-10 border-b border-[#E8E2B5] font-bold whitespace-nowrap">#</th>
                       {OUTPUT_HEADERS.map((header, columnIndex) => (
-                        <th key={columnIndex} className="px-ds-md py-ds-sm font-semibold whitespace-nowrap border-b border-white/10">
+                        <th key={columnIndex} className="px-ds-md py-ds-sm font-bold whitespace-nowrap border-b border-[#E8E2B5]">
                           {header}
                         </th>
                       ))}
                     </tr>
                   </thead>
 
-                  <tbody className="font-mono text-xs divide-y divide-white/4">
+                  <tbody className="font-mono text-xs divide-y divide-[#E8E2B5]">
                     {data.map((row, rowIndex) => {
                       const rowNumber = rowIndex + 1;
                       const inRange   = rowIndex >= selectedBounds.minIdx && rowIndex <= selectedBounds.maxIdx;
@@ -1160,11 +1139,11 @@ export function DpSection() {
                       return (
                         <tr
                           key={rowIndex}
-                          className={`transition-colors duration-100
-                            ${inRange ? "hover:bg-white/3" : "opacity-20"}
-                            ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
-                            ${isEnd ? "border-b-2 border-b-rose-400/40" : ""}
-                            ${isDup && inRange ? "bg-amber-500/4" : ""}`}
+                          className={`transition-colors duration-100 bg-[#FDFBD4] text-[#23321B]
+                            ${inRange ? "hover:bg-[#F5F0C2]" : "opacity-30"}
+                            ${isStart ? "border-t-2 border-t-[#74A355]" : ""}
+                            ${isEnd ? "border-b-2 border-b-rose-500" : ""}
+                            ${isDup && inRange ? "bg-amber-100" : ""}`}
                         >
                           {/* Row number / mark cell */}
                           <td
@@ -1172,34 +1151,34 @@ export function DpSection() {
                             onClick={() => markMode && handleRowClick(rowIndex)}
                           >
                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold transition-all
-                              ${isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
-                              : isEnd    ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"
-                              : isDup && inRange ? "bg-amber-500/20 text-amber-300"
-                              : markMode ? "text-white/20 hover:bg-emerald-500/20 hover:text-emerald-300"
-                              : "text-white/15"}`}
+                              ${isStart  ? "bg-[#74A355] text-white"
+                              : isEnd    ? "bg-rose-500 text-white"
+                              : isDup && inRange ? "bg-amber-500 text-white"
+                              : markMode ? "text-[#74A355] hover:bg-[#74A355]/20"
+                              : "text-[#596B4F]"}`}
                             >
                               {isDup && inRange ? "!" : rowNumber}
                             </span>
                           </td>
 
                           {/* Data cells */}
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/50 text-[11px]">{row.nama}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-cyan-300/70 text-[11px]">{row.nomorRekening}</td>
-                          <td className={`px-4 py-2.5 whitespace-nowrap ${isDup && inRange ? "text-amber-300" : "text-white/80"}`}>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F] text-[11px] font-medium">{row.nama}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-teal-700 text-[11px] font-semibold">{row.nomorRekening}</td>
+                          <td className={`px-4 py-2.5 whitespace-nowrap ${isDup && inRange ? "text-amber-800 font-bold" : "text-[#23321B] font-medium"}`}>
                             {row.userId}
                           </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.sub}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-emerald-300/80 font-semibold">{row.kodeTransaksi}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-emerald-300/90 font-semibold">{row.deposit}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/25">{row.withdrawal}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/25">{row.dpPulsa}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/40 text-[11px] max-w-[200px] truncate" title={row.keterangan}>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F]">{row.sub}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#74A355] font-bold">{row.kodeTransaksi}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#74A355] font-bold">{row.deposit}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F]">{row.withdrawal}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F]">{row.dpPulsa}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F] text-[11px] max-w-[200px] truncate" title={row.keterangan}>
                             {row.keterangan}
                           </td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.kodeBank}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-white/25">{row.saldoAkhir}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-violet-300/70">{row.jamInput}</td>
-                          <td className="px-4 py-2.5 whitespace-nowrap text-violet-300/70">{row.inputKodeBank}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F]">{row.kodeBank}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#596B4F]">{row.saldoAkhir}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#74A355] font-semibold">{row.jamInput}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap text-[#74A355] font-semibold">{row.inputKodeBank}</td>
                         </tr>
                       );
                     })}

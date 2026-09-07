@@ -38,21 +38,21 @@ class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#131424] text-white flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/20">
+        <div className="min-h-screen bg-[#FDFBD4] text-[#23321B] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 rounded-2xl clay-badge text-white flex items-center justify-center mb-4">
             <AlertTriangle size={32} />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Terjadi Kendala Memuat Layanan</h2>
-          <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+          <h2 className="text-2xl font-bold mb-2 text-[#23321B]">Terjadi Kendala Memuat Layanan</h2>
+          <p className="text-sm text-[#596B4F] max-w-md mb-6 leading-relaxed">
             Sistem mendeteksi pembaruan versi atau kendala koneksi sementara. Silakan muat ulang halaman untuk memperbarui cache aplikasi.
           </p>
-          <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-xs font-mono text-rose-300 mb-6 max-w-lg overflow-x-auto">
+          <div className="p-3 rounded-xl neu-inset border border-[#E8E2B5] text-xs font-mono text-rose-700 mb-6 max-w-lg overflow-x-auto">
             {this.state.error?.message || "Unknown error"}
           </div>
           <button
             type="button"
             onClick={this.handleReset}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 font-bold text-sm text-white shadow-lg hover:scale-105 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl clay-btn-green font-bold text-sm text-white cursor-pointer"
           >
             <RefreshCw size={16} />
             Muat Ulang Aplikasi

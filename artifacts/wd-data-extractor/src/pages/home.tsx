@@ -1,6 +1,7 @@
 // External dependencies
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
+  Activity,
   AlertCircle,
   ArrowDownToLine,
   ArrowLeft,
@@ -35,6 +36,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 
 // Shared components
 import { IdRangePicker } from "@/components/IdRangePicker";
+import { InteractiveHero } from "@/components/InteractiveHero";
 
 // Local pages — lazy-loaded so each tab ships as its own chunk.
 const DpSection = lazy(() =>
@@ -354,31 +356,31 @@ const DEFAULT_GIGA_TABS: GigaTabMeta[] = [
     id: "qrishoki",
     label: "QRISHOKI",
     iconName: "ClipboardList",
-    activeColor: "bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-500/30 border border-fuchsia-400/40",
+    activeColor: "clay-btn-green shadow-md border border-[#567C3E]",
   },
   {
     id: "zenpay",
     label: "ZENPAY",
     iconName: "Layers",
-    activeColor: "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30 border border-cyan-400/40",
+    activeColor: "clay-btn-green shadow-md border border-[#567C3E]",
   },
   {
     id: "bonus",
     label: "BONUS",
     iconName: "Banknote",
-    activeColor: "bg-amber-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40",
+    activeColor: "clay-btn-green shadow-md border border-[#567C3E]",
   },
   {
     id: "check-pusat",
     label: "CHECK PUSAT",
     iconName: "Trophy",
-    activeColor: "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40",
+    activeColor: "clay-btn-green shadow-md border border-[#567C3E]",
   },
   {
     id: "wd",
     label: "WD GIGA",
     iconName: "ArrowUpFromLine",
-    activeColor: "bg-rose-600 text-white shadow-sm shadow-rose-500/30 border border-rose-400/40",
+    activeColor: "clay-btn-green shadow-md border border-[#567C3E]",
   },
 ];
 
@@ -400,11 +402,22 @@ function renderGigaTabIcon(iconName: GigaTabMeta["iconName"]) {
 export default function Home() {
   // ── Category & Tab ────────────────────────────────────────────────────────────
 
-  const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
+  const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>("formula");
   const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
   const [activeGigaTab, setActiveGigaTab] = useState<GigaTabKey>("qrishoki");
   const [activeOzzoTab, setActiveOzzoTab] = useState<"qris-ajaib">("qris-ajaib");
+
+  const handleSelectService = (section: string | null, category?: string) => {
+    if (section === null) {
+      setMainSection(null);
+      return;
+    }
+    setMainSection(section as "formula" | "mutasi" | "phishing");
+    if (category) {
+      setActiveCategory(category as "qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi");
+    }
+  };
 
   // Re-orderable GIGA sub-tabs state with localStorage persistence
   const [gigaTabs, setGigaTabs] = useState<GigaTabMeta[]>(() => {
@@ -805,928 +818,707 @@ export default function Home() {
   }, [filteredData, file]);
 
   // â”€â”€ Derived booleans & shared styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Derived booleans & shared styles ───────────────────────────────────────
 
   const isFullRange = startRow === 1 && endRow === totalRows;
 
   // Shared Tailwind class for text inputs in the controls panel.
   const inputCls = [
-    "bg-white/5 border border-white/10 text-white/90 placeholder:text-white/25",
-    "rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400/50 focus:border-violet-400/40 transition-all",
+    "neu-inset text-[#23321B] placeholder:text-[#596B4F]/60",
+    "rounded-xl focus:outline-none focus:ring-2 focus:ring-[#74A355] transition-all px-3 py-1.5",
   ].join(" ");
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  const isWdSection = mainSection === "formula" && activeCategory === "qris-hoki" && activeQrisTab === "wd";
 
   return (
-    <div className="relative min-h-screen flex flex-col text-white font-sans">
+    <div className="relative min-h-screen bg-[#EBE7AB]/40 p-3 sm:p-5 lg:p-7 flex items-center justify-center font-sans selection:bg-[#74A355] selection:text-white">
+      {/* ── Ambient Background Lighting ── */}
+      <div className="bg-scene-light" aria-hidden />
 
-      {/* â”€â”€ Animated background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="bg-scene" aria-hidden>
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
-      </div>
+      {/* ── UNIFIED FLIGHT DASHBOARD INNER CONTAINER (Matching Photo Sample) ── */}
+      <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row gap-6 shadow-2xl border border-white/90 overflow-hidden relative z-10">
 
-      {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <header className="sticky top-0 z-30 bg-[#131424]/85 backdrop-blur-md border-b border-white/5">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3">
-
-          {/* Left: logo + title */}
-          <div 
-            onClick={() => setMainSection(null)}
-            className="flex items-center gap-4 min-w-0 cursor-pointer group select-none self-start"
-          >
-            <img
-              src="/logo.png"
-              alt="API GROUP TOOLS"
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-lg shadow-violet-500/20 object-cover group-hover:scale-105 transition-transform duration-200"
-            />
-            <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-quadrillion italic leading-none tracking-tight text-white whitespace-nowrap group-hover:text-violet-300 transition-colors">API GROUP TOOLS</h1>
-              <p className="text-sm sm:text-base text-slate-400 mt-1 whitespace-nowrap">Internal Operation Tools</p>
+        {/* ── 1. LEFT CURVED SIDEBAR PANEL (Dark Forest Green Card #3A592B) ── */}
+        <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-xl relative overflow-hidden">
+          
+          {/* Top Brand / User Profile Section */}
+          <div className="flex flex-col items-center text-center gap-2 pb-6 border-b border-white/15">
+            <div className="relative">
+              <img
+                src="/logo.png"
+                alt="API GROUP"
+                className="w-16 h-16 rounded-2xl border-2 border-[#D9B038] object-cover shadow-md"
+              />
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#82B660] border-2 border-[#3A592B]" />
             </div>
+            <h2 className="text-lg font-thertole tracking-wider text-white uppercase mt-1 drop-shadow-sm">
+              API GROUP TOOLS
+            </h2>
+            <p className="text-[11px] text-white/80 font-mono font-bold tracking-wide">apitool.gwk.web.id</p>
           </div>
-        </div>
-      </header>
 
-      {/* â”€â”€ MAIN CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <main className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-ds-lg sm:py-ds-xl flex flex-col gap-ds-lg">
-
-        {/* ── UNIFIED FORMULA TOOLS TOP NAVIGATION BAR ── */}
-        {mainSection === "formula" && (
-          <div className="flex flex-col gap-2.5">
-            {/* Top Bar: Back Button + Main Category Switcher in a unified glass navbar */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-2 sm:p-2.5 rounded-2xl glass border border-white/10 shadow-lg bg-slate-900/60 backdrop-blur-xl">
-              {/* Left: Back to Lobby + Section Title */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMainSection(null)}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 shadow-sm shrink-0"
-                >
-                  <ArrowLeft size={14} className="text-violet-400" />
-                  <span>Menu Utama</span>
-                </button>
-                <div className="h-5 w-px bg-white/10 hidden sm:block" />
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
-                    Formula Tools
-                  </span>
-                </div>
-              </div>
-
-              {/* Right: Main Category Tabs */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/5 overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("giga")}
-                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
-                    ${activeCategory === "giga"
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                >
-                  <ClipboardList size={14} />
-                  GIGA PANEL TOOLS
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("qris-hoki")}
-                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
-                    ${activeCategory === "qris-hoki"
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 ring-1 ring-white/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                >
-                  <ArrowDownToLine size={14} />
-                  QRIS HOKI TOOLS
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("ozzo")}
-                  className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap
-                    ${activeCategory === "ozzo"
-                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/25 ring-1 ring-white/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                >
-                  <Zap size={14} />
-                  OZZO TOOLS
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-Tab Bar (Re-orderable for Giga Panel) */}
-            {activeCategory === "giga" && (
-              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
-                <div className="flex items-center gap-2 overflow-x-auto py-0.5">
-                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline select-none">
-                    PILIH PANEL:
-                  </span>
-                  <Reorder.Group
-                    axis="x"
-                    values={gigaTabs}
-                    onReorder={handleReorderGigaTabs}
-                    className="flex items-center gap-1.5"
-                  >
-                    {gigaTabs.map((tab) => {
-                      const isActive = activeGigaTab === tab.id;
-                      return (
-                        <Reorder.Item
-                          key={tab.id}
-                          value={tab}
-                          axis="x"
-                          className="relative cursor-grab active:cursor-grabbing select-none shrink-0"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setActiveGigaTab(tab.id)}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                              ${
-                                isActive
-                                  ? tab.activeColor
-                                  : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                              }`}
-                          >
-                            {renderGigaTabIcon(tab.iconName)}
-                            <span>{tab.label}</span>
-                          </button>
-                        </Reorder.Item>
-                      );
-                    })}
-                  </Reorder.Group>
-                </div>
-                <span className="text-[10px] font-mono text-white/30 hidden md:inline select-none">
-                  ↔ Geser Tab
-                </span>
-              </div>
-            )}
-
-            {activeCategory === "ozzo" && (
-              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
-                    PILIH PANEL:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveOzzoTab("qris-ajaib")}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeOzzoTab === "qris-ajaib"
-                        ? "bg-amber-600 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <QrCode size={13} />
-                    WD QRIS AJAIB OZZO
-                  </button>
-                </div>
-                <span className="text-[11px] font-mono text-amber-400/50 hidden md:inline">
-                  OZZO TOOLS
-                </span>
-              </div>
-            )}
-
-            {activeCategory === "qris-hoki" && (
-              <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
-                    MODE TRANSAKSI:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveQrisTab("wd")}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeQrisTab === "wd"
-                        ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <ArrowUpFromLine size={13} />
-                    QRIS HOKI WD
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveQrisTab("dp")}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeQrisTab === "dp"
-                        ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/30 border border-emerald-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <ArrowDownToLine size={13} />
-                    QRIS HOKI DP
-                  </button>
-                </div>
-                <span className="text-[11px] font-mono text-white/30 hidden md:inline">
-                  QRIS HOKI TOOLS
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── UNIFIED SMART MUTASI TOP BAR ── */}
-        {mainSection === "mutasi" && (
-          <div className="flex items-center justify-between gap-3 p-2 sm:p-2.5 rounded-2xl glass border border-white/10 shadow-lg bg-slate-900/60 backdrop-blur-xl">
+          {/* Vertical Navigation Menu with Scooped Active Tab Cutout */}
+          <nav className="flex flex-col gap-1.5 my-6 pr-0">
             <button
               type="button"
-              onClick={() => setMainSection(null)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 shadow-sm shrink-0"
+              onClick={() => {
+                setMainSection(null);
+              }}
+              className={mainSection === null
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
             >
-              <ArrowLeft size={14} className="text-violet-400" />
-              <span>Menu Utama</span>
+              <Zap size={16} />
+              <span>DASHBOARD</span>
             </button>
-            <div className="flex items-center gap-2 pr-3">
-              <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
-                Smart Mutasi Tools
-              </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMainSection("formula");
+                setActiveCategory("giga");
+              }}
+              className={mainSection === "formula" && activeCategory === "giga"
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
+            >
+              <ClipboardList size={16} />
+              <span>GIGA PANEL</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMainSection("formula");
+                setActiveCategory("qris-hoki");
+              }}
+              className={mainSection === "formula" && activeCategory === "qris-hoki"
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
+            >
+              <ArrowDownToLine size={16} />
+              <span>QRIS HOKI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMainSection("formula");
+                setActiveCategory("ozzo");
+              }}
+              className={mainSection === "formula" && activeCategory === "ozzo"
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
+            >
+              <Zap size={16} />
+              <span>OZZO TOOLS</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMainSection("mutasi");
+                setActiveCategory("giga-smart-mutasi");
+              }}
+              className={mainSection === "mutasi"
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
+            >
+              <TableProperties size={16} />
+              <span>SMART MUTASI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMainSection("phishing");
+              }}
+              className={mainSection === "phishing"
+                ? "nav-scoop-active -mr-6 pr-8 pl-5 py-3 text-xs tracking-wider uppercase font-extrabold flex items-center gap-3 transition-all text-[#3A592B]"
+                : "text-white/70 hover:text-white px-5 py-3 text-xs tracking-wider uppercase font-bold flex items-center gap-3 transition-colors cursor-pointer"}
+            >
+              <Shield size={16} />
+              <span>PHISH SHIELD</span>
+            </button>
+          </nav>
+
+          {/* Bottom Server Information & Status Widget */}
+          <div className="pt-4 border-t border-white/15">
+            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-[#82B660]/20 text-[#82B660] flex items-center justify-center shrink-0 border border-[#82B660]/30">
+                  <Activity size={16} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#D9B038] block leading-tight">
+                    STATUS SYSTEM
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-white/90 truncate block">
+                    ONLINE & OPERATIONAL
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-[#82B660]/20 border border-[#82B660]/40 px-2.5 py-1 rounded-full shrink-0">
+                <span className="w-2 h-2 rounded-full bg-[#82B660] animate-pulse" />
+                <span className="text-[10px] font-mono font-extrabold text-[#82B660] tracking-wider">ONLINE</span>
+              </div>
             </div>
           </div>
-        )}
 
-        {mainSection === null && (
-          <div className="flex-1 flex flex-col justify-center items-center py-12">
-            <div className="max-w-4xl w-full text-center mb-12">
-              <h2 className="text-4xl sm:text-5xl font-quadrillion tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-400 to-red-400 bg-clip-text text-transparent">
-                PILIH LAYANAN PORTAL
-              </h2>
-              <p className="text-slate-400 mt-3 text-sm sm:text-base">
-                Silakan pilih salah satu dari tiga tools di bawah ini untuk memulai operasional
-              </p>
-            </div>
+        </aside>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4">
-              {/* Card 1: Formula Tools */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMainSection("formula");
-                  setActiveCategory("giga");
-                }}
-                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-violet-500/10 cursor-pointer overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="w-16 h-16 rounded-2xl bg-violet-600/20 text-violet-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-violet-500/20">
-                  <ClipboardList size={32} />
+        {/* ── 2. RIGHT MAIN CONTENT AREA ── */}
+        <main className="flex-1 flex flex-col gap-6 min-w-0">
+
+          {/* ── TOP CONSOLE SEARCH PILL CARD (Upper Flight Bar Style) ── */}
+          <div className="neu-card rounded-[2rem] p-5 border border-white/90 flex flex-col gap-4 shadow-md">
+            
+            {/* Top Row: Console Pills (STATUS MONITOR on Dashboard, FILE EXCEL & SHEET AKTIF on QRIS HOKI) */}
+            {mainSection === null && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 border border-[#E8E2B5]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#D9B038] text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <Zap size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">STATUS MONITOR</p>
+                      <p className="text-xs font-bold text-[#74A355]">ENGINE READY (v2.0)</p>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
-                  Formula Tools
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  Giga Panel Tools &amp; QRIS Hoki Tools untuk perhitungan dan salin data DP/WD.
-                </p>
-              </button>
-
-              {/* Card 2: Smart Mutasi Tools */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMainSection("mutasi");
-                  setActiveCategory("giga-smart-mutasi");
-                }}
-                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-violet-500/10 cursor-pointer overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="w-16 h-16 rounded-2xl bg-violet-600/20 text-violet-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-violet-500/20">
-                  <TableProperties size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
-                  Smart Mutasi Tools
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  Laporan dan sinkronisasi otomatis mutasi bank internal.
-                </p>
-              </button>
-
-              {/* Card 3: Phishing Report Tools */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMainSection("phishing");
-                }}
-                className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-amber-500/50 hover:bg-white/10 transition-all duration-300 text-center shadow-lg hover:shadow-amber-500/10 cursor-pointer overflow-hidden"
-              >
-                <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold tracking-wider uppercase">
-                  Under Maintenance
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-orange-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="w-16 h-16 rounded-2xl bg-amber-600/20 text-amber-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-amber-500/20">
-                  <Shield size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-300 transition-colors">
-                  Phishing Report Tools
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  PhishShield untuk perlindungan brand (Sedang dalam pemeliharaan).
-                </p>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* QRIS HOKI TOOL category content */}
-        {mainSection === "formula" && activeCategory === "qris-hoki" && (
-          <>
-
-            {/* DP section */}
-            {activeQrisTab === "dp" && (
-              <Suspense fallback={<TabLoadingFallback />}>
-                <DpSection />
-              </Suspense>
+              </div>
             )}
 
-            {/* WD section */}
-            {activeQrisTab === "wd" && (
-              <>
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl glass border-violet-400/20"
-              style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(99,102,241,0.06) 100%)" }}
-            >
-              <div className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-sm shadow-violet-400/60" />
-              <span className="text-sm font-semibold text-white/90">QRIS HOKI WD</span>
-              <span className="text-xs text-white/35 ml-1 hidden sm:inline">
-                SUB: {WD_OUTPUT_SUB} &nbsp;Â·&nbsp; KODE: {WD_OUTPUT_KODE_TRANSAKSI}
-              </span>
-            </motion.div>
-
-            {/* â”€â”€ UPLOAD ZONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <section>
-              <div
-                data-testid="upload-zone"
-                className={`relative group w-full rounded-ds-2xl border-2 border-dashed transition-all duration-300
-                  flex flex-col items-center justify-center p-12 sm:p-16 text-center overflow-hidden gap-ds-md
-                  ${isDragging
-                    ? "border-violet-400/70 scale-[1.01]"
-                    : file
-                    ? "border-white/15 glass"
-                    : "border-white/15 glass hover:border-violet-400/40 cursor-pointer"}`}
-                style={isDragging ? { background: "rgba(139,92,246,0.12)" } : undefined}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => !file && fileInputRef.current?.click()}
-              >
-                {/* Drag-active glow overlay */}
-                {isDragging && (
-                  <div
-                    className="absolute inset-0 rounded-2xl pointer-events-none"
-                    style={{ boxShadow: "inset 0 0 60px rgba(139,92,246,0.2)" }}
+            {isWdSection && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                
+                {/* Pill 1: File Dropzone Input Pill */}
+                <div
+                  data-testid="upload-zone"
+                  onClick={() => !file && fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-all border border-[#E8E2B5]
+                    ${isDragging ? "border-[#74A355] bg-[#74A355]/15" : "hover:border-[#74A355]"}`}
+                >
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    data-testid="input-file"
                   />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#3A592B] text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <FileSpreadsheet size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">FILE EXCEL</p>
+                      <p className="text-xs font-bold text-[#23321B] truncate">
+                        {isParsing ? "Memproses…" : file ? file.name : "Pilih File (.xlsx)"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {file && !isParsing && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); reset(); }}
+                      className="text-[#CC2936] hover:bg-red-100 p-1 rounded-lg transition-colors"
+                      data-testid="button-remove-file"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Pill 2: Sheet Selector / Multi-Sheet Pill */}
+                <div className="neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 border border-[#E8E2B5]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#567C3E] text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <TableProperties size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">SHEET AKTIF</p>
+                      <p className="text-xs font-bold text-[#23321B] truncate">
+                        {selectedSheet || (sheetNames.length ? sheetNames[0] : "Sheet 1")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {sheetNames.length > 1 && (
+                    <select
+                      value={selectedSheet}
+                      onChange={(e) => changeSheet(e.target.value)}
+                      className="text-xs font-bold text-[#3A592B] bg-white/80 border border-[#E8E2B5] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                    >
+                      {sheetNames.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* Bottom Row: Subtab Segmented Switcher & Clay Action Button */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              
+              {/* Segmented Controller Switcher (Only shown when a formula module is active) */}
+              {mainSection === "formula" && (
+                <div className="flex items-center gap-1.5 bg-[#F6F3C2] p-1.5 rounded-2xl neu-inset overflow-x-auto w-full sm:w-auto">
+                  {activeCategory === "giga" && (
+                    <Reorder.Group
+                      axis="x"
+                      values={gigaTabs}
+                      onReorder={handleReorderGigaTabs}
+                      className="flex items-center gap-1.5"
+                    >
+                      {gigaTabs.map((tab) => {
+                        const isActive = activeGigaTab === tab.id;
+                        return (
+                          <Reorder.Item
+                            key={tab.id}
+                            value={tab}
+                            axis="x"
+                            className="cursor-grab active:cursor-grabbing select-none shrink-0"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setActiveGigaTab(tab.id)}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5
+                                ${isActive
+                                  ? "bg-[#3A592B] text-white shadow-md"
+                                  : "text-[#596B4F] hover:text-[#23321B]"}`}
+                            >
+                              {renderGigaTabIcon(tab.iconName)}
+                              <span>{tab.label}</span>
+                            </button>
+                          </Reorder.Item>
+                        );
+                      })}
+                    </Reorder.Group>
+                  )}
+
+                  {activeCategory === "qris-hoki" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveQrisTab("wd")}
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+                          ${activeQrisTab === "wd" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                      >
+                        QRIS HOKI WD
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveQrisTab("dp")}
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+                          ${activeQrisTab === "dp" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                      >
+                        QRIS HOKI DP
+                      </button>
+                    </>
+                  )}
+
+                  {activeCategory === "ozzo" && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveOzzoTab("qris-ajaib")}
+                      className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#3A592B] text-white shadow-md cursor-pointer"
+                    >
+                      WD QRIS AJAIB OZZO
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Gold/Green Clay Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                {data && !error && isWdSection && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={exportXlsx}
+                      disabled={filteredData.length === 0}
+                      className="neu-flat px-4 py-2 rounded-xl text-xs font-bold text-[#23321B] hover:bg-white transition-all cursor-pointer"
+                      data-testid="button-export-excel"
+                    >
+                      <Download size={14} className="inline mr-1" />
+                      Excel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={copyTSV}
+                      disabled={filteredData.length === 0}
+                      className="clay-btn-green px-5 py-2 rounded-xl text-xs font-extrabold shadow-md cursor-pointer"
+                      data-testid="button-copy-tsv"
+                    >
+                      {isCopied ? "TERSALIN!" : "SALIN TSV"}
+                    </button>
+                  </>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* ── MIDDLE WORKSPACE & TABLE STUDIO GRID ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            
+            {/* ── CENTER WORKSPACE TABLE ── */}
+            <div className={isWdSection ? "xl:col-span-8 flex flex-col gap-5" : "xl:col-span-12 flex flex-col gap-5"}>
+              
+              {/* Header Title Row */}
+              {isWdSection && (
+                <div className="flex items-center justify-between gap-4 px-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#23321B]">
+                      PRATINJAU DATA TRANSAKSI
+                    </h3>
+                    {data && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#74A355]/20 text-[#74A355] text-[10px] font-mono font-bold">
+                        {filteredData.length} / {totalRows}
+                      </span>
+                    )}
+                  </div>
+
+                  {data && (
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#596B4F] pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Cari kata kunci…"
+                        value={tableFilter}
+                        onChange={(e) => setTableFilter(e.target.value)}
+                        className={`w-36 h-7 pl-7 pr-6 text-xs ${inputCls}`}
+                        data-testid="input-table-filter"
+                      />
+                      {tableFilter && (
+                        <button
+                          onClick={() => setTableFilter("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[#596B4F] hover:text-[#23321B]"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub-page Render Switcher */}
+              {mainSection === "formula" && activeCategory === "giga" && (
+                <Suspense fallback={<TabLoadingFallback />}>
+                  {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
+                  {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
+                  {activeGigaTab === "bonus" && <GigaCopyBonus />}
+                  {activeGigaTab === "check-pusat" && <CheckPusatGigaTools />}
+                  {activeGigaTab === "wd" && <GigaCopyWd />}
+                </Suspense>
+              )}
+
+              {mainSection === "formula" && activeCategory === "ozzo" && (
+                <Suspense fallback={<TabLoadingFallback />}>
+                  {activeOzzoTab === "qris-ajaib" && <WdQrisAjaibOzzo />}
+                </Suspense>
+              )}
+
+              {mainSection === "formula" && activeCategory === "qris-hoki" && activeQrisTab === "dp" && (
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <DpSection />
+                </Suspense>
+              )}
+
+              {/* WD Data Extractor Table Render */}
+              {isWdSection && (
+                <div className="flex flex-col gap-4">
+                  
+                  {/* Error Notification */}
+                  <AnimatePresence>
+                    {error && (
+                      <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-100 border border-red-300 text-[#CC2936]">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle size={18} />
+                          <span className="text-xs font-bold">{error}</span>
+                        </div>
+                        <button onClick={() => setError(null)} data-testid="button-try-again">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </AnimatePresence>
+
+                  {!data || error ? (
+                    <div className="neu-card rounded-[2rem] p-12 text-center flex flex-col items-center justify-center min-h-[360px] border border-white/80">
+                      <div className="w-16 h-16 rounded-2xl bg-[#3A592B]/10 text-[#3A592B] flex items-center justify-center mb-4">
+                        <FileSpreadsheet size={32} />
+                      </div>
+                      <h4 className="text-sm font-bold text-[#23321B]">Data Canvas Belum Dimuat</h4>
+                      <p className="text-xs text-[#596B4F] mt-1 max-w-sm">
+                        Silakan upload file Excel laporan Withdrawal pada panel input atas untuk menampilkan hasil ekstraksi.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="neu-card rounded-[2rem] p-5 border border-white/90 shadow-md">
+                      <div className="rounded-2xl overflow-hidden neu-inset border border-[#E8E2B5]">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[480px]">
+                          <table className="w-full text-xs text-left border-collapse" data-testid="preview-table">
+                            <thead className="text-[10px] uppercase tracking-wider text-[#23321B] bg-[#EFEBA9] sticky top-0 z-10 border-b border-[#E8E2B5]">
+                              <tr>
+                                <th className="px-3 py-2.5 text-center w-10 font-bold border-b border-[#E8E2B5]">#</th>
+                                {OUTPUT_HEADERS.map((h, idx) => (
+                                  <th key={idx} className="px-3 py-2.5 font-bold whitespace-nowrap border-b border-[#E8E2B5]">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="font-mono text-[11px] divide-y divide-[#E8E2B5]">
+                              {data.map((row, rowIndex) => {
+                                const rowNumber = rowIndex + 1;
+                                const inRange   = rowNumber >= startRow && rowNumber <= endRow;
+                                const isStart   = rowNumber === startRow;
+                                const isEnd     = rowNumber === endRow;
+                                const startQ    = startIdQuery.trim().toLowerCase();
+                                const endQ      = endIdQuery.trim().toLowerCase();
+                                const isIdMatch = (startQ && row.userId.toLowerCase().includes(startQ)) ||
+                                                  (endQ   && row.userId.toLowerCase().includes(endQ));
+                                const isDup     = dupIds.has(row.userId);
+                                const needsIdReview = row._userIdNeedsReview || !row.userId;
+
+                                if (tableFilter.trim() && inRange) {
+                                  const query = tableFilter.trim().toLowerCase();
+                                  const matches =
+                                    row.nama.toLowerCase().includes(query) ||
+                                    row.userId.toLowerCase().includes(query) ||
+                                    row.nomorRekening.toLowerCase().includes(query) ||
+                                    row.withdrawal.toLowerCase().includes(query);
+                                  if (!matches) return null;
+                                }
+
+                                return (
+                                  <tr
+                                    key={rowIndex}
+                                    className={`transition-colors duration-100 bg-[#FDFBD4] text-[#23321B]
+                                      ${inRange ? "hover:bg-[#F5F0C2]" : "opacity-30"}
+                                      ${isStart ? "border-t-2 border-t-[#74A355]" : ""}
+                                      ${isEnd ? "border-b-2 border-b-rose-500" : ""}
+                                      ${needsIdReview && inRange ? "bg-red-100" : ""}
+                                      ${isIdMatch && inRange ? "bg-[#74A355]/15" : ""}
+                                      ${isDup && inRange ? "bg-amber-100" : ""}`}
+                                    data-testid={`row-data-${rowIndex}`}
+                                  >
+                                    <td className="px-2 py-2 text-center align-middle select-none">
+                                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold
+                                        ${needsIdReview && inRange ? "bg-red-500 text-white"
+                                        : isStart  ? "bg-[#74A355] text-white"
+                                        : isEnd    ? "bg-rose-500 text-white"
+                                        : isDup && inRange ? "bg-amber-500 text-white"
+                                        : "text-[#596B4F]"}`}
+                                      >
+                                        {needsIdReview && inRange ? "!" : isDup && inRange ? "!" : rowNumber}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 whitespace-nowrap font-medium text-[#23321B]">{row.nama}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#74A355] font-semibold">{row.nomorRekening}</td>
+                                    <td className={`px-3 py-2 whitespace-nowrap ${needsIdReview ? "text-red-600 font-black" : isIdMatch ? "text-[#74A355] font-bold" : isDup && inRange ? "text-amber-700" : "text-[#23321B]"}`}>
+                                      {needsIdReview ? "AWAS! Cek ID" : row.userId}
+                                    </td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.sub}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.kodeTransaksi}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.deposit}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#74A355] font-bold">{row.withdrawal}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.dpPulsa}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.keterangan}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.kodeBank}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.saldoAkhir}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-teal-700 font-semibold">{row.jamInput}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-[#596B4F]">{row.inputKodeBank}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {mainSection === "mutasi" && (
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <GigaSmartMutasi />
+                </Suspense>
+              )}
+
+              {mainSection === "phishing" && (
+                <div className="neu-card rounded-[2rem] p-10 text-center flex flex-col items-center justify-center border border-amber-300">
+                  <Shield size={40} className="text-amber-600 mb-3" />
+                  <h4 className="text-base font-bold text-[#23321B]">PhishShield Under Maintenance</h4>
+                  <p className="text-xs text-[#596B4F] mt-1 max-w-sm">Modul Phishing Report sedang dalam pemeliharaan berkala.</p>
+                </div>
+              )}
+
+              {mainSection === null && (
+                <InteractiveHero onSelectService={handleSelectService} />
+              )}
+
+            </div>
+
+            {/* ── 3. RIGHT SIDE CONTROL WIDGET PANEL (Only rendered when in QRIS HOKI WD / WD section) ── */}
+            {isWdSection && (
+              <div className="xl:col-span-4 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col gap-5 shadow-xl">
+                
+                {/* Header Title */}
+                <div className="flex items-center justify-between border-b border-white/15 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Flag size={16} className="text-[#D9B038]" />
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-white">
+                      RENTANG ID &amp; CONTROLS
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#D9B038] font-bold">LIVE FILTER</span>
+                </div>
+
+                {/* Graphic Node Diagram Widget (Matching Map Widget in Reference Photo) */}
+                <div className="p-4 rounded-2xl bg-white/10 border border-white/10 flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-[10px] text-white/80 font-mono">
+                    <span>FROM: {startIdQuery ? startIdQuery.toUpperCase() : "START"}</span>
+                    <span className="text-[#82B660] font-bold">➔</span>
+                    <span>TO: {endIdQuery ? endIdQuery.toUpperCase() : "END"}</span>
+                  </div>
+                  
+                  {/* Visual Flight Node Arc Line */}
+                  <div className="relative py-2 flex items-center justify-between px-2">
+                    <span className="w-3 h-3 rounded-full bg-[#82B660] border-2 border-white" />
+                    <div className="flex-1 border-t-2 border-dashed border-[#D9B038] mx-2 relative">
+                      <Zap size={14} className="text-[#D9B038] absolute -top-2 left-1/2 -translate-x-1/2" />
+                    </div>
+                    <span className="w-3 h-3 rounded-full bg-rose-500 border-2 border-white" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-white/60 font-mono">
+                    <span>Rentang: {rangeData.length} baris</span>
+                    <span>Total: {totalRows} baris</span>
+                  </div>
+                </div>
+
+                {/* ID Range Pickers Component (Start ID & End ID) */}
+                <div className="flex flex-col gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                  <IdRangePicker
+                    label="ID Awal"
+                    accent="emerald"
+                    icon={<Flag size={12} />}
+                    query={startIdQuery}
+                    onQueryChange={(val) => { setStartIdQuery(val); setStartMatchIdx(0); }}
+                    matches={startMatches}
+                    matchIdx={startMatchIdx}
+                    onCycle={(dir) => {
+                      if (!startMatches.length) return;
+                      setStartMatchIdx((curr) => (curr + dir + startMatches.length) % startMatches.length);
+                    }}
+                    onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
+                    inputCls={inputCls}
+                    testidPrefix="start"
+                    excludeMarked
+                  />
+
+                  <IdRangePicker
+                    label="ID Akhir"
+                    accent="rose"
+                    icon={<FlagOff size={12} />}
+                    query={endIdQuery}
+                    onQueryChange={(val) => { setEndIdQuery(val); setEndMatchIdx(0); }}
+                    matches={endMatches}
+                    matchIdx={endMatchIdx}
+                    onCycle={(dir) => {
+                      if (!endMatches.length) return;
+                      setEndMatchIdx((curr) => (curr + dir + endMatches.length) % endMatches.length);
+                    }}
+                    onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
+                    inputCls={inputCls}
+                    testidPrefix="end"
+                  />
+                </div>
+
+                {/* Manual Row Inputs */}
+                <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-white/90">
+                    <span>INPUT BARIS MANUAL</span>
+                    {!isFullRange && (
+                      <button
+                        onClick={() => {
+                          setStartRow(1);
+                          setEndRow(totalRows);
+                          setStartIdQuery("");
+                          setStartMatchIdx(0);
+                          setEndIdQuery("");
+                          setEndMatchIdx(0);
+                        }}
+                        className="text-[10px] text-[#D9B038] hover:underline cursor-pointer"
+                        data-testid="button-reset-range"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalRows}
+                      value={startRow}
+                      onChange={(e) => handleStartInput(e.target.value)}
+                      className="w-full h-8 px-2 text-xs text-center font-mono rounded-lg bg-white/20 text-white font-bold placeholder:text-white/50 border border-white/20 focus:outline-none"
+                      data-testid="input-start-row"
+                    />
+                    <span className="text-white/60 font-bold">—</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalRows}
+                      value={endRow}
+                      onChange={(e) => handleEndInput(e.target.value)}
+                      className="w-full h-8 px-2 text-xs text-center font-mono rounded-lg bg-white/20 text-white font-bold placeholder:text-white/50 border border-white/20 focus:outline-none"
+                      data-testid="input-end-row"
+                    />
+                  </div>
+                </div>
+
+                {/* Summary Stats Overview */}
+                {stats && (
+                  <div className="p-[#3.5] rounded-2xl bg-white/10 border border-white/10 flex flex-col gap-2 p-3.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">RINGKASAN ESTIMASI</span>
+                    <div className="flex items-center justify-between text-xs font-mono font-bold text-white">
+                      <span>TOTAL NOMINAL:</span>
+                      <span className="text-[#82B660]">{fmt(stats.totalNominal)}</span>
+                    </div>
+                    {stats.dupCount > 0 && (
+                      <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-300">
+                        <span>DUPLIKAT ID:</span>
+                        <span>{stats.dupCount} baris</span>
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  data-testid="input-file"
-                />
-
-                <AnimatePresence mode="wait">
-                  {/* State: parsing */}
-                  {isParsing && (
-                    <motion.div
-                      key="parsing"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex flex-col items-center gap-4"
-                    >
-                      <div className="w-14 h-14 rounded-full border-4 border-violet-400/20 border-t-violet-400 animate-spin" />
-                      <p className="text-white/60 font-medium">Memproses dataâ€¦</p>
-                    </motion.div>
-                  )}
-
-                  {/* State: file loaded */}
-                  {!isParsing && file && (
-                    <motion.div
-                      key="file-info"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex flex-col items-center gap-4 w-full"
-                    >
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/30 to-indigo-500/30 border border-violet-400/20 flex items-center justify-center">
-                        <FileSpreadsheet size={30} className="text-violet-300" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-white">{file.name}</h3>
-                        <p className="text-xs text-white/40 mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
-                      </div>
-
-                      {/* Sheet picker (shown only when workbook has multiple sheets) */}
-                      {sheetNames.length > 1 && (
-                        <div
-                          className="flex items-center gap-2 flex-wrap justify-center"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <TableProperties size={13} className="text-white/40" />
-                          <span className="text-xs text-white/40">Sheet:</span>
-                          {sheetNames.map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => changeSheet(s)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
-                                ${s === selectedSheet
-                                  ? "bg-violet-500/25 border-violet-400/50 text-violet-200"
-                                  : "border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"}`}
-                              data-testid={`button-sheet-${s}`}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={(event) => { event.stopPropagation(); reset(); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40
-                          hover:text-red-400 hover:bg-red-400/10 border border-white/8 hover:border-red-400/20 transition-all"
-                        data-testid="button-remove-file"
-                      >
-                        <X size={13} />
-                        Hapus file
-                      </button>
-                    </motion.div>
-                  )}
-
-                  {/* State: empty prompt */}
-                  {!isParsing && !file && (
-                    <motion.div
-                      key="prompt"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex flex-col items-center gap-4"
-                    >
-                      <div
-                        className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 border
-                          ${isDragging
-                            ? "bg-violet-500 border-violet-400 text-white shadow-lg shadow-violet-500/40"
-                            : "bg-white/5 border-white/10 text-white/40 group-hover:bg-violet-500/15 group-hover:border-violet-400/30 group-hover:text-violet-300"}`}
-                      >
-                        <Upload size={26} />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-white/85">Drop file Excel di sini</h3>
-                        <p className="text-sm text-white/35 mt-1.5">
-                          Hanya format <span className="text-violet-300/80">.xlsx</span> yang didukung. Klik untuk memilih file.
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-            </section>
-
-            {/* â”€â”€ ERROR BANNER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <div className="flex items-start gap-4 p-5 rounded-2xl border border-red-400/20 bg-red-500/8 backdrop-blur-sm">
-                    <AlertCircle size={22} className="text-red-400 mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-red-300 mb-1">Proses Gagal</p>
-                      <p className="text-xs text-red-300/70">{error}</p>
-                    </div>
-                    <button
-                      onClick={() => setError(null)}
-                      className="text-red-400/60 hover:text-red-300 transition-colors"
-                      data-testid="button-try-again"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* â”€â”€ DATA PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <AnimatePresence>
-              {data && !error && (
-                <motion.section
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="flex flex-col gap-ds-lg"
-                >
-                  {/* Stat cards */}
-                  {stats && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-ds-md"
-                    >
-                      {/* Row count */}
-                      <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-                        <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
-                          <ListOrdered size={20} className="text-white" />
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Baris Dipilih</p>
-                          <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
-                            {stats.count}
-                            <span className="text-sm text-white/30 font-normal ml-1">/ {totalRows}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Total withdrawal */}
-                      <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-                        <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
-                          <Banknote size={20} className="text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Nominal</p>
-                          <p className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate" title={fmt(stats.totalNominal)}>
-                            {fmt(stats.totalNominal)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Duplicate IDs (amber warning) or Total File count */}
-                      <div className={`flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border shadow-ds-sm transition-colors ${stats.dupCount > 0 ? "border-amber-400/25" : "border-white/10"}`}>
-                        <div className={`w-12 h-12 rounded-ds-md flex items-center justify-center shadow-ds-md shrink-0
-                          ${stats.dupCount > 0
-                            ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30"
-                            : "bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-fuchsia-500/30"}`}
-                        >
-                          {stats.dupCount > 0
-                            ? <TriangleAlert size={20} className="text-white" />
-                            : <Layers size={20} className="text-white" />
-                          }
-                        </div>
-                        <div>
-                          {stats.dupCount > 0 ? (
-                            <>
-                              <p className="text-xs uppercase tracking-wide text-amber-400/70 font-medium">ID Duplikat</p>
-                              <p className="text-2xl font-bold text-amber-300 leading-tight font-mono mt-1">
-                                {stats.dupCount} <span className="text-sm font-normal">baris</span>
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total File</p>
-                              <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{totalRows}</p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Top bar: title + export buttons */}
-                  <div className="flex items-center justify-between gap-ds-md">
-                    <div className="flex items-center gap-ds-md">
-                      <h2 className="text-base font-semibold text-white/85">Pratinjau Data</h2>
-                      <span className="px-3 py-1 rounded-full bg-violet-500/15 text-violet-300 text-xs font-semibold border border-violet-400/20">
-                        {totalRows} total
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-ds-sm">
-                      <button
-                        type="button"
-                        onClick={exportXlsx}
-                        disabled={filteredData.length === 0}
-                        className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all disabled:opacity-35 disabled:cursor-not-allowed"
-                        data-testid="button-export-excel"
-                      >
-                        <Download size={15} />
-                        <span className="hidden sm:inline">Export</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={copyTSV}
-                        disabled={filteredData.length === 0}
-                        className={`inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold transition-all shadow-ds-md
-                          disabled:opacity-35 disabled:cursor-not-allowed
-                          ${isCopied
-                            ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/30"
-                            : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-violet-500/30 hover:from-violet-500 hover:to-indigo-500"}`}
-                        data-testid="button-copy-tsv"
-                      >
-                        {isCopied
-                          ? <><Check size={15} />Tersalin!</>
-                          : <><Copy size={15} />Salin TSV</>
-                        }
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* â”€â”€ Controls panel: row range + ID search + table filter â”€ */}
-                  <div className="flex flex-col gap-ds-md px-ds-lg py-ds-lg rounded-ds-2xl glass border border-white/10 shadow-ds-md">
-
-                    {/* Row range inputs + mark mode buttons */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <ChevronsUpDown size={14} className="text-white/30 shrink-0" />
-                      <span className="text-xs font-semibold text-white/50 shrink-0 hidden sm:inline">RENTANG:</span>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/30">Mulai</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={totalRows}
-                          value={startRow}
-                          onChange={(event) => handleStartInput(event.target.value)}
-                          className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
-                          data-testid="input-start-row"
-                        />
-                      </div>
-
-                      <span className="text-white/20 text-xs">â€”</span>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/30">Sampai</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={totalRows}
-                          value={endRow}
-                          onChange={(event) => handleEndInput(event.target.value)}
-                          className={`w-16 h-7 px-2 text-sm text-center font-mono ${inputCls}`}
-                          data-testid="input-end-row"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2 ml-auto">
-                        {!isFullRange && (
-                          <button
-                            onClick={() => {
-                              setStartRow(1);
-                              setEndRow(totalRows);
-                              setStartIdQuery("");
-                              setStartMatchIdx(0);
-                              setEndIdQuery("");
-                              setEndMatchIdx(0);
-                            }}
-                            className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors"
-                            data-testid="button-reset-range"
-                          >
-                            Reset
-                          </button>
-                        )}
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border
-                          ${isFullRange ? "bg-white/5 border-white/8 text-white/30" : "bg-amber-500/12 border-amber-400/25 text-amber-300"}`}>
-                          {rangeData.length} dipilih
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-white/6" />
-
-                    {/* â”€â”€ ID range pickers (two independent boxes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-md">
-                      <IdRangePicker
-                        label="ID Awal"
-                        accent="emerald"
-                        icon={<Flag size={12} />}
-                        query={startIdQuery}
-                        onQueryChange={(value) => { setStartIdQuery(value); setStartMatchIdx(0); }}
-                        matches={startMatches}
-                        matchIdx={startMatchIdx}
-                        onCycle={(direction) => {
-                          if (!startMatches.length) return;
-                          setStartMatchIdx((current) => {
-                            const next = current + direction;
-                            if (next < 0) return startMatches.length - 1;
-                            if (next >= startMatches.length) return 0;
-                            return next;
-                          });
-                        }}
-                        onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
-                        inputCls={inputCls}
-                        testidPrefix="start"
-                        excludeMarked
-                      />
-                      <IdRangePicker
-                        label="ID Akhir"
-                        accent="rose"
-                        icon={<FlagOff size={12} />}
-                        query={endIdQuery}
-                        onQueryChange={(value) => { setEndIdQuery(value); setEndMatchIdx(0); }}
-                        matches={endMatches}
-                        matchIdx={endMatchIdx}
-                        onCycle={(direction) => {
-                          if (!endMatches.length) return;
-                          setEndMatchIdx((current) => {
-                            const next = current + direction;
-                            if (next < 0) return endMatches.length - 1;
-                            if (next >= endMatches.length) return 0;
-                            return next;
-                          });
-                        }}
-                        onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
-                        inputCls={inputCls}
-                        testidPrefix="end"
-                      />
-                    </div>
-
-                    <div className="border-t border-white/6" />
-
-                    {/* Table text filter */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Hash size={13} className="text-white/30 shrink-0" />
-                      <span className="text-xs font-semibold text-white/40 shrink-0 hidden sm:inline">FILTER:</span>
-                      <div className="ml-auto flex items-center gap-2">
-                        <div className="relative">
-                          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
-                          <input
-                            type="text"
-                            placeholder="Filter tabelâ€¦"
-                            value={tableFilter}
-                            onChange={(event) => setTableFilter(event.target.value)}
-                            className={`w-32 h-7 pl-7 pr-7 text-xs ${inputCls}`}
-                            data-testid="input-table-filter"
-                          />
-                          {tableFilter && (
-                            <button
-                              onClick={() => setTableFilter("")}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-                            >
-                              <X size={11} />
-                            </button>
-                          )}
-                        </div>
-                        {tableFilter && (
-                          <span className="text-[11px] text-white/30">{filteredData.length} hasil</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* â”€â”€ Preview table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-                  <div className="rounded-ds-2xl overflow-hidden glass border border-white/10 shadow-ds-lg">
-                    <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
-                      <table
-                        className="w-full text-sm text-left border-collapse"
-                        data-testid="preview-table"
-                      >
-                        <thead
-                          className="text-[10px] uppercase tracking-wider text-white/50 sticky top-0 z-10"
-                          style={{ background: "rgba(15,12,40,0.75)", backdropFilter: "blur(20px)" }}
-                        >
-                          <tr>
-                            <th className="px-ds-md py-ds-sm text-center w-10 border-b border-white/10 font-semibold whitespace-nowrap">#</th>
-                            {OUTPUT_HEADERS.map((header, columnIndex) => (
-                              <th key={columnIndex} className="px-ds-md py-ds-sm font-semibold whitespace-nowrap border-b border-white/10">
-                                {header}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-
-                        <tbody className="font-mono text-xs divide-y divide-white/4">
-                          {data.map((row, rowIndex) => {
-                            const rowNumber = rowIndex + 1;
-                            const inRange   = rowNumber >= startRow && rowNumber <= endRow;
-                            const isStart   = rowNumber === startRow;
-                            const isEnd     = rowNumber === endRow;
-                            const startQ    = startIdQuery.trim().toLowerCase();
-                            const endQ      = endIdQuery.trim().toLowerCase();
-                            const isIdMatch = (startQ && row.userId.toLowerCase().includes(startQ)) ||
-                                              (endQ   && row.userId.toLowerCase().includes(endQ));
-                            const isDup     = dupIds.has(row.userId);
-                            const needsIdReview = row._userIdNeedsReview || !row.userId;
-
-                            // Apply text filter: skip rows outside range or not matching query
-                            if (tableFilter.trim() && inRange) {
-                              const query = tableFilter.trim().toLowerCase();
-                              const matches =
-                                row.nama.toLowerCase().includes(query) ||
-                                row.userId.toLowerCase().includes(query) ||
-                                row.nomorRekening.toLowerCase().includes(query) ||
-                                row.withdrawal.toLowerCase().includes(query);
-                              if (!matches) return null;
-                            }
-
-                            return (
-                              <tr
-                                key={rowIndex}
-                                className={`transition-colors duration-100
-                                  ${inRange ? "hover:bg-white/3" : "opacity-20"}
-                                  ${isStart ? "border-t-2 border-t-emerald-400/40" : ""}
-                                  ${isEnd ? "border-b-2 border-b-rose-400/40" : ""}
-                                  ${needsIdReview && inRange ? "bg-red-500/10 ring-1 ring-inset ring-red-400/30" : ""}
-                                  ${isIdMatch && inRange ? "bg-violet-500/5" : ""}
-                                  ${isDup && inRange ? "bg-amber-500/4" : ""}`}
-                                data-testid={`row-data-${rowIndex}`}
-                              >
-                                {/* Row number cell (visual marker only; no click action). */}
-                                <td className="px-3 py-2.5 text-center align-middle select-none">
-                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold transition-all
-                                    ${needsIdReview && inRange ? "bg-red-500/25 text-red-300 ring-1 ring-red-400/40"
-                                    : isStart  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
-                                    : isEnd    ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"
-                                    : isDup && inRange ? "bg-amber-500/20 text-amber-300"
-                                    : "text-white/15"}`}
-                                  >
-                                    {needsIdReview && inRange ? "!" : isDup && inRange ? "!" : rowNumber}
-                                  </span>
-                                </td>
-
-                                {/* Data cells */}
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/80">{row.nama}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-violet-300/80">{row.nomorRekening}</td>
-                                <td className={`px-4 py-2.5 whitespace-nowrap ${needsIdReview ? "text-red-300 font-black" : isIdMatch ? "text-violet-200 font-semibold" : isDup && inRange ? "text-amber-300" : "text-white/70"}`}>
-                                  {needsIdReview ? "AWAS! Cek ID" : row.userId}
-                                </td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.sub}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.kodeTransaksi}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.deposit}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-emerald-300/80 font-semibold">{row.withdrawal}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.dpPulsa}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.keterangan}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.kodeBank}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.saldoAkhir}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-cyan-300/70">{row.jamInput}</td>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-white/35">{row.inputKodeBank}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </motion.section>
-              )}
-            </AnimatePresence>
-              </>
             )}
-          </>
-        )}
 
-        {/* GIGA category content */}
-        {mainSection === "formula" && activeCategory === "giga" && (
-          <>
-            {/* GIGA sub-tab content */}
-            <Suspense fallback={<TabLoadingFallback />}>
-              {activeGigaTab === "qrishoki" && <GigaCopyDpHoki />}
-              {activeGigaTab === "zenpay" && <GigaCopyDpZenpay />}
-              {activeGigaTab === "bonus" && <GigaCopyBonus />}
-              {activeGigaTab === "check-pusat" && <CheckPusatGigaTools />}
-              {activeGigaTab === "wd" && <GigaCopyWd />}
-            </Suspense>
-          </>
-        )}
+          </div>
 
-        {/* OZZO category content */}
-        {mainSection === "formula" && activeCategory === "ozzo" && (
-          <Suspense fallback={<TabLoadingFallback />}>
-            {activeOzzoTab === "qris-ajaib" && <WdQrisAjaibOzzo />}
-          </Suspense>
-        )}
+        </main>
 
-        {mainSection === "mutasi" && (
-          <Suspense fallback={<TabLoadingFallback />}>
-            <GigaSmartMutasi />
-          </Suspense>
-        )}
-
-        {mainSection === "phishing" && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center text-center p-10 sm:p-14 rounded-3xl bg-slate-900/80 border border-amber-500/20 glass shadow-2xl max-w-2xl mx-auto my-6"
-          >
-            <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20">
-                <Shield size={38} className="animate-pulse" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shadow-sm">
-                Maintenance
-              </div>
-            </div>
-
-            <h2 className="text-2xl font-bold text-white tracking-wide mb-3">
-              Phishing Report Tools Sedang Dalam Pemeliharaan
-            </h2>
-
-            <p className="text-sm text-slate-400 leading-relaxed mb-8 max-w-lg">
-              Modul PhishShield saat ini sedang dinonaktifkan sementara untuk peningkatan sistem dan pemeliharaan berkala (Under Maintenance). Fitur lainnya tetap berjalan normal.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setMainSection(null)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-amber-500/25 transition-all hover:scale-105"
-            >
-              <ArrowLeft size={16} />
-              Kembali ke Menu Utama
-            </button>
-          </motion.div>
-        )}
-      </main>
-
-      {/* â”€â”€ FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <footer className="relative z-10 border-t border-white/5 py-5 text-center">
-        <p className="text-[11px] text-white/20">API GROUP TOOLS &nbsp;·&nbsp; Internal Operation Tools</p>
-      </footer>
+      </div>
     </div>
   );
 }

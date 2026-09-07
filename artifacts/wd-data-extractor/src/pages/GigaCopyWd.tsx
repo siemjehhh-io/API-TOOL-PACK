@@ -807,64 +807,42 @@ export default function GigaCopyWd() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {/* ── HEADER CARD & BRAND INDICATOR ── */}
-      <div className="relative overflow-hidden p-6 rounded-3xl glass border border-white/10 shadow-2xl bg-gradient-to-br from-slate-900/80 via-slate-900/40 to-slate-950/90 backdrop-blur-xl">
-        {/* Dynamic Brand Gradient Background */}
-        <div
-          className={`absolute -right-20 -top-20 w-80 h-80 rounded-full blur-3xl opacity-20 transition-all duration-700 pointer-events-none ${
-            detectedBrandSummary === "API22"
-              ? "bg-violet-500"
-              : detectedBrandSummary === "PIN88"
-              ? "bg-emerald-500"
-              : "bg-blue-500"
-          }`}
-        />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg transition-all duration-300 ${
-                detectedBrandSummary === "API22"
-                  ? "bg-violet-600/20 border-violet-500/40 text-violet-400 shadow-violet-500/10"
-                  : detectedBrandSummary === "PIN88"
-                  ? "bg-emerald-600/20 border-emerald-500/40 text-emerald-400 shadow-emerald-500/10"
-                  : "bg-blue-600/20 border-blue-500/40 text-blue-400 shadow-blue-500/10"
-              }`}
-            >
-              <ArrowUpFromLine size={28} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                  WD GIGA EXTRACTOR
-                </h2>
-                {/* Brand Badge */}
-                <span className="px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase border border-slate-400/40 bg-slate-500/20 text-slate-300">
-                  PANEL GIGA
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Formula Ekstraksi form WD giga
-              </p>
-            </div>
+    <div className="flex flex-col gap-6">
+      {/* ── HEADER BANNER ── */}
+      <div className="p-6 rounded-2xl neu-card border border-white/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl clay-badge flex items-center justify-center shrink-0">
+            <ArrowUpFromLine size={28} className="text-white" />
           </div>
-
-          {/* SUB Input (Persisted) */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 shadow-inner">
-              <Tag size={13} className="text-amber-400" />
-              <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
-                KOLOM SUB:
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#23321B]">
+                WD GIGA EXTRACTOR
+              </h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase border border-[#74A355]/30 bg-[#74A355]/15 text-[#74A355]">
+                PANEL GIGA
               </span>
-              <input
-                type="text"
-                value={subValue}
-                onChange={(e) => onSubChange(e.target.value)}
-                placeholder="SUB (PNG / MJ / NG+EA)"
-                className="w-24 px-2.5 py-1 rounded-md bg-white/10 border border-white/10 text-xs font-bold text-amber-300 text-center uppercase focus:outline-none focus:ring-1 focus:ring-amber-400"
-              />
             </div>
+            <p className="text-xs sm:text-sm text-[#596B4F] mt-1 font-medium">
+              Formula Ekstraksi form WD giga
+            </p>
+          </div>
+        </div>
+
+        {/* SUB Input (Persisted) */}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl neu-inset border border-[#E8E2B5]">
+            <Tag size={13} className="text-[#74A355]" />
+            <span className="text-[11px] font-bold uppercase text-[#596B4F] tracking-wider">
+              KOLOM SUB:
+            </span>
+            <input
+              type="text"
+              value={subValue}
+              onChange={(e) => onSubChange(e.target.value)}
+              placeholder="SUB (PNG / MJ / NG+EA)"
+              className="w-24 px-2.5 py-1 rounded-md bg-[#FDFBD4] border border-[#E8E2B5] text-xs font-bold text-[#74A355] text-center uppercase focus:outline-none focus:ring-1 focus:ring-[#74A355]"
+            />
           </div>
         </div>
       </div>
@@ -874,15 +852,15 @@ export default function GigaCopyWd() {
         {/* Left: Input Textarea */}
         <div className="lg:col-span-6 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <FileText size={14} className="text-violet-400" />
+            <label className="text-xs font-bold uppercase tracking-wider text-[#23321B] flex items-center gap-2">
+              <FileText size={14} className="text-[#74A355]" />
               <span>RAW DATA WITHDRAWAL PANEL GIGA</span>
             </label>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleUseSample}
-                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/20 transition-all flex items-center gap-1"
+                className="text-[11px] font-bold text-[#74A355] bg-[#74A355]/15 hover:bg-[#74A355]/25 px-2.5 py-1 rounded-lg border border-[#74A355]/30 transition-all flex items-center gap-1"
               >
                 <Sparkles size={11} />
                 Use Sample
@@ -891,7 +869,7 @@ export default function GigaCopyWd() {
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all flex items-center gap-1"
+                  className="text-[11px] font-bold text-[#CC2936] bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-300 transition-all flex items-center gap-1"
                 >
                   <Eraser size={11} />
                   Clear
@@ -908,58 +886,50 @@ export default function GigaCopyWd() {
               onPaste={handlePaste}
               placeholder="Paste data tabel Withdrawal dari panel Giga di sini (Mendukung Ctrl+V tabel browser langsung)..."
               rows={12}
-              className="w-full p-4 rounded-2xl bg-black/40 border border-white/10 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-y transition-all shadow-inner leading-relaxed"
+              className="w-full p-4 rounded-2xl neu-inset text-[#23321B] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#74A355] resize-y transition-all leading-relaxed placeholder:text-[#596B4F]/60"
             />
             {isProcessing && (
-              <div className="absolute inset-0 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center justify-center gap-2 text-violet-400">
+              <div className="absolute inset-0 rounded-2xl bg-white/70 backdrop-blur-sm flex items-center justify-center gap-2 text-[#74A355]">
                 <Loader2 className="animate-spin" size={20} />
                 <span className="text-xs font-bold">Memproses Data...</span>
               </div>
             )}
           </div>
 
-          <p className="text-[11px] text-slate-400 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
+          <p className="text-[11px] text-[#596B4F] leading-relaxed neu-flat p-3 rounded-xl border border-white/80 font-medium">
             💡 {INPUT_GUIDANCE}
           </p>
         </div>
 
         {/* Right: Quick Summary & Action Box */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <div className="p-5 rounded-2xl glass border border-white/10 bg-slate-900/40 backdrop-blur-md flex flex-col gap-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <Sparkles size={14} className="text-amber-400" />
+          <div className="p-5 rounded-2xl neu-card border border-white/80 flex flex-col gap-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#23321B] flex items-center gap-2">
+              <Sparkles size={14} className="text-[#74A355]" />
               <span>RINGKASAN EKSTRAKSI WD</span>
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {/* Stat 1: Total Rows */}
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Total Tiket WD</span>
-                <span className="text-2xl font-black text-white mt-1">
-                  {parsedRows.length} <span className="text-xs font-normal text-slate-400">tiket</span>
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Total Tiket WD</span>
+                <span className="text-2xl font-bold text-[#23321B] mt-1">
+                  {parsedRows.length} <span className="text-xs font-normal text-[#596B4F]">tiket</span>
                 </span>
               </div>
 
               {/* Stat 2: Brand Active */}
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Website / Brand</span>
-                <span
-                  className={`text-base font-black mt-1 uppercase ${
-                    detectedBrandSummary === "API22"
-                      ? "text-violet-400"
-                      : detectedBrandSummary === "PIN88"
-                      ? "text-emerald-400"
-                      : "text-slate-300"
-                  }`}
-                >
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Website / Brand</span>
+                <span className="text-base font-bold mt-1 uppercase text-[#74A355]">
                   {detectedBrandSummary === "UNKNOWN" ? "Belum Terdeteksi" : detectedBrandSummary}
                 </span>
               </div>
 
               {/* Stat 3: Total Nominal */}
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col col-span-2 sm:col-span-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Total Nominal WD</span>
-                <span className="text-base font-black text-rose-400 mt-1">
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col col-span-2 sm:col-span-1">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Total Nominal WD</span>
+                <span className="text-base font-bold text-[#74A355] mt-1 font-mono">
                   {formatCurrency(totalAmount)}
                 </span>
               </div>
@@ -971,13 +941,7 @@ export default function GigaCopyWd() {
                 type="button"
                 onClick={handleCopyTSV}
                 disabled={parsedRows.length === 0}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 shadow-lg ${
-                  parsedRows.length > 0
-                    ? isCopied
-                      ? "bg-emerald-600 text-white shadow-emerald-500/25"
-                      : "bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-violet-500/25 hover:scale-[1.02]"
-                    : "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
-                }`}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 clay-btn-green disabled:opacity-35 disabled:cursor-not-allowed"
               >
                 {isCopied ? <Check size={16} /> : <Copy size={16} />}
                 <span>{isCopied ? "BERHASIL DISALIN!" : "COPY KE SPREADSHEET (TSV 13 KOLOM)"}</span>
@@ -987,11 +951,7 @@ export default function GigaCopyWd() {
                 type="button"
                 onClick={handleDownloadExcel}
                 disabled={parsedRows.length === 0}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm border transition-all ${
-                  parsedRows.length > 0
-                    ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50"
-                    : "bg-white/5 text-slate-500 border-white/5 cursor-not-allowed"
-                }`}
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm neu-flat text-[#23321B] hover:bg-white border border-[#E8E2B5] transition-all disabled:opacity-35 disabled:cursor-not-allowed"
               >
                 <Download size={16} />
                 <span>Export Excel</span>
@@ -1005,19 +965,19 @@ export default function GigaCopyWd() {
       {parsedRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <TableProperties size={14} className="text-cyan-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#23321B] flex items-center gap-2">
+              <TableProperties size={14} className="text-[#74A355]" />
               <span>STEP 1: TABEL BARIS TERSTRUKTUR (RAW PANEL MATRIX)</span>
             </h3>
-            <span className="text-xs text-cyan-300/80 font-mono">
+            <span className="text-xs text-[#74A355] font-mono font-bold">
               {parsedRows.length} baris terpetakan otomatis
             </span>
           </div>
 
-          <div className="w-full overflow-x-auto rounded-2xl glass border border-white/10 bg-slate-950/80 shadow-xl">
-            <table className="w-full text-left text-xs text-slate-300 border-collapse">
+          <div className="w-full overflow-x-auto rounded-2xl neu-card border border-white/80 shadow-md">
+            <table className="w-full text-left text-xs text-[#23321B] border-collapse">
               <thead>
-                <tr className="bg-white/10 border-b border-white/10 text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                <tr className="bg-[#EFEBA9] border-b border-[#E8E2B5] text-[11px] font-bold text-[#23321B] uppercase tracking-wider">
                   <th className="py-3 px-3 text-center w-10">No.</th>
                   <th className="py-3 px-3">Transaction Date / IP</th>
                   <th className="py-3 px-3">Transaction ID</th>
@@ -1029,48 +989,48 @@ export default function GigaCopyWd() {
                   <th className="py-3 px-3 text-center w-16">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#E8E2B5] font-mono">
                 {parsedRows.map((row, idx) => (
                   <tr
                     key={`matrix-${row.keterangan}-${idx}`}
-                    className="hover:bg-white/5 transition-colors"
+                    className="hover:bg-[#F5F0C2] bg-[#FDFBD4] transition-colors"
                   >
-                    <td className="py-3 px-3 text-center font-mono text-slate-500 text-[11px]">
+                    <td className="py-3 px-3 text-center text-[#596B4F] text-[11px]">
                       {idx + 1}
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-mono text-[11px] text-white/90">{row.date || "-"}</div>
-                      <div className="text-[10px] text-cyan-400/80 font-mono">{row.ip}</div>
+                      <div className="text-[11px] text-[#23321B] font-medium">{row.date || "-"}</div>
+                      <div className="text-[10px] text-[#596B4F]">{row.ip}</div>
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-violet-300 whitespace-nowrap font-bold">
+                    <td className="py-3 px-3 text-[11px] text-[#74A355] whitespace-nowrap font-bold">
                       {row.keterangan || "-"}
                     </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-bold text-white uppercase">{row.nama || "-"}</div>
-                      <div className="text-[11px] font-mono text-cyan-300 font-semibold">
+                    <td className="py-3 px-3 whitespace-nowrap font-sans">
+                      <div className="font-bold text-[#23321B] uppercase">{row.nama || "-"}</div>
+                      <div className="text-[11px] font-mono text-[#74A355] font-semibold">
                         {row.nomorRekening || "-"}
                       </div>
                     </td>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-300 whitespace-nowrap">
+                    <td className="py-3 px-3 font-bold text-[#23321B] whitespace-nowrap">
                       {row.userId || "-"}
                     </td>
-                    <td className="py-3 px-3 text-slate-300 whitespace-nowrap text-[11px]">
+                    <td className="py-3 px-3 text-[#596B4F] whitespace-nowrap text-[11px] font-sans">
                       {row.fundMethod || "-"}
                     </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                    <td className="py-3 px-3 text-center whitespace-nowrap font-sans">
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                           row.status.toLowerCase().includes("progess")
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            ? "bg-amber-100 text-amber-800 border-amber-300"
                             : row.status.toLowerCase().includes("confirmed")
-                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                            : "bg-slate-500/20 text-slate-300 border-slate-500/30"
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : "bg-slate-100 text-slate-700 border-slate-300"
                         }`}
                       >
                         {row.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-rose-400 whitespace-nowrap text-sm">
+                    <td className="py-3 px-3 text-right font-black text-[#74A355] whitespace-nowrap text-sm">
                       {row.withdrawal}
                     </td>
                     <td className="py-3 px-3 text-center">
@@ -1079,8 +1039,8 @@ export default function GigaCopyWd() {
                         onClick={() => handleCopySingleRow(row, idx)}
                         className={`p-1.5 rounded-lg border transition-all ${
                           copiedRowIdx === idx
-                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                            : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
+                            ? "bg-[#74A355] text-white border-[#567C3E]"
+                            : "neu-flat text-[#23321B] hover:bg-white"
                         }`}
                         title="Copy Baris Ini (TSV)"
                       >
@@ -1099,24 +1059,24 @@ export default function GigaCopyWd() {
       {parsedRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <ListOrdered size={14} className="text-emerald-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#23321B] flex items-center gap-2">
+              <ListOrdered size={14} className="text-[#74A355]" />
               <span>STEP 2: PREVIEW OUTPUT SPREADSHEET (KOLOM A S/D M)</span>
             </h3>
             <button
               type="button"
               onClick={handleCopyTSV}
-              className="text-xs font-bold text-violet-400 hover:text-violet-300 flex items-center gap-1.5"
+              className="text-xs font-bold text-[#74A355] hover:text-[#567C3E] flex items-center gap-1.5"
             >
               <Copy size={12} />
               <span>Salin Semua Baris (13 Kolom)</span>
             </button>
           </div>
 
-          <div className="w-full overflow-x-auto rounded-2xl glass border border-white/10 bg-slate-950/60 shadow-xl">
-            <table className="w-full text-left text-xs text-slate-300 border-collapse">
+          <div className="w-full overflow-x-auto rounded-2xl neu-card border border-white/80 shadow-md">
+            <table className="w-full text-left text-xs text-[#23321B] border-collapse">
               <thead>
-                <tr className="bg-white/5 border-b border-white/10 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <tr className="bg-[#EFEBA9] border-b border-[#E8E2B5] text-[11px] font-bold text-[#23321B] uppercase tracking-wider">
                   <th className="py-3 px-3 text-center w-10">#</th>
                   <th className="py-3 px-3">A: NAMA</th>
                   <th className="py-3 px-3">B: NO. REKENING</th>
@@ -1128,39 +1088,39 @@ export default function GigaCopyWd() {
                   <th className="py-3 px-3 text-center w-16">AKSI</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#E8E2B5] font-mono">
                 {parsedRows.map((row, idx) => (
                   <tr
                     key={`out-${row.keterangan}-${idx}`}
-                    className="hover:bg-white/5 transition-colors group"
+                    className="hover:bg-[#F5F0C2] bg-[#FDFBD4] transition-colors group"
                   >
-                    <td className="py-3 px-3 text-center font-mono text-slate-500 text-[11px]">
+                    <td className="py-3 px-3 text-center text-[#596B4F] text-[11px]">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-3 font-bold text-white uppercase whitespace-nowrap">
-                      {row.nama || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-bold text-[#23321B] uppercase whitespace-nowrap font-sans">
+                      {row.nama || <span className="text-[#596B4F]">-</span>}
                     </td>
-                    <td className="py-3 px-3 font-mono font-bold text-cyan-300 whitespace-nowrap">
-                      {row.nomorRekening || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-bold text-[#74A355] whitespace-nowrap">
+                      {row.nomorRekening || <span className="text-[#596B4F]">-</span>}
                     </td>
-                    <td className="py-3 px-3 font-mono text-amber-300 whitespace-nowrap">
-                      {row.userId || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-bold text-[#23321B] whitespace-nowrap">
+                      {row.userId || <span className="text-[#596B4F]">-</span>}
                     </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold text-[10px] border border-amber-500/30">
+                    <td className="py-3 px-3 text-center font-sans">
+                      <span className="px-2 py-0.5 rounded-md bg-[#74A355]/15 text-[#74A355] font-bold text-[10px] border border-[#74A355]/30">
                         {row.sub}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-mono font-bold text-[10px] border border-rose-500/30">
+                    <td className="py-3 px-3 text-center font-sans">
+                      <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] border border-rose-300">
                         {row.kodeTransaksi}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-rose-400 whitespace-nowrap">
+                    <td className="py-3 px-3 text-right font-black text-[#74A355] whitespace-nowrap">
                       {row.withdrawal}
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                      {row.keterangan || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 text-[11px] text-[#596B4F] whitespace-nowrap">
+                      {row.keterangan || <span className="text-[#596B4F]">-</span>}
                     </td>
                     <td className="py-3 px-3 text-center">
                       <button
@@ -1168,8 +1128,8 @@ export default function GigaCopyWd() {
                         onClick={() => handleCopySingleRow(row, idx)}
                         className={`p-1.5 rounded-lg border transition-all ${
                           copiedRowIdx === idx
-                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                            : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
+                            ? "bg-[#74A355] text-white border-[#567C3E]"
+                            : "neu-flat text-[#23321B] hover:bg-white"
                         }`}
                         title="Copy Baris Ini"
                       >

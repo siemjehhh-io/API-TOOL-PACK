@@ -558,23 +558,23 @@ export default function CheckPusatGigaTools() {
   }, [parsedRows, idPlayer, closingLine]);
 
   return (
-    <section className="relative z-10 flex flex-col gap-ds-lg text-slate-800">
+    <section className="relative z-10 flex flex-col gap-6 text-[#23321B]">
       {/* ── STEP 1: INPUT MODULE ───────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-ds-lg py-ds-lg shadow-ds-lg backdrop-blur-2xl"
+        className="p-6 rounded-2xl neu-card border border-white/80"
       >
-        <div className="mb-ds-lg flex items-center justify-between gap-ds-md flex-wrap">
-          <div className="flex items-center gap-ds-md">
-            <div className="flex items-center justify-center rounded-ds-xl bg-gradient-to-br from-amber-500 to-orange-600 p-2.5 shadow-ds-md shadow-amber-500/25">
+        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl clay-badge flex items-center justify-center shrink-0">
               <Trophy size={22} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">
+              <h2 className="text-lg font-bold text-[#23321B]">
                 CHECK PUSAT GIGA
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#596B4F] font-medium">
                 Format sistem row & ekstraksi tiket verifikasi pusat otomatis
               </p>
             </div>
@@ -582,7 +582,7 @@ export default function CheckPusatGigaTools() {
           <button
             type="button"
             onClick={useSample}
-            className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold border border-amber-200 bg-amber-50/70 text-amber-700 transition-all hover:border-amber-300 hover:bg-amber-100"
+            className="inline-flex items-center justify-center h-10 px-4 py-2 gap-2 rounded-xl text-xs font-bold border border-[#74A355]/30 bg-[#74A355]/10 text-[#74A355] hover:bg-[#74A355]/20 transition-all cursor-pointer"
           >
             <Wand2 size={15} />
             Use Sample
@@ -590,9 +590,9 @@ export default function CheckPusatGigaTools() {
         </div>
 
         {/* ID Player input */}
-        <div className="mb-ds-lg">
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-1.5">
-            <User size={13} className="text-amber-600" />
+        <div className="mb-4">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-[#596B4F] mb-1.5 uppercase tracking-wider">
+            <User size={13} className="text-[#74A355]" />
             ID Player
             <span className="text-rose-500">*</span>
           </label>
@@ -606,14 +606,14 @@ export default function CheckPusatGigaTools() {
               }
               placeholder="Masukkan ID Player (contoh: GGIABAC00HEA)..."
               maxLength={30}
-              className="h-11 w-full rounded-xl border-2 border-amber-200 bg-white/80 pl-3 pr-9 text-sm font-mono font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+              className="h-11 w-full rounded-xl neu-inset border border-[#E8E2B5] px-3 pr-9 text-sm font-mono font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/50 focus:ring-2 focus:ring-[#74A355]"
               data-testid="input-id-player"
             />
             {idPlayer && (
               <button
                 type="button"
                 onClick={() => setIdPlayer("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#596B4F] hover:text-[#23321B]"
                 aria-label="Bersihkan ID Player"
               >
                 <X size={14} />
@@ -623,8 +623,8 @@ export default function CheckPusatGigaTools() {
         </div>
 
         {/* Raw text from panel */}
-        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-1.5">
-          <ClipboardCheck size={13} className="text-amber-600" />
+        <label className="flex items-center gap-1.5 text-xs font-bold text-[#596B4F] mb-1.5 uppercase tracking-wider">
+          <ClipboardCheck size={13} className="text-[#74A355]" />
           Raw Text Salinan Tabel Panel GIGA
         </label>
         <textarea
@@ -634,22 +634,22 @@ export default function CheckPusatGigaTools() {
             setError(null);
           }}
           placeholder="Paste salinan tabel panel GIGA di sini..."
-          className="min-h-[260px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-amber-200 bg-white/50 p-ds-lg font-mono text-xs leading-6 text-slate-700 shadow-inner shadow-amber-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-amber-400 focus:bg-white/80 focus:ring-4 focus:ring-amber-100"
+          className="min-h-[220px] w-full resize-y rounded-2xl neu-inset border border-[#E8E2B5] p-4 font-mono text-xs leading-6 text-[#23321B] outline-none transition placeholder:text-[#596B4F]/50 focus:ring-2 focus:ring-[#74A355]"
           data-testid="input-raw-text"
         />
 
         {/* Closing line input */}
-        <div className="mt-ds-lg">
+        <div className="mt-4">
           <div className="flex items-center justify-between mb-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-              <Sparkles size={13} className="text-amber-600" />
+            <label className="flex items-center gap-1.5 text-xs font-bold text-[#596B4F] uppercase tracking-wider">
+              <Sparkles size={13} className="text-[#74A355]" />
               Closing Line Pesan Chat
             </label>
             {closingLine !== CLOSING_LINE_DEFAULT && (
               <button
                 type="button"
                 onClick={resetClosingLine}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 hover:text-amber-700 transition-colors"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#74A355] hover:underline transition-colors"
               >
                 <RotateCcw size={11} />
                 Reset default
@@ -660,19 +660,19 @@ export default function CheckPusatGigaTools() {
             value={closingLine}
             onChange={(event) => setClosingLine(event.target.value)}
             rows={2}
-            className="w-full resize-none rounded-xl border-2 border-amber-200 bg-white/70 px-3 py-2 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+            className="w-full resize-none rounded-xl neu-inset border border-[#E8E2B5] px-3 py-2 text-sm font-medium text-[#23321B] outline-none transition placeholder:text-[#596B4F]/50 focus:ring-2 focus:ring-[#74A355]"
             data-testid="input-closing-line"
           />
         </div>
 
-        <div className="mt-ds-lg flex flex-col gap-ds-md sm:flex-row">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <motion.button
             type="button"
             whileHover={{ scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
             onClick={processData}
             disabled={isProcessing}
-            className="inline-flex flex-1 items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-ds-md shadow-amber-500/25 transition-all hover:shadow-ds-lg hover:shadow-amber-500/35 disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex flex-1 items-center justify-center h-12 px-6 gap-2 rounded-xl text-sm font-bold clay-btn-green text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             data-testid="button-process"
           >
             {isProcessing ? (
@@ -685,7 +685,7 @@ export default function CheckPusatGigaTools() {
           <button
             type="button"
             onClick={clearAll}
-            className="inline-flex items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white/60 text-slate-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+            className="inline-flex items-center justify-center h-12 px-6 gap-2 rounded-xl text-sm font-bold neu-flat border border-[#E8E2B5] text-[#596B4F] hover:text-rose-600 hover:border-rose-300 transition-all cursor-pointer"
             data-testid="button-clear"
           >
             <Eraser size={17} />
@@ -701,10 +701,10 @@ export default function CheckPusatGigaTools() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-start gap-ds-md px-ds-lg py-ds-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
+            className="flex items-start gap-3 p-4 rounded-2xl border border-rose-300 bg-rose-50 text-rose-800 shadow-sm"
           >
-            <AlertCircle size={20} className="mt-0.5 shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-rose-600" />
+            <p className="text-sm font-bold">{error}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -715,34 +715,34 @@ export default function CheckPusatGigaTools() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="flex flex-col gap-ds-lg"
+          className="flex flex-col gap-6"
         >
           {/* STATS CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-ds-md">
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-ds-md shadow-amber-500/30 shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-4 p-4 rounded-2xl neu-flat border border-white/80">
+              <div className="w-12 h-12 rounded-xl clay-badge flex items-center justify-center shrink-0">
                 <Trophy size={20} className="text-white" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">
+                <p className="text-xs uppercase tracking-wider text-[#596B4F] font-bold">
                   Total Tiket WIN
                 </p>
-                <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
+                <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">
                   {parsedRows.length}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
+            <div className="flex items-center gap-4 p-4 rounded-2xl neu-flat border border-white/80">
+              <div className="w-12 h-12 rounded-xl clay-badge flex items-center justify-center shrink-0">
                 <Banknote size={20} className="text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">
+                <p className="text-xs uppercase tracking-wider text-[#596B4F] font-bold">
                   Total Nilai Win
                 </p>
                 <p
-                  className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate"
+                  className="text-2xl font-bold text-[#74A355] leading-tight font-mono mt-1 truncate"
                   title={formatCurrency(totalWin)}
                 >
                   {formatCurrency(totalWin)}
@@ -750,18 +750,18 @@ export default function CheckPusatGigaTools() {
               </div>
             </div>
 
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center shadow-ds-md shadow-slate-500/30 shrink-0">
-                <ListOrdered size={20} className="text-white" />
+            <div className="flex items-center gap-4 p-4 rounded-2xl neu-flat border border-white/80">
+              <div className="w-12 h-12 rounded-xl neu-inset border border-[#E8E2B5] flex items-center justify-center shrink-0 text-[#596B4F]">
+                <ListOrdered size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">
+                <p className="text-xs uppercase tracking-wider text-[#596B4F] font-bold">
                   Skipped / Ignored
                 </p>
-                <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">
+                <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">
                   {parseStats.totalNonWinCount + parseStats.totalDuplicateCount}
                 </p>
-                <p className="text-[10px] text-white/40 mt-0.5">
+                <p className="text-[10px] text-[#596B4F] font-semibold mt-0.5">
                   {parseStats.totalNonWinCount} non-WIN ·{" "}
                   {parseStats.totalDuplicateCount} duplikat
                 </p>
@@ -770,15 +770,15 @@ export default function CheckPusatGigaTools() {
           </div>
 
           {/* INTERMEDIATE ROW TABLE (TABEL BARIS TERSTRUKTUR) */}
-          <div className="overflow-hidden rounded-ds-2xl border border-white/15 bg-slate-900/80 shadow-ds-lg backdrop-blur-2xl">
-            <div className="flex items-center justify-between gap-ds-md px-ds-lg py-ds-md border-b border-white/10 bg-white/5 flex-wrap">
+          <div className="overflow-hidden rounded-2xl neu-card border border-white/80">
+            <div className="flex items-center justify-between gap-4 p-4 border-b border-[#E8E2B5] bg-[#EFEBA9]/40 flex-wrap">
               <div className="flex items-center gap-2">
-                <Table size={16} className="text-amber-400" />
-                <h3 className="text-sm font-bold text-white tracking-wide">
+                <Table size={16} className="text-[#74A355]" />
+                <h3 className="text-sm font-bold text-[#23321B] tracking-wide">
                   Tabel Baris Terstruktur ({parsedRows.length} Baris Valid)
                 </h3>
               </div>
-              <span className="text-xs text-white/40 font-mono">
+              <span className="text-xs text-[#596B4F] font-mono font-semibold">
                 Urutan sesuai input panel
               </span>
             </div>
@@ -786,7 +786,7 @@ export default function CheckPusatGigaTools() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse font-mono">
                 <thead>
-                  <tr className="border-b border-white/10 bg-slate-950/60 text-[10px] uppercase text-white/50 tracking-wider">
+                  <tr className="border-b border-[#E8E2B5] bg-[#EFEBA9]/60 text-[10px] uppercase text-[#596B4F] font-bold tracking-wider">
                     <th className="px-4 py-3 text-center w-12">#</th>
                     <th className="px-4 py-3">Category / Provider</th>
                     <th className="px-4 py-3">Game Name</th>
@@ -797,38 +797,38 @@ export default function CheckPusatGigaTools() {
                     <th className="px-4 py-3">IP Address</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
+                <tbody className="divide-y divide-[#E8E2B5]/50 text-[#23321B]">
                   {parsedRows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className="hover:bg-white/5 transition-colors font-sans"
+                      className="hover:bg-[#74A355]/5 transition-colors font-sans"
                     >
-                      <td className="px-4 py-2.5 text-center text-white/40 font-mono font-semibold">
+                      <td className="px-4 py-2.5 text-center text-[#596B4F] font-mono font-bold">
                         {row.no || idx + 1}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#74A355]/15 text-[#74A355] border border-[#74A355]/30 font-mono">
                           {row.category} - {row.provider}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-semibold text-white">
+                      <td className="px-4 py-2.5 font-bold text-[#23321B]">
                         {row.gameName}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-slate-200">
+                      <td className="px-4 py-2.5 font-mono text-[#23321B]">
                         {row.ticketId}
                       </td>
                       <td className="px-4 py-2.5 text-center font-mono">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-[#74A355]/20 text-[#74A355] border border-[#74A355]/30">
                           {row.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-400">
+                      <td className="px-4 py-2.5 text-right font-mono font-bold text-[#74A355]">
                         {row.memberWinFormatted}
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-slate-400 font-mono">
+                      <td className="px-4 py-2.5 text-xs text-[#596B4F] font-mono">
                         {row.settleTime}
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-slate-500 font-mono">
+                      <td className="px-4 py-2.5 text-xs text-[#596B4F] font-mono">
                         {row.ipAddress || "-"}
                       </td>
                     </tr>
@@ -839,13 +839,13 @@ export default function CheckPusatGigaTools() {
           </div>
 
           {/* FINAL EXTRACTED TEMPLATE OUTPUT */}
-          <div className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 shadow-ds-lg backdrop-blur-2xl">
-            <div className="flex items-center justify-between gap-ds-md px-ds-lg py-ds-md border-b border-amber-200/40 bg-amber-50/40 flex-wrap">
-              <div className="flex items-center gap-ds-md">
-                <h3 className="text-sm font-semibold text-slate-800">
+          <div className="overflow-hidden rounded-2xl neu-card border border-white/80">
+            <div className="flex items-center justify-between gap-4 p-4 border-b border-[#E8E2B5] bg-[#EFEBA9]/40 flex-wrap">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-bold text-[#23321B]">
                   Hasil Ekstraksi Format Chat Pusat
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#596B4F] font-medium">
                   Teks rapi terkelompok siap di-copy ke pusat.
                 </p>
               </div>
@@ -855,7 +855,7 @@ export default function CheckPusatGigaTools() {
                 whileTap={{ scale: parsedRows.length ? 0.98 : 1 }}
                 onClick={copyTemplate}
                 disabled={!parsedRows.length}
-                className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold border-2 border-amber-400 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-ds-md shadow-amber-500/20 transition-all hover:shadow-ds-lg hover:shadow-amber-500/30 disabled:cursor-not-allowed disabled:opacity-35"
+                className="inline-flex items-center justify-center h-10 px-4 gap-2 rounded-xl text-xs font-bold clay-btn-green text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 data-testid="button-copy-template"
               >
                 {isCopied ? <Check size={15} /> : <Copy size={15} />}
@@ -864,7 +864,7 @@ export default function CheckPusatGigaTools() {
             </div>
 
             <pre
-              className="px-ds-lg py-ds-lg font-mono text-sm leading-7 text-slate-800 whitespace-pre-wrap break-words bg-white/40 max-h-[480px] overflow-y-auto"
+              className="p-4 font-mono text-sm leading-7 text-[#23321B] whitespace-pre-wrap break-words neu-inset border-t border-[#E8E2B5] max-h-[480px] overflow-y-auto"
               data-testid="output-preview"
             >
               {previewText}

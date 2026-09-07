@@ -500,45 +500,41 @@ export default function WdQrisAjaibOzzo() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full text-[#23321B]">
       {/* ── HEADER CARD ── */}
-      <div className="relative overflow-hidden p-6 rounded-3xl glass border border-white/10 shadow-2xl bg-gradient-to-br from-amber-950/60 via-slate-900/80 to-slate-950/90 backdrop-blur-xl">
-        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full blur-3xl opacity-25 bg-amber-500 pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-amber-500/10">
-              <QrCode size={28} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                  WD QRIS AJAIB OZZO
-                </h2>
-                <span className="px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase border bg-amber-500/20 border-amber-400/40 text-amber-300">
-                  EXCEL &amp; TABLE PARSER
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Import file Excel/CSV mentah penarikan QRIS AJAIB OZZO dan konversi ke 13 Kolom Spreadsheet otomatis
-              </p>
-            </div>
+      <div className="p-6 rounded-2xl neu-card border border-white/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl clay-badge flex items-center justify-center shrink-0">
+            <QrCode size={28} className="text-white" />
           </div>
-
-          {/* SUB input */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10">
-            <Tag size={14} className="text-amber-400" />
-            <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
-              KOLOM SUB:
-            </span>
-            <input
-              type="text"
-              value={subValue}
-              onChange={(e) => onSubChange(e.target.value)}
-              placeholder="SUB (OZZO / AJAIB)"
-              className="w-28 px-2.5 py-1 rounded-md bg-white/10 border border-white/10 text-xs font-bold text-amber-300 text-center uppercase focus:outline-none focus:ring-1 focus:ring-amber-400"
-            />
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#23321B]">
+                WD QRIS AJAIB OZZO
+              </h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase border border-[#74A355]/30 bg-[#74A355]/15 text-[#74A355]">
+                EXCEL &amp; TABLE PARSER
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-[#596B4F] mt-1 font-medium">
+              Import file Excel/CSV mentah penarikan QRIS AJAIB OZZO dan konversi ke 13 Kolom Spreadsheet otomatis
+            </p>
           </div>
+        </div>
+
+        {/* SUB input */}
+        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl neu-inset border border-[#E8E2B5]">
+          <Tag size={14} className="text-[#74A355]" />
+          <span className="text-[11px] font-bold uppercase text-[#596B4F] tracking-wider">
+            KOLOM SUB:
+          </span>
+          <input
+            type="text"
+            value={subValue}
+            onChange={(e) => onSubChange(e.target.value)}
+            placeholder="SUB (OZZO / AJAIB)"
+            className="w-28 px-2.5 py-1 rounded-md bg-[#FDFBD4] border border-[#E8E2B5] text-xs font-bold text-[#74A355] text-center uppercase focus:outline-none focus:ring-1 focus:ring-[#74A355]"
+          />
         </div>
       </div>
 
@@ -549,7 +545,7 @@ export default function WdQrisAjaibOzzo() {
           {/* File Upload Box */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="p-6 rounded-2xl glass border-2 border-dashed border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5 hover:bg-amber-500/10 transition-all cursor-pointer flex flex-col items-center justify-center gap-3 group text-center"
+            className="p-6 rounded-2xl neu-inset border-2 border-dashed border-[#74A355]/40 hover:border-[#74A355] bg-[#74A355]/5 transition-all cursor-pointer flex flex-col items-center justify-center gap-3 group text-center"
           >
             <input
               ref={fileInputRef}
@@ -558,14 +554,14 @@ export default function WdQrisAjaibOzzo() {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileSpreadsheet size={24} />
+            <div className="w-12 h-12 rounded-xl clay-badge flex items-center justify-center group-hover:scale-110 transition-transform">
+              <FileSpreadsheet size={24} className="text-white" />
             </div>
             <div>
-              <span className="text-sm font-bold text-white block">
+              <span className="text-sm font-bold text-[#23321B] block">
                 {fileName ? `📄 ${fileName}` : "Klik atau Drag File Excel (.xlsx, .xls, .csv) di sini"}
               </span>
-              <span className="text-xs text-slate-400 mt-1 block">
+              <span className="text-xs text-[#596B4F] font-medium mt-1 block">
                 Sistem otomatis membaca kolom Account Name, Payment Method, Total Amount, Trx ID, dll.
               </span>
             </div>
@@ -574,15 +570,15 @@ export default function WdQrisAjaibOzzo() {
           {/* Text Area Copy/Paste Fallback */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <FileText size={14} className="text-amber-400" />
+              <label className="text-xs font-bold uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
+                <FileText size={14} className="text-[#74A355]" />
                 <span>ATAU PASTE TABEL / TEXT DI SINI</span>
               </label>
               {inputText && (
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all flex items-center gap-1"
+                  className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Eraser size={11} />
                   Clear
@@ -596,10 +592,10 @@ export default function WdQrisAjaibOzzo() {
                 onChange={onTextChange}
                 placeholder="Atau paste langsung data baris tabel penarikan QRIS AJAIB OZZO di sini..."
                 rows={6}
-                className="w-full p-4 rounded-2xl bg-black/40 border border-white/10 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-y transition-all shadow-inner leading-relaxed"
+                className="w-full p-4 rounded-2xl neu-inset border border-[#E8E2B5] text-[#23321B] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#74A355] resize-y transition-all shadow-inner leading-relaxed"
               />
               {isProcessing && (
-                <div className="absolute inset-0 rounded-2xl bg-black/60 backdrop-blur-sm flex items-center justify-center gap-2 text-amber-400">
+                <div className="absolute inset-0 rounded-2xl bg-[#FDFBD4]/80 backdrop-blur-sm flex items-center justify-center gap-2 text-[#74A355]">
                   <Loader2 className="animate-spin" size={20} />
                   <span className="text-xs font-bold">Membaca Data Excel...</span>
                 </div>
@@ -610,30 +606,30 @@ export default function WdQrisAjaibOzzo() {
 
         {/* Right: Summary Box */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <div className="p-5 rounded-2xl glass border border-white/10 bg-slate-900/40 backdrop-blur-md flex flex-col gap-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <Sparkles size={14} className="text-amber-400" />
+          <div className="p-5 rounded-2xl neu-card border border-white/80 flex flex-col gap-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
+              <Sparkles size={14} className="text-[#74A355]" />
               <span>RINGKASAN WD QRIS AJAIB OZZO</span>
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Total Tiket</span>
-                <span className="text-2xl font-black text-white mt-1">
-                  {parsedRows.length} <span className="text-xs font-normal text-slate-400">baris</span>
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Total Tiket</span>
+                <span className="text-2xl font-bold text-[#23321B] mt-1 font-mono">
+                  {parsedRows.length} <span className="text-xs font-normal text-[#596B4F]">baris</span>
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Label SUB</span>
-                <span className="text-base font-black text-amber-400 mt-1 uppercase">
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Label SUB</span>
+                <span className="text-base font-bold text-[#74A355] mt-1 uppercase font-mono">
                   {subValue}
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col col-span-2 sm:col-span-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Total Nominal</span>
-                <span className="text-base font-black text-rose-400 mt-1">
+              <div className="p-3.5 rounded-xl neu-flat border border-white/80 flex flex-col col-span-2 sm:col-span-1">
+                <span className="text-[10px] uppercase font-bold text-[#596B4F]">Total Nominal</span>
+                <span className="text-base font-bold text-[#74A355] mt-1 font-mono">
                   {formatCurrency(totalAmount)}
                 </span>
               </div>
@@ -645,12 +641,12 @@ export default function WdQrisAjaibOzzo() {
                 type="button"
                 onClick={handleCopyTSV}
                 disabled={parsedRows.length === 0}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 shadow-lg ${
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
                   parsedRows.length > 0
                     ? isCopied
-                      ? "bg-emerald-600 text-white shadow-emerald-500/25"
-                      : "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white shadow-amber-500/25 hover:scale-[1.02]"
-                    : "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
+                      ? "bg-emerald-600 text-white"
+                      : "clay-btn-green text-white"
+                    : "neu-flat border border-[#E8E2B5] text-[#596B4F]/50 cursor-not-allowed"
                 }`}
               >
                 {isCopied ? <Check size={16} /> : <Copy size={16} />}
@@ -661,10 +657,10 @@ export default function WdQrisAjaibOzzo() {
                 type="button"
                 onClick={handleDownloadExcel}
                 disabled={parsedRows.length === 0}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm border transition-all ${
+                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm border transition-all cursor-pointer ${
                   parsedRows.length > 0
-                    ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50"
-                    : "bg-white/5 text-slate-500 border-white/5 cursor-not-allowed"
+                    ? "neu-flat border border-[#74A355]/40 text-[#74A355] hover:bg-[#74A355]/10"
+                    : "neu-flat border border-[#E8E2B5] text-[#596B4F]/50 cursor-not-allowed"
                 }`}
               >
                 <Download size={16} />
@@ -679,19 +675,19 @@ export default function WdQrisAjaibOzzo() {
       {parsedRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <TableProperties size={14} className="text-amber-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
+              <TableProperties size={14} className="text-[#74A355]" />
               <span>STEP 1: TABEL HASIL IMPORT EXCEL (RAW MATRIX)</span>
             </h3>
-            <span className="text-xs text-amber-300/80 font-mono">
+            <span className="text-xs text-[#74A355] font-mono font-bold">
               {parsedRows.length} baris terdeteksi
             </span>
           </div>
 
-          <div className="w-full overflow-x-auto rounded-2xl glass border border-white/10 bg-slate-950/80 shadow-xl">
-            <table className="w-full text-left text-xs text-slate-300 border-collapse">
+          <div className="w-full overflow-x-auto rounded-2xl neu-card border border-white/80">
+            <table className="w-full text-left text-xs text-[#23321B] border-collapse font-mono">
               <thead>
-                <tr className="bg-white/10 border-b border-white/10 text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                <tr className="bg-[#EFEBA9]/60 border-b border-[#E8E2B5] text-[11px] font-bold text-[#596B4F] uppercase tracking-wider">
                   <th className="py-3 px-3 text-center w-10">No.</th>
                   <th className="py-3 px-3">Transaction Date / Time</th>
                   <th className="py-3 px-3">Transaction ID / Ref</th>
@@ -702,44 +698,44 @@ export default function WdQrisAjaibOzzo() {
                   <th className="py-3 px-3 text-center w-16">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#E8E2B5]/50">
                 {parsedRows.map((row, idx) => (
                   <tr
                     key={`ajaib-${row.keterangan}-${idx}`}
-                    className="hover:bg-white/5 transition-colors"
+                    className="hover:bg-[#74A355]/5 transition-colors font-sans"
                   >
-                    <td className="py-3 px-3 text-center font-mono text-slate-500 text-[11px]">
+                    <td className="py-3 px-3 text-center font-mono text-[#596B4F] text-[11px] font-bold">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-300 whitespace-nowrap">
+                    <td className="py-3 px-3 font-mono text-[11px] text-[#23321B] whitespace-nowrap">
                       {row.date || "-"}
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-amber-300 whitespace-nowrap font-bold">
+                    <td className="py-3 px-3 font-mono text-[11px] text-[#74A355] whitespace-nowrap font-bold">
                       {row.keterangan || "-"}
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-bold text-white uppercase">{row.nama || "-"}</div>
-                      <div className="text-[11px] font-mono text-cyan-300 font-semibold">
+                      <div className="font-bold text-[#23321B] uppercase">{row.nama || "-"}</div>
+                      <div className="text-[11px] font-mono text-[#74A355] font-semibold">
                         {row.nomorRekening || "-"}
                       </div>
                     </td>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-300 whitespace-nowrap">
+                    <td className="py-3 px-3 font-mono font-bold text-[#74A355] whitespace-nowrap">
                       {row.userId || "-"}
                     </td>
-                    <td className="py-3 px-3 text-slate-300 whitespace-nowrap text-[11px]">
+                    <td className="py-3 px-3 text-[#596B4F] whitespace-nowrap text-[11px] font-semibold">
                       {row.paymentMethod || "-"}
                     </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-rose-400 whitespace-nowrap text-sm">
+                    <td className="py-3 px-3 text-right font-mono font-bold text-[#74A355] whitespace-nowrap text-sm">
                       {row.withdrawal}
                     </td>
                     <td className="py-3 px-3 text-center">
                       <button
                         type="button"
                         onClick={() => handleCopySingleRow(row, idx)}
-                        className={`p-1.5 rounded-lg border transition-all ${
+                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                           copiedRowIdx === idx
-                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                            : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
+                            ? "bg-[#74A355]/20 border-[#74A355] text-[#74A355]"
+                            : "neu-flat border-[#E8E2B5] text-[#596B4F] hover:text-[#23321B]"
                         }`}
                         title="Copy Baris Ini (TSV)"
                       >
@@ -758,24 +754,24 @@ export default function WdQrisAjaibOzzo() {
       {parsedRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <ListOrdered size={14} className="text-emerald-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
+              <ListOrdered size={14} className="text-[#74A355]" />
               <span>STEP 2: PREVIEW OUTPUT SPREADSHEET (KOLOM A S/D M)</span>
             </h3>
             <button
               type="button"
               onClick={handleCopyTSV}
-              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5"
+              className="text-xs font-bold text-[#74A355] hover:underline flex items-center gap-1.5 cursor-pointer"
             >
               <Copy size={12} />
               <span>Salin Semua Baris (13 Kolom)</span>
             </button>
           </div>
 
-          <div className="w-full overflow-x-auto rounded-2xl glass border border-white/10 bg-slate-950/60 shadow-xl">
-            <table className="w-full text-left text-xs text-slate-300 border-collapse">
+          <div className="w-full overflow-x-auto rounded-2xl neu-card border border-white/80">
+            <table className="w-full text-left text-xs text-[#23321B] border-collapse font-mono">
               <thead>
-                <tr className="bg-white/5 border-b border-white/10 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <tr className="bg-[#EFEBA9]/60 border-b border-[#E8E2B5] text-[11px] font-bold text-[#596B4F] uppercase tracking-wider">
                   <th className="py-3 px-3 text-center w-10">#</th>
                   <th className="py-3 px-3">A: NAMA</th>
                   <th className="py-3 px-3">B: NO. REKENING</th>
@@ -787,48 +783,48 @@ export default function WdQrisAjaibOzzo() {
                   <th className="py-3 px-3 text-center w-16">AKSI</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#E8E2B5]/50">
                 {parsedRows.map((row, idx) => (
                   <tr
                     key={`out-ajaib-${row.keterangan}-${idx}`}
-                    className="hover:bg-white/5 transition-colors group"
+                    className="hover:bg-[#74A355]/5 transition-colors group"
                   >
-                    <td className="py-3 px-3 text-center font-mono text-slate-500 text-[11px]">
+                    <td className="py-3 px-3 text-center font-mono text-[#596B4F] text-[11px] font-bold">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-3 font-bold text-white uppercase whitespace-nowrap">
-                      {row.nama || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-bold text-[#23321B] uppercase whitespace-nowrap">
+                      {row.nama || <span className="text-[#596B4F]">-</span>}
                     </td>
-                    <td className="py-3 px-3 font-mono font-bold text-cyan-300 whitespace-nowrap">
-                      {row.nomorRekening || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-mono font-bold text-[#74A355] whitespace-nowrap">
+                      {row.nomorRekening || <span className="text-[#596B4F]">-</span>}
                     </td>
-                    <td className="py-3 px-3 font-mono text-amber-300 whitespace-nowrap">
-                      {row.userId || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-mono text-[#74A355] font-bold whitespace-nowrap">
+                      {row.userId || <span className="text-[#596B4F]">-</span>}
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold text-[10px] border border-amber-500/30">
+                      <span className="px-2 py-0.5 rounded-md bg-[#74A355]/15 text-[#74A355] font-mono font-bold text-[10px] border border-[#74A355]/30">
                         {row.sub}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-mono font-bold text-[10px] border border-rose-500/30">
+                      <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 font-mono font-bold text-[10px] border border-rose-300">
                         {row.kodeTransaksi}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-rose-400 whitespace-nowrap">
+                    <td className="py-3 px-3 text-right font-mono font-bold text-[#74A355] whitespace-nowrap">
                       {row.withdrawal}
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                      {row.keterangan || <span className="text-slate-600">-</span>}
+                    <td className="py-3 px-3 font-mono text-[11px] text-[#596B4F] whitespace-nowrap">
+                      {row.keterangan || <span className="text-[#596B4F]">-</span>}
                     </td>
                     <td className="py-3 px-3 text-center">
                       <button
                         type="button"
                         onClick={() => handleCopySingleRow(row, idx)}
-                        className={`p-1.5 rounded-lg border transition-all ${
+                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                           copiedRowIdx === idx
-                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                            : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
+                            ? "bg-[#74A355]/20 border-[#74A355] text-[#74A355]"
+                            : "neu-flat border-[#E8E2B5] text-[#596B4F] hover:text-[#23321B]"
                         }`}
                         title="Copy Baris Ini"
                       >

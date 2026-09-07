@@ -48,28 +48,28 @@ export function IdRangePicker({
   const current = hasMatch ? matches[Math.min(matchIdx, matches.length - 1)] : null;
 
   const accentRing = accent === "emerald"
-    ? "focus-within:ring-emerald-400/50 focus-within:border-emerald-400/40"
-    : "focus-within:ring-rose-400/50 focus-within:border-rose-400/40";
-  const accentLabel = accent === "emerald" ? "text-emerald-300/80" : "text-rose-300/80";
-  const accentIcon  = accent === "emerald" ? "text-emerald-400/80" : "text-rose-400/80";
+    ? "focus-within:ring-[#74A355] focus-within:border-[#74A355]"
+    : "focus-within:ring-rose-500 focus-within:border-rose-500";
+  const accentLabel = accent === "emerald" ? "text-emerald-800 font-bold" : "text-rose-800 font-bold";
+  const accentIcon  = accent === "emerald" ? "text-[#74A355]" : "text-rose-600";
 
   return (
-    <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg border border-white/10 bg-white/3 transition-all ${accentRing} focus-within:ring-1`}>
+    <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-xl border border-white/80 neu-flat bg-[#FDFBD4] transition-all ${accentRing} focus-within:ring-1`}>
       {/* Label row */}
       <div className="flex items-center gap-1.5">
         <span className={accentIcon}>{icon}</span>
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${accentLabel}`}>
+        <span className={`text-[10px] uppercase tracking-wider ${accentLabel}`}>
           {label}
         </span>
         {matches.length > 1 && (
           <span className="ml-auto flex items-center gap-1">
-            <span className="text-[10px] font-mono text-white/40">
+            <span className="text-[10px] font-mono text-[#596B4F]">
               {matchIdx + 1}/{matches.length}
             </span>
             <button
               type="button"
               onClick={() => onCycle(-1)}
-              className="flex items-center justify-center w-5 h-5 rounded text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center w-5 h-5 rounded text-[#596B4F] hover:text-[#23321B] hover:bg-white/60 transition-colors"
               data-testid={`button-${testidPrefix}-prev`}
               aria-label="Match sebelumnya"
             >
@@ -78,7 +78,7 @@ export function IdRangePicker({
             <button
               type="button"
               onClick={() => onCycle(1)}
-              className="flex items-center justify-center w-5 h-5 rounded text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center w-5 h-5 rounded text-[#596B4F] hover:text-[#23321B] hover:bg-white/60 transition-colors"
               data-testid={`button-${testidPrefix}-next`}
               aria-label="Match berikutnya"
             >
@@ -90,7 +90,7 @@ export function IdRangePicker({
 
       {/* Input row */}
       <div className="relative">
-        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#596B4F] pointer-events-none" />
         <input
           type="text"
           value={query}
@@ -112,7 +112,7 @@ export function IdRangePicker({
           <button
             type="button"
             onClick={onClear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#596B4F] hover:text-[#23321B]"
             data-testid={`button-${testidPrefix}-clear`}
             aria-label="Bersihkan"
           >
@@ -124,10 +124,10 @@ export function IdRangePicker({
       {/* Status row */}
       <div className="min-h-[14px] text-[11px] flex items-center gap-1">
         {!trimmed && (
-          <span className="text-white/30">Kosong — range mengikuti input manual.</span>
+          <span className="text-[#596B4F]">Kosong — range mengikuti input manual.</span>
         )}
         {trimmed && current && (
-          <span className="text-emerald-400 flex items-center gap-1">
+          <span className="text-[#74A355] flex items-center gap-1 font-medium">
             <Check size={10} />
             {excludeMarked ? (
               <>Mulai setelah baris {current.row}: <span className="font-mono">{current.id}</span></>
@@ -137,7 +137,7 @@ export function IdRangePicker({
           </span>
         )}
         {trimmed && !current && (
-          <span className="text-red-400 flex items-center gap-1">
+          <span className="text-[#CC2936] flex items-center gap-1 font-medium">
             <AlertCircle size={10} />
             Tidak ditemukan
           </span>

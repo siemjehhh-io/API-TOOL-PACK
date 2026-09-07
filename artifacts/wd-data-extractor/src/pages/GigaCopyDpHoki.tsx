@@ -1,4 +1,4 @@
-﻿import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Check, Copy, Eraser, FileText, Layers, Loader2, Sparkles, Wand2, Download, ListOrdered, Banknote, Upload } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -1235,22 +1235,22 @@ export default function GigaCopyDpHoki() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 px-ds-lg py-ds-lg shadow-ds-lg backdrop-blur-2xl"
+        className="overflow-hidden rounded-2xl neu-card border border-white/80 p-6"
       >
-        <div className="mb-ds-lg flex items-center justify-between gap-ds-md flex-wrap">
-          <div className="flex items-center gap-ds-md">
-            <div className="flex items-center justify-center rounded-ds-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-2.5 shadow-ds-md shadow-indigo-500/25">
-              <Layers size={22} className="text-white" />
+        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-[#74A355] text-white flex items-center justify-center shadow-md clay-badge shrink-0">
+              <Layers size={22} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">DP GIGA QRISHOKI</h2>
-              <p className="text-xs text-slate-500">Parse DP data dari dashboard GIGA QRISHOKI</p>
+              <h2 className="text-lg font-bold text-[#23321B]">DP GIGA QRISHOKI</h2>
+              <p className="text-xs text-[#23321B]/70 font-medium">Parse DP data dari dashboard GIGA QRISHOKI</p>
             </div>
           </div>
           <button
             type="button"
             onClick={useSample}
-            className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold border border-indigo-100 bg-indigo-50/70 text-indigo-600 transition-all hover:border-indigo-200 hover:bg-indigo-100"
+            className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-bold text-[#74A355] neu-flat hover:bg-[#74A355] hover:text-white transition-all"
           >
             <Wand2 size={15} />
             Use Sample
@@ -1281,21 +1281,21 @@ export default function GigaCopyDpHoki() {
             }
           }}
           placeholder={INPUT_GUIDANCE}
-          className="min-h-[390px] w-full resize-y rounded-ds-2xl border-2 border-dashed border-indigo-200 bg-white/50 p-ds-lg font-mono text-sm leading-7 text-slate-700 shadow-inner shadow-indigo-100/40 outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white/80 focus:ring-4 focus:ring-indigo-100"
+          className="min-h-[390px] w-full resize-y rounded-2xl border-2 border-dashed border-[#E8E2B5] bg-[#F6F3C2]/40 p-4 font-mono text-sm leading-7 text-[#23321B] neu-inset outline-none backdrop-blur-md transition placeholder:text-[#23321B]/40 focus:border-[#74A355]"
         />
 
         {gridPreview.length > 0 && (
-          <div className="mt-ds-md rounded-ds-xl border border-indigo-200 bg-white/70 p-2 shadow-inner">
-            <p className="mb-1 px-1 text-[11px] font-bold text-indigo-700">
+          <div className="mt-4 rounded-xl border border-[#E8E2B5] bg-[#FDFBD4] p-3 neu-inset">
+            <p className="mb-1 px-1 text-[11px] font-bold text-[#74A355]">
               Grid sumber dari panel ({gridPreview.length} baris × {gridPreview[0]?.length ?? 0} kolom) — output diambil per kolom.
             </p>
             <div className="max-h-52 overflow-auto">
               <table className="w-max border-collapse text-[10px]">
                 <tbody>
                   {gridPreview.slice(0, 30).map((r, ri) => (
-                    <tr key={ri} className={ri === 0 ? "bg-indigo-100 font-bold" : "odd:bg-white even:bg-slate-50"}>
+                    <tr key={ri} className={ri === 0 ? "bg-[#74A355]/20 text-[#23321B] font-bold" : "odd:bg-[#FDFBD4] even:bg-[#F6F3C2]/50"}>
                       {r.map((c, ci) => (
-                        <td key={ci} className="max-w-[160px] truncate border border-slate-200 px-1.5 py-0.5 text-slate-700" title={c}>{c}</td>
+                        <td key={ci} className="max-w-[160px] truncate border border-[#E8E2B5] px-1.5 py-0.5 text-[#23321B]" title={c}>{c}</td>
                       ))}
                     </tr>
                   ))}
@@ -1305,14 +1305,14 @@ export default function GigaCopyDpHoki() {
           </div>
         )}
 
-        <div className="mt-ds-lg flex flex-col gap-ds-md sm:flex-row">
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row">
           <motion.button
             type="button"
             whileHover={{ scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
             onClick={processData}
             disabled={isProcessing}
-            className="inline-flex flex-1 items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-ds-md shadow-fuchsia-500/25 transition-all hover:shadow-ds-lg hover:shadow-fuchsia-500/35 disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex flex-1 items-center justify-center h-12 px-6 py-3 gap-2 text-sm font-bold clay-btn-green disabled:cursor-not-allowed disabled:opacity-35"
           >
             {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
             Process Data
@@ -1320,7 +1320,7 @@ export default function GigaCopyDpHoki() {
           <button
             type="button"
             onClick={clearData}
-            className="inline-flex items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white/60 text-slate-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+            className="inline-flex items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-bold neu-flat text-[#23321B] hover:bg-rose-100 hover:text-rose-700 transition-all"
           >
             <Eraser size={17} />
             Clear
@@ -1329,7 +1329,7 @@ export default function GigaCopyDpHoki() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            className="inline-flex items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white/60 text-slate-600 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex items-center justify-center h-12 px-6 py-3 gap-2 rounded-xl text-sm font-bold neu-flat text-[#23321B] hover:bg-[#74A355]/20 hover:text-[#74A355] transition-all disabled:cursor-not-allowed disabled:opacity-35"
           >
             <Upload size={17} />
             Upload Excel
@@ -1350,9 +1350,9 @@ export default function GigaCopyDpHoki() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="flex items-start gap-ds-md px-ds-lg py-ds-md rounded-ds-2xl border border-rose-200 bg-rose-50/80 text-rose-700 shadow-ds-md backdrop-blur-xl"
+            className="flex items-start gap-3 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50/90 text-rose-800 shadow-md backdrop-blur-xl"
           >
-            <AlertCircle size={20} className="mt-0.5 shrink-0" />
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-rose-600" />
             <p className="text-sm font-medium">{error}</p>
           </motion.div>
         )}
@@ -1363,57 +1363,57 @@ export default function GigaCopyDpHoki() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="flex flex-col gap-ds-lg"
+          className="flex flex-col gap-6"
         >
           {/* MIDDLE MODULE: Summary Metrics Grid - 4 cards */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-ds-md"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {/* Card 1: JENIS DATA */}
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl glass shadow-ds-sm bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/20">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-ds-md shadow-amber-500/30 shrink-0">
-                <Layers size={20} className="text-white" />
+            <div className="flex items-center gap-4 p-5 rounded-2xl neu-card border border-white/80">
+              <div className="w-11 h-11 rounded-2xl bg-[#74A355] text-white flex items-center justify-center shadow-md clay-badge shrink-0">
+                <Layers size={20} />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-amber-600/70 font-medium">Jenis Data</p>
-                <p className="text-lg font-bold text-amber-700 leading-tight font-mono mt-1">DP QRISHOKI</p>
+                <p className="text-xs uppercase tracking-wide text-[#23321B]/60 font-bold">Jenis Data</p>
+                <p className="text-lg font-bold text-[#74A355] leading-tight font-mono mt-1">DP QRISHOKI</p>
               </div>
             </div>
 
             {/* Card 2: TOTAL DATA */}
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-ds-md shadow-violet-500/30 shrink-0">
-                <ListOrdered size={20} className="text-white" />
+            <div className="flex items-center gap-4 p-5 rounded-2xl neu-card border border-white/80">
+              <div className="w-11 h-11 rounded-2xl bg-[#74A355] text-white flex items-center justify-center shadow-md clay-badge shrink-0">
+                <ListOrdered size={20} />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Data</p>
-                <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{rows.length}</p>
+                <p className="text-xs uppercase tracking-wide text-[#23321B]/60 font-bold">Total Data</p>
+                <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">{rows.length}</p>
               </div>
             </div>
 
             {/* Card 3: TOTAL NOMINAL */}
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-ds-md shadow-emerald-500/30 shrink-0">
-                <Banknote size={20} className="text-white" />
+            <div className="flex items-center gap-4 p-5 rounded-2xl neu-card border border-white/80">
+              <div className="w-11 h-11 rounded-2xl bg-[#74A355] text-white flex items-center justify-center shadow-md clay-badge shrink-0">
+                <Banknote size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Total Nominal</p>
-                <p className="text-2xl font-bold text-white leading-tight font-mono mt-1 truncate" title={formatCurrency(totalAmount)}>
+                <p className="text-xs uppercase tracking-wide text-[#23321B]/60 font-bold">Total Nominal</p>
+                <p className="text-2xl font-bold text-[#74A355] leading-tight font-mono mt-1 truncate" title={formatCurrency(totalAmount)}>
                   {formatCurrency(totalAmount)}
                 </p>
               </div>
             </div>
 
             {/* Card 4: ROW FINAL */}
-            <div className="flex items-center gap-ds-md px-ds-lg py-ds-lg rounded-ds-xl bg-white/5 border border-white/10 shadow-ds-sm">
-              <div className="w-12 h-12 rounded-ds-md bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center shadow-ds-md shadow-fuchsia-500/30 shrink-0">
-                <FileText size={20} className="text-white" />
+            <div className="flex items-center gap-4 p-5 rounded-2xl neu-card border border-white/80">
+              <div className="w-11 h-11 rounded-2xl bg-[#74A355] text-white flex items-center justify-center shadow-md clay-badge shrink-0">
+                <FileText size={20} />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-white/50 font-medium">Row Final</p>
-                <p className="text-2xl font-bold text-white leading-tight font-mono mt-1">{rows.length}</p>
+                <p className="text-xs uppercase tracking-wide text-[#23321B]/60 font-bold">Row Final</p>
+                <p className="text-2xl font-bold text-[#23321B] leading-tight font-mono mt-1">{rows.length}</p>
               </div>
             </div>
           </motion.div>
@@ -1422,22 +1422,22 @@ export default function GigaCopyDpHoki() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-ds-2xl border border-white/70 bg-white/65 shadow-ds-lg backdrop-blur-2xl"
+            className="overflow-hidden rounded-2xl neu-card border border-white/80"
           >
             {/* Action Bar Header */}
-            <div className="flex items-center justify-between gap-ds-md px-ds-lg py-ds-md border-b border-slate-200 bg-slate-50/50 sticky top-0 flex-wrap">
-              <div className="flex items-center gap-ds-md">
-                <h3 className="text-sm font-semibold text-slate-800">Output Preview</h3>
-                <p className="text-xs text-slate-500">Hasil mapping ke format spreadsheet.</p>
+            <div className="flex items-center justify-between gap-4 p-4 border-b border-[#E8E2B5] bg-[#F6F3C2]/50 sticky top-0 flex-wrap">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-bold text-[#23321B]">Output Preview</h3>
+                <p className="text-xs text-[#23321B]/70 font-medium">Hasil mapping ke format spreadsheet.</p>
               </div>
-              <div className="flex items-center gap-ds-sm flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
                 <motion.button
                   type="button"
                   whileHover={{ scale: rows.length ? 1.02 : 1 }}
                   whileTap={{ scale: rows.length ? 0.98 : 1 }}
                   onClick={handleCopyDocTrx}
                   disabled={!rows.length}
-                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold border-2 border-amber-400 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-ds-md shadow-amber-500/20 transition-all hover:shadow-ds-lg hover:shadow-amber-500/30 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 text-sm font-bold clay-btn-green disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {copiedType === "trx" ? <Check size={15} /> : <Copy size={15} />}
                   {copiedType === "trx" ? "Copied" : "Copy to Doc TRX"}
@@ -1448,7 +1448,7 @@ export default function GigaCopyDpHoki() {
                   whileTap={{ scale: rows.length ? 0.98 : 1 }}
                   onClick={handleCopyDocQris}
                   disabled={!rows.length}
-                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold border-2 border-cyan-400 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-ds-md shadow-cyan-500/20 transition-all hover:shadow-ds-lg hover:shadow-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 text-sm font-bold clay-btn-green disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {copiedType === "qris" ? <Check size={15} /> : <Copy size={15} />}
                   {copiedType === "qris" ? "Copied" : "Copy to Doc Qris"}
@@ -1459,7 +1459,7 @@ export default function GigaCopyDpHoki() {
                   whileTap={{ scale: rows.length ? 0.98 : 1 }}
                   onClick={exportToExcel}
                   disabled={!rows.length}
-                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-ds-md shadow-emerald-500/20 transition-all hover:shadow-ds-lg hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-bold neu-flat text-[#74A355] hover:bg-[#74A355] hover:text-white transition-all disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <Download size={15} />
                   Export to Excel
@@ -1471,9 +1471,9 @@ export default function GigaCopyDpHoki() {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-slate-200 bg-slate-50/50 sticky top-0">
+                  <tr className="border-b border-[#E8E2B5] bg-[#74A355]/10">
                     {OUTPUT_HEADERS.map((header) => (
-                      <th key={header} className="px-ds-md py-ds-sm text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                      <th key={header} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#23321B] whitespace-nowrap">
                         {header}
                       </th>
                     ))}
@@ -1481,9 +1481,9 @@ export default function GigaCopyDpHoki() {
                 </thead>
                 <tbody>
                   {rows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="border-b border-slate-100 bg-white/40 hover:bg-indigo-50/30 transition-colors">
+                    <tr key={rowIndex} className="border-b border-[#E8E2B5]/60 hover:bg-[#74A355]/10 transition-colors">
                       {rowToArr(row).map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-ds-md py-ds-md text-sm text-slate-700 whitespace-nowrap">
+                        <td key={cellIndex} className="px-4 py-3 text-sm text-[#23321B] font-mono whitespace-nowrap">
                           {cell || "-"}
                         </td>
                       ))}
