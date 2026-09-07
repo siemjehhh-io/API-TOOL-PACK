@@ -1,5 +1,5 @@
 // External dependencies
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   AlertCircle,
   ArrowDownToLine,
@@ -340,14 +340,100 @@ function GlassBtn({
 //
 // The DP extractor logic lives entirely in <DpSection />.
 
+export type GigaTabKey = "qrishoki" | "zenpay" | "bonus" | "check-pusat" | "wd";
+
+export interface GigaTabMeta {
+  id: GigaTabKey;
+  label: string;
+  iconName: "ClipboardList" | "Layers" | "Banknote" | "Trophy" | "ArrowUpFromLine";
+  activeColor: string;
+}
+
+const DEFAULT_GIGA_TABS: GigaTabMeta[] = [
+  {
+    id: "qrishoki",
+    label: "QRISHOKI",
+    iconName: "ClipboardList",
+    activeColor: "bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-500/30 border border-fuchsia-400/40",
+  },
+  {
+    id: "zenpay",
+    label: "ZENPAY",
+    iconName: "Layers",
+    activeColor: "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30 border border-cyan-400/40",
+  },
+  {
+    id: "bonus",
+    label: "BONUS",
+    iconName: "Banknote",
+    activeColor: "bg-amber-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40",
+  },
+  {
+    id: "check-pusat",
+    label: "CHECK PUSAT",
+    iconName: "Trophy",
+    activeColor: "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40",
+  },
+  {
+    id: "wd",
+    label: "WD GIGA",
+    iconName: "ArrowUpFromLine",
+    activeColor: "bg-rose-600 text-white shadow-sm shadow-rose-500/30 border border-rose-400/40",
+  },
+];
+
+function renderGigaTabIcon(iconName: GigaTabMeta["iconName"]) {
+  switch (iconName) {
+    case "ClipboardList":
+      return <ClipboardList size={13} />;
+    case "Layers":
+      return <Layers size={13} />;
+    case "Banknote":
+      return <Banknote size={13} />;
+    case "Trophy":
+      return <Trophy size={13} />;
+    case "ArrowUpFromLine":
+      return <ArrowUpFromLine size={13} />;
+  }
+}
+
 export default function Home() {
   // ── Category & Tab ────────────────────────────────────────────────────────────
 
   const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
   const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
-  const [activeGigaTab, setActiveGigaTab] = useState<"qrishoki" | "zenpay" | "bonus" | "check-pusat" | "wd">("qrishoki");
+  const [activeGigaTab, setActiveGigaTab] = useState<GigaTabKey>("qrishoki");
   const [activeOzzoTab, setActiveOzzoTab] = useState<"qris-ajaib">("qris-ajaib");
+
+  // Re-orderable GIGA sub-tabs state with localStorage persistence
+  const [gigaTabs, setGigaTabs] = useState<GigaTabMeta[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("giga_panel_tab_order");
+        if (saved) {
+          const orderIds = JSON.parse(saved) as GigaTabKey[];
+          const map = new Map(DEFAULT_GIGA_TABS.map((t) => [t.id, t]));
+          const ordered = orderIds.map((id) => map.get(id)).filter(Boolean) as GigaTabMeta[];
+          DEFAULT_GIGA_TABS.forEach((t) => {
+            if (!ordered.some((ot) => ot.id === t.id)) ordered.push(t);
+          });
+          return ordered;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return DEFAULT_GIGA_TABS;
+  });
+
+  const handleReorderGigaTabs = (newOrder: GigaTabMeta[]) => {
+    setGigaTabs(newOrder);
+    if (typeof window !== "undefined") {
+      const orderIds = newOrder.map((t) => t.id);
+      localStorage.setItem("giga_panel_tab_order", JSON.stringify(orderIds));
+    }
+  };
 
   // â”€â”€ WD extractor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -827,71 +913,48 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Sub-Tab Bar (For Giga Panel, Ozzo & QRIS Hoki) */}
+            {/* Sub-Tab Bar (Re-orderable for Giga Panel) */}
             {activeCategory === "giga" && (
               <div className="flex items-center justify-between gap-3 p-1.5 px-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
+                <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline select-none">
                     PILIH PANEL:
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("qrishoki")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "qrishoki"
-                        ? "bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-500/30 border border-fuchsia-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+                  <Reorder.Group
+                    axis="x"
+                    values={gigaTabs}
+                    onReorder={handleReorderGigaTabs}
+                    className="flex items-center gap-1.5"
                   >
-                    <ClipboardList size={13} />
-                    QRISHOKI
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("zenpay")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "zenpay"
-                        ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30 border border-cyan-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <Layers size={13} />
-                    ZENPAY
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("bonus")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "bonus"
-                        ? "bg-amber-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <Banknote size={13} />
-                    BONUS
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("check-pusat")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "check-pusat"
-                        ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30 border border-violet-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <Trophy size={13} />
-                    CHECK PUSAT
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGigaTab("wd")}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${activeGigaTab === "wd"
-                        ? "bg-rose-600 text-white shadow-sm shadow-rose-500/30 border border-rose-400/40"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-                  >
-                    <ArrowUpFromLine size={13} />
-                    WD GIGA
-                  </button>
+                    {gigaTabs.map((tab) => {
+                      const isActive = activeGigaTab === tab.id;
+                      return (
+                        <Reorder.Item
+                          key={tab.id}
+                          value={tab}
+                          axis="x"
+                          className="relative cursor-grab active:cursor-grabbing select-none shrink-0"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setActiveGigaTab(tab.id)}
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
+                              ${
+                                isActive
+                                  ? tab.activeColor
+                                  : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                              }`}
+                          >
+                            {renderGigaTabIcon(tab.iconName)}
+                            <span>{tab.label}</span>
+                          </button>
+                        </Reorder.Item>
+                      );
+                    })}
+                  </Reorder.Group>
                 </div>
-                <span className="text-[11px] font-mono text-white/30 hidden md:inline">
-                  GIGA PANEL TOOLS
+                <span className="text-[10px] font-mono text-white/30 hidden md:inline select-none">
+                  ↔ Geser Tab
                 </span>
               </div>
             )}
