@@ -216,22 +216,23 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
 
           {/* Interactive Floating Speech Bubble "Halo!" */}
           <motion.div
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 1.3 }}
             animate={{
-              y: isGreetingClicked ? [0, -15, 0] : [0, -6, 0],
-              scale: isGreetingClicked ? 1.25 : 1,
+              y: [0, -6, 0],
             }}
             transition={{
               y: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
               scale: { type: "spring", stiffness: 300, damping: 15 },
             }}
             onClick={handleGreetingClick}
-            className="neu-card bg-[#3A592B] px-5 py-2.5 rounded-2xl border-2 border-[#82B660] shadow-xl cursor-pointer flex items-center gap-2.5 group hover:bg-[#74A355] hover:border-white transition-all"
+            className="bg-[#3A592B] px-5 py-2.5 rounded-full border-2 border-[#82B660] shadow-xl cursor-pointer flex items-center gap-2.5 group transition-all"
           >
-            <span className="text-sm sm:text-base font-extrabold text-white">
+            <span className="text-sm sm:text-base font-black text-[#FFFFFF] drop-shadow-sm">
               {greetingText}
             </span>
-            <span className="text-[10px] font-black text-[#23321B] uppercase tracking-wider bg-[#82B660] px-2.5 py-1 rounded-xl shadow-sm">
-              Klik Saya!
+            <span className="text-[10px] font-black text-[#23321B] uppercase tracking-wider bg-[#82B660] px-2.5 py-1 rounded-full shadow-sm shrink-0">
+              KLIK SAYA!
             </span>
           </motion.div>
         </div>
