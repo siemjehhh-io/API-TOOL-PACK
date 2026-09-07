@@ -402,7 +402,7 @@ function renderGigaTabIcon(iconName: GigaTabMeta["iconName"]) {
 export default function Home() {
   // ── Category & Tab ────────────────────────────────────────────────────────────
 
-  const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>("formula");
+  const [mainSection, setMainSection] = useState<"formula" | "mutasi" | "phishing" | null>(null);
   const [activeCategory, setActiveCategory] = useState<"qris-hoki" | "giga" | "ozzo" | "giga-smart-mutasi">("giga");
   const [activeQrisTab, setActiveQrisTab] = useState<"wd" | "dp">("wd");
   const [activeGigaTab, setActiveGigaTab] = useState<GigaTabKey>("qrishoki");
