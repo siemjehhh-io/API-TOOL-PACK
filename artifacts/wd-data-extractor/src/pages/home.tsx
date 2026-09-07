@@ -841,7 +841,7 @@ export default function Home() {
       <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row items-start gap-6 shadow-2xl shadow-[#4A4215]/25 border-2 border-[#D5C988] overflow-hidden relative z-10">
 
         {/* ── 1. LEFT CURVED SIDEBAR PANEL (Dark Forest Green Card #3A592B) ── */}
-        <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-2xl shadow-[#1F3317]/50 border-2 border-[#2B4420] relative overflow-hidden lg:sticky lg:top-7 lg:self-start lg:max-h-[calc(100vh-5rem)] overflow-y-auto">
+        <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-2xl shadow-[#1F3317]/50 border-2 border-[#2B4420] relative lg:sticky lg:top-7 lg:self-start lg:max-h-[calc(100vh-5rem)] overflow-y-auto no-scrollbar">
           
           {/* Ambient Decorative Background Glows */}
           <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#82B660]/15 rounded-full blur-3xl pointer-events-none" />
