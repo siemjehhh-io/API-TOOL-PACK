@@ -838,7 +838,7 @@ export default function Home() {
       <div className="bg-scene-light" aria-hidden />
 
       {/* ── UNIFIED FLIGHT DASHBOARD INNER CONTAINER (Matching Photo Sample) ── */}
-      <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row gap-6 shadow-2xl border border-white/90 overflow-hidden relative z-10">
+      <div className="w-full max-w-[1440px] bg-[#FDFBD4] rounded-[2.5rem] neu-card p-4 sm:p-6 lg:p-7 flex flex-col lg:flex-row gap-6 shadow-xl shadow-[#595228]/10 border border-[#D2CA94]/50 overflow-hidden relative z-10">
 
         {/* ── 1. LEFT CURVED SIDEBAR PANEL (Dark Forest Green Card #3A592B) ── */}
         <aside className="w-full lg:w-72 shrink-0 bg-[#3A592B] rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-xl relative overflow-hidden">
@@ -973,7 +973,7 @@ export default function Home() {
         <main className="flex-1 flex flex-col gap-6 min-w-0">
 
           {/* ── TOP CONSOLE SEARCH PILL CARD (Upper Flight Bar Style) ── */}
-          <div className="neu-card rounded-[2rem] p-5 border border-white/90 flex flex-col gap-4 shadow-md">
+          <div className="neu-card rounded-[2rem] p-5 border border-[#D2CA94]/40 flex flex-col gap-4 shadow-sm">
             
             {/* Top Row: Console Pills (STATUS MONITOR on Dashboard, FILE EXCEL & SHEET AKTIF on QRIS HOKI) */}
             {mainSection === null && (

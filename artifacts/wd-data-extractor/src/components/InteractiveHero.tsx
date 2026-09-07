@@ -147,7 +147,7 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
         style={{
           perspective: 1200,
         }}
-        className="relative w-full rounded-[2.5rem] overflow-hidden neu-card border border-white/90 shadow-2xl cursor-crosshair min-h-[440px] flex flex-col justify-between p-6 sm:p-8 select-none transition-all duration-300"
+        className="relative w-full rounded-[2.5rem] overflow-hidden neu-card border border-[#D2CA94]/40 shadow-xl shadow-[#595228]/10 cursor-crosshair min-h-[440px] flex flex-col justify-between p-6 sm:p-8 select-none transition-all duration-300"
       >
         {/* ── 1. PARALLAX LANDSCAPE BACKGROUND LAYER ── */}
         <motion.div
@@ -289,7 +289,7 @@ export const InteractiveHero: React.FC<InteractiveHeroProps> = ({ onSelectServic
                   e.stopPropagation();
                   onSelectService(item.section, item.category);
                 }}
-                className="neu-card bg-[#FDFBD4]/95 backdrop-blur-md p-3.5 rounded-2xl border border-white/90 shadow-lg cursor-pointer flex flex-col justify-between gap-3 group transition-all hover:border-[#74A355] hover:shadow-xl"
+                className="neu-card bg-[#FDFBD4]/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#D2CA94]/50 shadow-sm cursor-pointer flex flex-col justify-between gap-3 group transition-all hover:border-[#74A355] hover:shadow-md"
               >
                 <div className="flex items-center justify-between">
                   <div className={`w-9 h-9 rounded-xl ${item.color} text-white flex items-center justify-center shadow-md clay-badge group-hover:scale-110 transition-transform`}>
