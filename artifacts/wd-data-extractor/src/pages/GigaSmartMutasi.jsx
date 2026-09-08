@@ -622,6 +622,40 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
     });
   }, [tabs, mutate]);
 
+  const [editingTabId, setEditingTabId] = useState(null);
+  const [editingTabName, setEditingTabName] = useState('');
+
+  const handleRenameTab = useCallback((tabId, newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      toast.error('Nama tab tidak boleh kosong');
+      return;
+    }
+    mutate(prev => ({
+      ...prev,
+      tabs: prev.tabs.map(tab => (tab.id === tabId ? { ...tab, name: trimmed, bank: trimmed } : tab)),
+    }));
+    if (tabId === activeTabId) {
+      setSelectedBank(trimmed);
+    }
+    toast.success(`Tab diubah menjadi "${trimmed}"`);
+  }, [mutate, activeTabId, setSelectedBank]);
+
+  const startRenameTab = useCallback((tab) => {
+    setEditingTabId(tab.id);
+    setEditingTabName(tab.name);
+  }, []);
+
+  const saveRenameTab = useCallback((tabId) => {
+    const trimmed = editingTabName.trim();
+    const currentTab = tabs.find(t => t.id === tabId);
+    if (trimmed && currentTab && trimmed !== currentTab.name) {
+      handleRenameTab(tabId, trimmed);
+    }
+    setEditingTabId(null);
+    setEditingTabName('');
+  }, [editingTabName, tabs, handleRenameTab]);
+
   const handleManualSubmit = useCallback((event) => {
     event.preventDefault();
     if (!manualNama.trim() || !manualNominal.trim()) {
@@ -852,23 +886,84 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
               </label>
               <label className={`grid grid-cols-[46px_minmax(0,1fr)] items-center gap-1.5 overflow-hidden transition-all duration-200 ${setupOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Bank</span>
-                <input type="text" value={selectedBank} onChange={event => setSelectedBank(event.target.value)} className={inputClass} placeholder="Mis: BCA" />
+                <input
+                  type="text"
+                  value={selectedBank}
+                  onChange={event => setSelectedBank(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' && selectedBank.trim() && activeTab && selectedBank.trim() !== activeTab.name) {
+                      handleRenameTab(activeTab.id, selectedBank.trim());
+                    }
+                  }}
+                  onBlur={() => {
+                    if (selectedBank.trim() && activeTab && selectedBank.trim() !== activeTab.name) {
+                      handleRenameTab(activeTab.id, selectedBank.trim());
+                    }
+                  }}
+                  className={inputClass}
+                  placeholder="Mis: BCA"
+                  title="Tekan Enter atau klik luar untuk memperbarui nama tab aktif"
+                />
               </label>
               <div className="grid min-w-0 grid-cols-[70px_minmax(0,1fr)] items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Tab Bank</span>
                 <div className="flex min-w-0 items-end gap-1.5 overflow-x-auto border-b border-[#D5C988] pb-1">
-                  {tabs.map(tab => (
-                    <div key={tab.id} className="relative group shrink-0">
-                      <button onClick={() => switchTab(tab.id)} className={`h-8 rounded-xl border px-3 Pr-7 text-[11px] font-black transition cursor-pointer ${activeTabId === tab.id ? 'border-[#74A355] bg-[#74A355] text-white shadow-sm' : 'border-[#E8E2B5] neu-flat text-[#23321B] hover:bg-white'}`}>
-                        {tab.name}
-                      </button>
-                      {tabs.length > 1 && (
-                        <button type="button" onClick={() => handleDeleteTab(tab.id)} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-rose-600 transition hover:bg-rose-100" title="Hapus tab">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {tabs.map(tab => {
+                    const isEditing = editingTabId === tab.id;
+                    const isActive = activeTabId === tab.id;
+                    return (
+                      <div key={tab.id} className="relative group shrink-0 flex items-center">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editingTabName}
+                            onChange={e => setEditingTabName(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') saveRenameTab(tab.id);
+                              if (e.key === 'Escape') { setEditingTabId(null); setEditingTabName(''); }
+                            }}
+                            onBlur={() => saveRenameTab(tab.id)}
+                            autoFocus
+                            onFocus={e => e.target.select()}
+                            className="h-8 rounded-xl border-2 border-[#74A355] bg-white px-2.5 text-[11px] font-black text-[#23321B] outline-none shadow-md w-28 transition-all"
+                            placeholder="Nama Tab..."
+                          />
+                        ) : (
+                          <div className="relative flex items-center">
+                            <button
+                              type="button"
+                              onClick={() => switchTab(tab.id)}
+                              onDoubleClick={() => startRenameTab(tab)}
+                              className={`h-8 rounded-xl border pl-3 pr-11 text-[11px] font-black transition cursor-pointer flex items-center gap-1.5 ${isActive ? 'border-[#74A355] bg-[#74A355] text-white shadow-sm' : 'border-[#E8E2B5] neu-flat text-[#23321B] hover:bg-white'}`}
+                              title="Klik untuk pilih | Double click (2x) untuk rename tab"
+                            >
+                              <span>{tab.name}</span>
+                            </button>
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); startRenameTab(tab); }}
+                                className={`flex h-4 w-4 items-center justify-center rounded-full transition cursor-pointer ${isActive ? 'text-white/80 hover:text-white hover:bg-white/20' : 'text-[#596B4F] hover:text-[#23321B] hover:bg-[#E8E2B5]'}`}
+                                title="Edit / Rename Tab (Klik 2x)"
+                              >
+                                <Pencil className="h-2.5 w-2.5" />
+                              </button>
+                              {tabs.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteTab(tab.id); }}
+                                  className={`flex h-4 w-4 items-center justify-center rounded-full transition cursor-pointer ${isActive ? 'text-white/80 hover:text-rose-200 hover:bg-white/20' : 'text-rose-600 hover:bg-rose-100'}`}
+                                  title="Hapus tab"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <button type="button" onClick={handleAddTab} className="h-8 shrink-0 rounded-xl clay-btn-green px-3 text-[11px] font-black uppercase tracking-wider text-white shadow-sm transition cursor-pointer" title="Tambah tab bank">
                     + Tambah
                   </button>
