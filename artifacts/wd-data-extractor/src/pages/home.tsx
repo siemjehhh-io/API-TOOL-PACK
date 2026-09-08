@@ -1070,8 +1070,8 @@ export default function Home() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-all border border-[#E8E2B5]
-                    ${isDragging ? "border-[#74A355] bg-[#74A355]/15" : "hover:border-[#74A355]"}`}
+                  className={`neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-all border
+                    ${isDragging ? "border-[#74A355] bg-[#74A355]/20 ring-2 ring-[#74A355]" : file ? "border-[#74A355]/50 bg-[#74A355]/10" : "border-[#E8E2B5] hover:border-[#74A355] hover:bg-[#74A355]/5"}`}
                 >
                   <input
                     type="file"
@@ -1083,25 +1083,33 @@ export default function Home() {
                   />
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-[#3A592B] text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <FileSpreadsheet size={16} />
+                      {file ? <FileSpreadsheet size={16} /> : <Upload size={16} className="animate-bounce" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">FILE EXCEL</p>
+                      <p className="text-[10px] font-extrabold text-[#3A592B] uppercase tracking-wider flex items-center gap-1">
+                        <span>UPLOAD FILE EXCEL</span>
+                        {!file && <span className="px-1.5 py-0.2 rounded bg-[#74A355]/20 text-[#3A592B] text-[9px] font-bold">.XLSX</span>}
+                      </p>
                       <p className="text-xs font-bold text-[#23321B] truncate">
-                        {isParsing ? "Memproses…" : file ? file.name : "Pilih File (.xlsx)"}
+                        {isParsing ? "Memproses…" : file ? file.name : "Klik / Seret File di Sini"}
                       </p>
                     </div>
                   </div>
 
-                  {file && !isParsing && (
+                  {file && !isParsing ? (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); reset(); }}
-                      className="text-[#CC2936] hover:bg-red-100 p-1 rounded-lg transition-colors"
+                      className="text-[#CC2936] hover:bg-red-100 p-1.5 rounded-lg transition-colors border border-red-200"
                       data-testid="button-remove-file"
+                      title="Hapus File"
                     >
                       <X size={14} />
                     </button>
+                  ) : (
+                    <span className="text-[10px] font-bold text-white bg-[#3A592B] px-2.5 py-1 rounded-lg shadow-sm border border-[#2B4420] shrink-0">
+                      PILIH FILE
+                    </span>
                   )}
                 </div>
 
@@ -1326,15 +1334,48 @@ export default function Home() {
                   </AnimatePresence>
 
                   {!data || error ? (
-                    <div className="neu-card rounded-[2rem] p-12 text-center flex flex-col items-center justify-center min-h-[360px] border border-white/80">
-                      <div className="w-16 h-16 rounded-2xl bg-[#3A592B]/10 text-[#3A592B] flex items-center justify-center mb-4">
-                        <FileSpreadsheet size={32} />
+                    <motion.div
+                      whileHover={{ scale: 1.005 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`neu-card rounded-[2.5rem] p-10 text-center flex flex-col items-center justify-center min-h-[380px] border-2 border-dashed transition-all cursor-pointer group relative overflow-hidden ${
+                        isDragging
+                          ? "border-[#74A355] bg-[#74A355]/15 ring-4 ring-[#74A355]/30"
+                          : "border-[#74A355]/40 hover:border-[#3A592B] bg-[#FDFBD4] hover:bg-[#F8F4C4]"
+                      }`}
+                    >
+                      {/* Decorative Background Glow */}
+                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#74A355]/10 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="w-20 h-20 rounded-3xl bg-[#3A592B] text-white flex items-center justify-center mb-5 shadow-xl group-hover:scale-110 group-hover:bg-[#74A355] transition-all border-2 border-[#D5C988]">
+                        <Upload size={36} className="animate-pulse" />
                       </div>
-                      <h4 className="text-sm font-bold text-[#23321B]">Data Canvas Belum Dimuat</h4>
-                      <p className="text-xs text-[#596B4F] mt-1 max-w-sm">
-                        Silakan upload file Excel laporan Withdrawal pada panel input atas untuk menampilkan hasil ekstraksi.
+
+                      <h4 className="text-base font-black uppercase tracking-wider text-[#23321B] group-hover:text-[#3A592B] transition-colors">
+                        SERET & LEPAS FILE EXCEL (.XLSX) DI SINI
+                      </h4>
+
+                      <p className="text-xs font-bold text-[#596B4F] mt-2 max-w-md leading-relaxed">
+                        Atau <span className="text-[#74A355] underline">klik di mana saja pada area ini</span> untuk memilih file Laporan Withdrawal dari komputer Anda.
                       </p>
-                    </div>
+
+                      <div className="mt-6 flex items-center gap-3">
+                        <button
+                          type="button"
+                          className="clay-btn-green px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg group-hover:scale-105 transition-transform"
+                        >
+                          <FileSpreadsheet size={18} />
+                          <span>PILIH FILE EXCEL (.XLSX)</span>
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2 text-[10px] font-mono font-bold text-[#596B4F]/80">
+                        <span className="w-2 h-2 rounded-full bg-[#82B660]" />
+                        <span>Mendukung Format File .XLSX / Withdrawal Report</span>
+                      </div>
+                    </motion.div>
                   ) : (
                     <div className="neu-card rounded-[2rem] p-5 border border-white/90 shadow-md">
                       <div className="rounded-2xl overflow-hidden neu-inset border border-[#E8E2B5]">
