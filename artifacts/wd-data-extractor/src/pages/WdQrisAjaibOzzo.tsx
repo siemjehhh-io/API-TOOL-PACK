@@ -574,27 +574,34 @@ export default function WdQrisAjaibOzzo() {
     setParsedRows((prev) => prev.map((r) => ({ ...r, kodeBank: newBank })));
   };
 
-  // Range boundary search matches
+  // Base rows array matching the UI display table order (oldest at #1, newest at #N)
+  const baseRows = useMemo(() => {
+    return [...parsedRows].reverse();
+  }, [parsedRows]);
+
+  // Range boundary search matches operating directly on baseRows
   const findIdMatches = useCallback(
     (query: string): { row: number; id: string }[] => {
-      if (!parsedRows.length) return [];
+      if (!baseRows.length) return [];
       const trimmed = query.trim().toLowerCase();
       if (!trimmed) return [];
       const matches: { row: number; id: string }[] = [];
-      for (let i = 0; i < parsedRows.length; i += 1) {
-        const r = parsedRows[i];
+      for (let i = 0; i < baseRows.length; i += 1) {
+        const r = baseRows[i];
         if (
+          r.keterangan.toLowerCase().includes(trimmed) ||
           r.userId.toLowerCase().includes(trimmed) ||
           r.nama.toLowerCase().includes(trimmed) ||
-          r.keterangan.toLowerCase().includes(trimmed) ||
           r.nomorRekening.toLowerCase().includes(trimmed)
         ) {
-          matches.push({ row: i + 1, id: r.userId || r.nama || r.keterangan });
+          // Prioritize Keterangan / SN (Transaction ID) for displayed match ID
+          const matchId = r.keterangan || r.userId || r.nama;
+          matches.push({ row: i + 1, id: matchId });
         }
       }
       return matches;
     },
-    [parsedRows]
+    [baseRows]
   );
 
   const startMatches = useMemo(() => findIdMatches(startIdQuery), [findIdMatches, startIdQuery]);
@@ -611,30 +618,26 @@ export default function WdQrisAjaibOzzo() {
   const startMatch = startMatches.length ? startMatches[Math.min(startMatchIdx, startMatches.length - 1)] : null;
   const endMatch = endMatches.length ? endMatches[Math.min(endMatchIdx, endMatches.length - 1)] : null;
 
-  const rangeRows = useMemo(() => {
-    if (!parsedRows.length) return [];
+  const displayRows = useMemo(() => {
+    if (!baseRows.length) return [];
     const startTrimmed = startIdQuery.trim();
     const endTrimmed = endIdQuery.trim();
 
-    if (!startTrimmed && !endTrimmed) return parsedRows;
+    if (!startTrimmed && !endTrimmed) return baseRows;
 
     let startIdx = 0;
-    let endIdx = parsedRows.length - 1;
+    let endIdx = baseRows.length - 1;
 
     if (startTrimmed && startMatch) {
-      startIdx = startMatch.row;
+      startIdx = startMatch.row; // ID AWAL: start range AFTER the matched row
     }
     if (endTrimmed && endMatch) {
-      endIdx = endMatch.row - 1;
+      endIdx = endMatch.row - 1; // ID AKHIR: include up to matched row
     }
 
     if (startIdx > endIdx) return [];
-    return parsedRows.slice(Math.max(0, startIdx), Math.min(parsedRows.length, endIdx + 1));
-  }, [parsedRows, startIdQuery, startMatch, endIdQuery, endMatch]);
-
-  const displayRows = useMemo(() => {
-    return [...rangeRows].reverse();
-  }, [rangeRows]);
+    return baseRows.slice(Math.max(0, startIdx), Math.min(baseRows.length, endIdx + 1));
+  }, [baseRows, startIdQuery, startMatch, endIdQuery, endMatch]);
 
   const totalAmount = useMemo(() => {
     return displayRows.reduce((sum, r) => sum + r.rawAmount, 0);
@@ -885,6 +888,7 @@ export default function WdQrisAjaibOzzo() {
                 onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
                 inputCls="neu-inset rounded-lg border border-[#E8E2B5] bg-[#FFFEE6] text-[#23321B]"
                 testidPrefix="start"
+                placeholder="paste atau ketik ID Transaksi / SN..."
                 excludeMarked
               />
 
@@ -900,6 +904,7 @@ export default function WdQrisAjaibOzzo() {
                 onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
                 inputCls="neu-inset rounded-lg border border-[#E8E2B5] bg-[#FFFEE6] text-[#23321B]"
                 testidPrefix="end"
+                placeholder="paste atau ketik ID Transaksi / SN..."
               />
             </div>
 

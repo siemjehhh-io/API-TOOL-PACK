@@ -27,6 +27,7 @@ export interface IdRangePickerProps {
   inputCls: string;                       // shared input style
   testidPrefix: string;                   // "start" / "end"
   excludeMarked?: boolean;                // ID Awal: range mulai SETELAH baris ini
+  placeholder?: string;
 }
 
 export function IdRangePicker({
@@ -42,6 +43,7 @@ export function IdRangePicker({
   inputCls,
   testidPrefix,
   excludeMarked = false,
+  placeholder = "paste atau ketik User ID…",
 }: IdRangePickerProps) {
   const trimmed = query.trim();
   const hasMatch = matches.length > 0;
@@ -104,7 +106,7 @@ export function IdRangePicker({
               onCycle(-1);
             }
           }}
-          placeholder="paste atau ketik User ID…"
+          placeholder={placeholder}
           className={`w-full h-7 pl-7 pr-7 text-xs font-mono ${inputCls}`}
           data-testid={`input-${testidPrefix}-id`}
         />
