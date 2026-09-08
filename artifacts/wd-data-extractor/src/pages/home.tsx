@@ -1041,138 +1041,140 @@ export default function Home() {
         <main className="flex-1 flex flex-col gap-6 min-w-0">
 
           {/* ── TOP CONSOLE SEARCH PILL CARD (Upper Flight Bar Style) ── */}
-          <div className="neu-card rounded-[2rem] p-5 border-2 border-[#D5C988] flex flex-col gap-4 shadow-lg shadow-[#4A4215]/10">
-            
-            {/* Top Row: Console Pills (STATUS MONITOR on Dashboard, FILE EXCEL & SHEET AKTIF on QRIS HOKI) */}
-            {mainSection === null && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 border border-[#E8E2B5]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#D9B038] text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <Zap size={16} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">STATUS MONITOR</p>
-                      <p className="text-xs font-bold text-[#74A355]">ENGINE READY (v2.0)</p>
+          {mainSection !== "mutasi" && mainSection !== "phishing" && (
+            <div className="neu-card rounded-[2rem] p-5 border-2 border-[#D5C988] flex flex-col gap-4 shadow-lg shadow-[#4A4215]/10">
+              
+              {/* Top Row: Console Pills (STATUS MONITOR on Dashboard, FILE EXCEL & SHEET AKTIF on QRIS HOKI) */}
+              {mainSection === null && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 border border-[#E8E2B5]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-[#D9B038] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Zap size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">STATUS MONITOR</p>
+                        <p className="text-xs font-bold text-[#74A355]">ENGINE READY (v2.0)</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Hidden input for file selection */}
-            <input
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              data-testid="input-file"
-            />
+              {/* Hidden input for file selection */}
+              <input
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                data-testid="input-file"
+              />
 
-            {/* Bottom Row: Subtab Segmented Switcher & Clay Action Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-              
-              {/* Segmented Controller Switcher (Only shown when a formula module is active) */}
-              {mainSection === "formula" && (
-                <div className="flex items-center gap-1.5 bg-[#F6F3C2] p-1.5 rounded-2xl neu-inset overflow-x-auto w-full sm:w-auto">
-                  {activeCategory === "giga" && (
-                    <Reorder.Group
-                      axis="x"
-                      values={gigaTabs}
-                      onReorder={handleReorderGigaTabs}
-                      className="flex items-center gap-1.5"
-                    >
-                      {gigaTabs.map((tab) => {
-                        const isActive = activeGigaTab === tab.id;
-                        return (
-                          <Reorder.Item
-                            key={tab.id}
-                            value={tab}
-                            axis="x"
-                            className="cursor-grab active:cursor-grabbing select-none shrink-0"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setActiveGigaTab(tab.id)}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5
-                                ${isActive
-                                  ? "bg-[#3A592B] text-white shadow-md"
-                                  : "text-[#596B4F] hover:text-[#23321B]"}`}
+              {/* Bottom Row: Subtab Segmented Switcher & Clay Action Button */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                
+                {/* Segmented Controller Switcher (Only shown when a formula module is active) */}
+                {mainSection === "formula" && (
+                  <div className="flex items-center gap-1.5 bg-[#F6F3C2] p-1.5 rounded-2xl neu-inset overflow-x-auto w-full sm:w-auto">
+                    {activeCategory === "giga" && (
+                      <Reorder.Group
+                        axis="x"
+                        values={gigaTabs}
+                        onReorder={handleReorderGigaTabs}
+                        className="flex items-center gap-1.5"
+                      >
+                        {gigaTabs.map((tab) => {
+                          const isActive = activeGigaTab === tab.id;
+                          return (
+                            <Reorder.Item
+                              key={tab.id}
+                              value={tab}
+                              axis="x"
+                              className="cursor-grab active:cursor-grabbing select-none shrink-0"
                             >
-                              {renderGigaTabIcon(tab.iconName)}
-                              <span>{tab.label}</span>
-                            </button>
-                          </Reorder.Item>
-                        );
-                      })}
-                    </Reorder.Group>
-                  )}
+                              <button
+                                type="button"
+                                onClick={() => setActiveGigaTab(tab.id)}
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5
+                                  ${isActive
+                                    ? "bg-[#3A592B] text-white shadow-md"
+                                    : "text-[#596B4F] hover:text-[#23321B]"}`}
+                              >
+                                {renderGigaTabIcon(tab.iconName)}
+                                <span>{tab.label}</span>
+                              </button>
+                            </Reorder.Item>
+                          );
+                        })}
+                      </Reorder.Group>
+                    )}
 
-                  {activeCategory === "qris-hoki" && (
+                    {activeCategory === "qris-hoki" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveQrisTab("wd")}
+                          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+                            ${activeQrisTab === "wd" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                        >
+                          QRIS HOKI WD
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveQrisTab("dp")}
+                          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
+                            ${activeQrisTab === "dp" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                        >
+                          QRIS HOKI DP
+                        </button>
+                      </>
+                    )}
+
+                    {activeCategory === "ozzo" && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveOzzoTab("qris-ajaib")}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#3A592B] text-white shadow-md cursor-pointer"
+                      >
+                        WD QRIS AJAIB OZZO
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Gold/Green Clay Action Buttons */}
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                  {data && !error && isWdSection && (
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveQrisTab("wd")}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
-                          ${activeQrisTab === "wd" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                        onClick={exportXlsx}
+                        disabled={filteredData.length === 0}
+                        className="neu-flat px-4 py-2 rounded-xl text-xs font-bold text-[#23321B] hover:bg-white transition-all cursor-pointer"
+                        data-testid="button-export-excel"
                       >
-                        QRIS HOKI WD
+                        <Download size={14} className="inline mr-1" />
+                        Excel
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => setActiveQrisTab("dp")}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer
-                          ${activeQrisTab === "dp" ? "bg-[#3A592B] text-white shadow-md" : "text-[#596B4F]"}`}
+                        onClick={copyTSV}
+                        disabled={filteredData.length === 0}
+                        className="clay-btn-green px-5 py-2 rounded-xl text-xs font-extrabold shadow-md cursor-pointer"
+                        data-testid="button-copy-tsv"
                       >
-                        QRIS HOKI DP
+                        {isCopied ? "TERSALIN!" : "SALIN KE DOC TRX"}
                       </button>
                     </>
                   )}
-
-                  {activeCategory === "ozzo" && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveOzzoTab("qris-ajaib")}
-                      className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#3A592B] text-white shadow-md cursor-pointer"
-                    >
-                      WD QRIS AJAIB OZZO
-                    </button>
-                  )}
                 </div>
-              )}
 
-              {/* Gold/Green Clay Action Buttons */}
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                {data && !error && isWdSection && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={exportXlsx}
-                      disabled={filteredData.length === 0}
-                      className="neu-flat px-4 py-2 rounded-xl text-xs font-bold text-[#23321B] hover:bg-white transition-all cursor-pointer"
-                      data-testid="button-export-excel"
-                    >
-                      <Download size={14} className="inline mr-1" />
-                      Excel
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={copyTSV}
-                      disabled={filteredData.length === 0}
-                      className="clay-btn-green px-5 py-2 rounded-xl text-xs font-extrabold shadow-md cursor-pointer"
-                      data-testid="button-copy-tsv"
-                    >
-                      {isCopied ? "TERSALIN!" : "SALIN KE DOC TRX"}
-                    </button>
-                  </>
-                )}
               </div>
 
             </div>
-
-          </div>
+          )}
 
           {/* ── MIDDLE WORKSPACE & TABLE STUDIO GRID ── */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
