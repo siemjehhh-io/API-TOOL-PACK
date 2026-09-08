@@ -784,81 +784,92 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
     });
   }, [setQueueForActive]);
 
-  const glassCard = 'rounded-xl border border-white/40 bg-white/30 shadow-sm shadow-amber-950/10 backdrop-blur-md';
-  const labelClass = 'text-[10px] font-black uppercase tracking-[0.18em] text-slate-600';
-  const inputClass = 'h-9 w-full rounded-lg border border-white/50 bg-white/65 px-3 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60';
-  const tableInputClass = 'h-8 w-full min-w-0 rounded-md border-none bg-transparent px-2 text-xs font-bold text-slate-800 outline-none transition focus:bg-white/70 focus:ring-1 focus:ring-amber-400';
+  const glassCard = 'neu-card border-2 border-[#D5C988] bg-[#FDFBD4] rounded-2xl shadow-md p-4';
+  const labelClass = 'text-[10px] font-black uppercase tracking-[0.18em] text-[#596B4F]';
+  const inputClass = 'neu-inset h-9 w-full rounded-xl border border-[#E8E2B5] px-3 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]';
+  const tableInputClass = 'h-8 w-full min-w-0 rounded-lg border-none bg-transparent px-2 text-xs font-bold text-[#23321B] outline-none transition focus:bg-white focus:ring-1 focus:ring-[#74A355]';
 
   if (!loaded) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="flex items-center gap-3 text-slate-300">
-          <RefreshCw className="h-5 w-5 animate-spin text-amber-400" />
-          <span className="text-sm font-semibold">Memuat mutasi {webName}...</span>
+        <div className="flex items-center gap-3 text-[#596B4F]">
+          <RefreshCw className="h-5 w-5 animate-spin text-[#74A355]" />
+          <span className="text-sm font-extrabold">Memuat mutasi {webName}...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-ds-md overflow-hidden">
-      <div className="flex w-fit items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-2.5 py-1 shadow-sm backdrop-blur-md">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden">
+      {/* Top Bar Header */}
+      <div className="flex items-center justify-between gap-4 rounded-2xl neu-card border-2 border-[#D5C988] bg-[#FDFBD4] p-3 shadow-md shrink-0">
         <button
           type="button"
           onClick={onExit}
-          title="Keluar — kembali ke pilihan web"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/30 bg-white/20 text-slate-100 shadow-sm transition hover:border-red-500 hover:bg-red-500 hover:text-white"
+          title="Kembali ke pilihan web"
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#E8E2B5] neu-flat px-4 text-xs font-extrabold uppercase text-[#23321B] transition hover:bg-white cursor-pointer"
         >
-          <X className="h-5 w-5" strokeWidth={2.75} />
+          <ChevronLeft className="h-4 w-4 text-[#74A355]" />
+          <span>Kembali ke Pilih Web</span>
         </button>
-        {webLogo
-          ? <img src={webLogo} alt="" className="h-10 w-10 rounded-lg object-contain" />
-          : <Globe className="h-6 w-6 text-amber-500" />}
-        <span className="rounded-lg bg-amber-500 px-3.5 py-1 text-xs font-black uppercase tracking-wide text-white shadow-sm">{webName}</span>
+        <div className="flex items-center gap-3">
+          {webLogo ? (
+            <img src={webLogo} alt="" className="h-8 w-8 rounded-lg object-contain" />
+          ) : (
+            <Globe className="h-6 w-6 text-[#74A355]" />
+          )}
+          <span className="rounded-xl clay-btn-green px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-sm">
+            DIVISI WEB: {webName}
+          </span>
+        </div>
       </div>
-      <section className={`${glassCard} w-full shrink-0 overflow-hidden p-ds-md`}>
-        <div className="grid gap-2">
-          <div className="rounded-xl border border-white/40 bg-white/35 px-2 py-1.5 shadow-inner shadow-white/10">
-            <div className={`grid gap-2 xl:items-center transition-all duration-300 ${setupOpen ? 'xl:grid-cols-[185px_150px_190px_minmax(0,1fr)]' : 'xl:grid-cols-[185px_0px_0px_minmax(0,1fr)]'}`}>
-              <div className="flex items-center gap-2">
+
+      {/* Setup & Input Panels */}
+      <section className={`${glassCard} w-full shrink-0 overflow-hidden`}>
+        <div className="grid gap-3">
+          {/* Step 1: Setup Shift & Bank */}
+          <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-3 shadow-sm">
+            <div className={`grid gap-3 xl:items-center transition-all duration-300 ${setupOpen ? 'xl:grid-cols-[200px_160px_200px_minmax(0,1fr)]' : 'xl:grid-cols-[200px_0px_0px_minmax(0,1fr)]'}`}>
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSetupOpen(o => !o)}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/50 bg-white/50 text-slate-600 transition hover:bg-white/80"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E8E2B5] neu-flat text-[#596B4F] transition hover:bg-white"
                   title={setupOpen ? 'Ciutkan Sub & Bank' : 'Buka Sub & Bank'}
                 >
-                  {setupOpen ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  {setupOpen ? <ChevronLeft className="h-4 w-4 text-[#74A355]" /> : <ChevronRight className="h-4 w-4 text-[#74A355]" />}
                 </button>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[11px] font-black text-white">1</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-xl clay-btn-green text-xs font-black text-white shadow-sm shrink-0">1</span>
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">Setup Shift</p>
-                  <p className="text-[10px] font-bold text-slate-600">Shift, bank, dan tab.</p>
+                  <p className="text-xs font-black uppercase tracking-wider text-[#23321B]">Setup Shift</p>
+                  <p className="text-[10px] font-semibold text-[#596B4F]">Shift, bank, & tab.</p>
                 </div>
               </div>
-              <label className={`grid grid-cols-[36px_minmax(0,1fr)] items-center gap-1 overflow-hidden transition-all duration-200 ${setupOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Sub</span>
-                <input value={shiftName} onChange={event => setShiftName(event.target.value)} className="h-8 w-full rounded-lg border border-white/50 bg-white/65 px-2 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="BOT / PAGI" />
+              <label className={`grid grid-cols-[40px_minmax(0,1fr)] items-center gap-1.5 overflow-hidden transition-all duration-200 ${setupOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Sub</span>
+                <input value={shiftName} onChange={event => setShiftName(event.target.value)} className={inputClass} placeholder="BOT / PAGI" />
               </label>
-              <label className={`grid grid-cols-[42px_minmax(0,1fr)] items-center gap-1 overflow-hidden transition-all duration-200 ${setupOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Bank</span>
-                <input type="text" value={selectedBank} onChange={event => setSelectedBank(event.target.value)} className="h-8 w-full rounded-lg border border-white/50 bg-white/65 px-2 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="Contoh: BCA" />
+              <label className={`grid grid-cols-[46px_minmax(0,1fr)] items-center gap-1.5 overflow-hidden transition-all duration-200 ${setupOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Bank</span>
+                <input type="text" value={selectedBank} onChange={event => setSelectedBank(event.target.value)} className={inputClass} placeholder="Mis: BCA" />
               </label>
-              <div className="grid min-w-0 grid-cols-[64px_minmax(0,1fr)] items-center gap-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Tab Bank</span>
-                <div className="flex min-w-0 items-end gap-1 overflow-x-auto border-b border-white/50">
+              <div className="grid min-w-0 grid-cols-[70px_minmax(0,1fr)] items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Tab Bank</span>
+                <div className="flex min-w-0 items-end gap-1.5 overflow-x-auto border-b border-[#D5C988] pb-1">
                   {tabs.map(tab => (
                     <div key={tab.id} className="relative group shrink-0">
-                      <button onClick={() => switchTab(tab.id)} className={`h-8 rounded-t-xl border px-3 pr-7 text-[11px] font-black transition ${activeTabId === tab.id ? 'border-white/60 border-b-transparent bg-white/80 text-slate-900 shadow-sm' : 'border-white/30 bg-white/35 text-slate-600 hover:bg-white/55'}`}>
+                      <button onClick={() => switchTab(tab.id)} className={`h-8 rounded-xl border px-3 Pr-7 text-[11px] font-black transition cursor-pointer ${activeTabId === tab.id ? 'border-[#74A355] bg-[#74A355] text-white shadow-sm' : 'border-[#E8E2B5] neu-flat text-[#23321B] hover:bg-white'}`}>
                         {tab.name}
                       </button>
                       {tabs.length > 1 && (
-                        <button type="button" onClick={() => handleDeleteTab(tab.id)} className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-red-500 transition hover:bg-red-500 hover:text-white" title="Hapus tab">
+                        <button type="button" onClick={() => handleDeleteTab(tab.id)} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-rose-600 transition hover:bg-rose-100" title="Hapus tab">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
                   ))}
-                  <button type="button" onClick={handleAddTab} className="h-8 shrink-0 rounded-t-xl border border-white/30 bg-slate-900 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-700" title="Tambah tab bank">
+                  <button type="button" onClick={handleAddTab} className="h-8 shrink-0 rounded-xl clay-btn-green px-3 text-[11px] font-black uppercase tracking-wider text-white shadow-sm transition cursor-pointer" title="Tambah tab bank">
                     + Tambah
                   </button>
                 </div>
@@ -866,50 +877,51 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/40 bg-white/35 p-3 shadow-inner shadow-white/10">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-xs font-black text-white">2</span>
+          {/* Step 2: Input Mutasi */}
+          <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-3 shadow-sm">
+            <div className="mb-2.5 flex items-center gap-2.5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-xl clay-btn-green text-xs font-black text-white shadow-sm shrink-0">2</span>
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Input Mutasi</p>
-                <p className="text-[11px] font-bold text-slate-600">Pilihan input menyesuaikan bank tab ini (BCA: paste BCA, BRI: paste Qlola, lainnya: manual).</p>
+                <p className="text-xs font-black uppercase tracking-wider text-[#23321B]">Input Mutasi</p>
+                <p className="text-[10px] font-semibold text-[#596B4F]">Paste mutasi BCA / Qlola atau input manual data mutasi baru.</p>
               </div>
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2.5">
               {showBcaPaste && (
-              <div className="grid gap-2 rounded-lg border border-white/40 bg-white/25 p-2 xl:grid-cols-[220px_minmax(0,1fr)_130px] xl:items-center">
+              <div className="grid gap-2 rounded-xl border border-[#E8E2B5] bg-[#FDFBD4] p-3 xl:grid-cols-[220px_minmax(0,1fr)_140px] xl:items-center">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-700">Paste Mutasi BCA</p>
-                  <p className="text-[11px] font-semibold text-slate-500">Untuk proses cepat: paste teks mutasi dari BCA, lalu klik proses.</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#23321B]">Paste Mutasi BCA</p>
+                  <p className="text-[10px] font-semibold text-[#596B4F]">Paste teks mutasi dari BCA, lalu klik proses.</p>
                 </div>
-                <textarea rows={2} value={bcaRawText} onChange={event => setBcaRawText(event.target.value)} className="min-h-[48px] resize-none rounded-lg border border-white/50 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60" placeholder="Paste mutasi BCA di sini..." />
-                <button onClick={handleExtractBca} className="h-full min-h-[48px] rounded-lg bg-amber-500 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-600">
+                <textarea rows={2} value={bcaRawText} onChange={event => setBcaRawText(event.target.value)} className="neu-inset min-h-[50px] resize-none rounded-xl border border-[#E8E2B5] p-2.5 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]" placeholder="Paste mutasi BCA di sini..." />
+                <button onClick={handleExtractBca} className="clay-btn-green h-full min-h-[46px] rounded-xl px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition cursor-pointer">
                   Proses Mutasi
                 </button>
               </div>
               )}
               {showQlolaPaste && (
-              <div className="grid gap-2 rounded-lg border border-white/40 bg-white/25 p-2 xl:grid-cols-[220px_minmax(0,1fr)_130px] xl:items-center">
+              <div className="grid gap-2 rounded-xl border border-[#E8E2B5] bg-[#FDFBD4] p-3 xl:grid-cols-[220px_minmax(0,1fr)_140px] xl:items-center">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-700">Paste Mutasi Qlola</p>
-                  <p className="text-[11px] font-semibold text-slate-500">Untuk internet banking Qlola: paste teks mutasi, lalu klik proses.</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#23321B]">Paste Mutasi Qlola</p>
+                  <p className="text-[10px] font-semibold text-[#596B4F]">Paste teks mutasi Qlola, lalu klik proses.</p>
                 </div>
-                <textarea rows={2} value={qlolaRawText} onChange={event => setQlolaRawText(event.target.value)} className="min-h-[48px] resize-none rounded-lg border border-white/50 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-300/60" placeholder="Paste mutasi Qlola di sini..." />
-                <button onClick={handleExtractQlola} className="h-full min-h-[48px] rounded-lg bg-sky-600 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700">
+                <textarea rows={2} value={qlolaRawText} onChange={event => setQlolaRawText(event.target.value)} className="neu-inset min-h-[50px] resize-none rounded-xl border border-[#E8E2B5] p-2.5 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]" placeholder="Paste mutasi Qlola di sini..." />
+                <button onClick={handleExtractQlola} className="clay-btn-green h-full min-h-[46px] rounded-xl px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition cursor-pointer">
                   Proses Qlola
                 </button>
               </div>
               )}
-              <form onSubmit={handleManualSubmit} className="grid gap-2 rounded-lg border border-white/40 bg-white/25 p-2 xl:grid-cols-[220px_minmax(0,1fr)_160px_150px_100px] xl:items-center">
+              <form onSubmit={handleManualSubmit} className="grid gap-2 rounded-xl border border-[#E8E2B5] bg-[#FDFBD4] p-3 xl:grid-cols-[200px_minmax(0,1fr)_160px_150px_110px] xl:items-center">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-700">Input Manual</p>
-                  <p className="text-[11px] font-semibold text-slate-500">Untuk data tambahan atau koreksi yang tidak terbaca otomatis.</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#23321B]">Input Manual</p>
+                  <p className="text-[10px] font-semibold text-[#596B4F]">Data koreksi / tambahan manual.</p>
                 </div>
                 <input value={manualNama} onChange={event => setManualNama(event.target.value)} className={inputClass} placeholder="Nama" />
                 <input value={manualNominal} onChange={event => setManualNominal(cleanNominal(event.target.value))} className={inputClass} placeholder="Nominal" />
                 <select value={manualType} onChange={event => setManualType(event.target.value)} className={inputClass}>
                   {TYPE_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}
                 </select>
-                <button type="submit" className="h-9 rounded-lg bg-slate-900 px-3 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-amber-700">
+                <button type="submit" className="clay-btn-green h-9 rounded-xl px-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition cursor-pointer">
                   Tambah
                 </button>
               </form>
@@ -918,58 +930,62 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
         </div>
       </section>
 
-      <section className={`${glassCard} flex min-h-0 w-full flex-1 flex-col overflow-hidden p-ds-md`}>
-        <div className="mb-2 flex shrink-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="whitespace-nowrap text-sm font-black uppercase tracking-[0.2em] text-amber-700">3. Cek Hasil Antrean</p>
-            <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-black text-amber-300">SHIFT {currentShiftNo}</span>
+      {/* Step 3: Antrean Table */}
+      <section className={`${glassCard} flex min-h-0 w-full flex-1 flex-col overflow-hidden`}>
+        <div className="mb-3 flex shrink-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-xl clay-btn-green text-xs font-black text-white shadow-sm shrink-0">3</span>
+            <p className="whitespace-nowrap text-xs font-black uppercase tracking-wider text-[#23321B]">3. Cek Hasil Antrean</p>
+            <span className="rounded-xl clay-badge px-3 py-1 text-xs font-black text-white shadow-sm">SHIFT {currentShiftNo}</span>
             <button
               type="button"
               onClick={() => setStatusOpen(o => !o)}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/40 bg-white/40 text-slate-600 transition hover:bg-white/70"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-[#E8E2B5] neu-flat text-[#596B4F] transition hover:bg-white"
               title={statusOpen ? 'Ciutkan status' : 'Buka status'}
             >
-              {statusOpen ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {statusOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
-            <div className={`flex items-center gap-2.5 overflow-hidden rounded-lg border bg-white/40 text-[11px] font-bold text-slate-600 transition-all duration-300 ${statusOpen ? 'max-w-[600px] border-white/40 px-3 py-1 opacity-100' : 'max-w-0 border-transparent px-0 py-0 opacity-0'}`}>
-              <span className="whitespace-nowrap"><b className="font-black text-slate-900">{currentShiftRows.length}</b> berjalan</span>
-              <span className="h-3 w-px shrink-0 bg-slate-400/40" />
-              <span className="whitespace-nowrap text-yellow-700"><b className="font-black">{currentShiftRows.length - completedRows.length}</b> pending</span>
-              <span className="h-3 w-px shrink-0 bg-slate-400/40" />
+            <div className={`flex items-center gap-3 overflow-hidden rounded-xl border border-[#E8E2B5] bg-[#FFFEE6] text-xs font-bold text-[#23321B] transition-all duration-300 ${statusOpen ? 'max-w-[600px] px-3.5 py-1.5 opacity-100' : 'max-w-0 border-transparent px-0 py-0 opacity-0'}`}>
+              <span className="whitespace-nowrap"><b className="font-black text-[#23321B]">{currentShiftRows.length}</b> berjalan</span>
+              <span className="h-3 w-px shrink-0 bg-[#D5C988]" />
+              <span className="whitespace-nowrap text-amber-700"><b className="font-black">{currentShiftRows.length - completedRows.length}</b> pending</span>
+              <span className="h-3 w-px shrink-0 bg-[#D5C988]" />
               <span className="whitespace-nowrap text-emerald-700"><b className="font-black">{completedRows.length}</b> selesai</span>
               {pastShiftCount > 0 && (
                 <>
-                  <span className="h-3 w-px shrink-0 bg-slate-400/40" />
-                  <span className="whitespace-nowrap text-slate-500"><b className="font-black">{pastShiftCount}</b> shift lama</span>
+                  <span className="h-3 w-px shrink-0 bg-[#D5C988]" />
+                  <span className="whitespace-nowrap text-[#596B4F]"><b className="font-black">{pastShiftCount}</b> shift lama</span>
                 </>
               )}
             </div>
           </div>
-          <label className="flex items-center gap-1.5 rounded-lg border border-emerald-300/60 bg-white/50 px-2 py-0.5">
-            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Saldo Awal</span>
-            <NominalInput value={manualSaldoAwalRaw} onChange={setSaldoAwalForActive} className="h-7 w-24 rounded-md border border-emerald-300/70 bg-white/80 px-2 text-xs font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-300/60" placeholder="0" />
-          </label>
-          <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="h-8 w-full rounded-lg border border-white/50 bg-white/70 px-3 text-xs font-bold text-slate-800 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-300/60 md:w-44" placeholder="Cari data..." />
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 rounded-xl border border-[#D5C988] bg-[#FFFEE6] px-3 py-1 shadow-sm">
+              <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Saldo Awal</span>
+              <NominalInput value={manualSaldoAwalRaw} onChange={setSaldoAwalForActive} className="h-7 w-28 rounded-lg border border-[#E8E2B5] neu-inset px-2 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]" placeholder="0" />
+            </label>
+            <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="h-9 w-full rounded-xl border border-[#E8E2B5] neu-inset px-3 text-xs font-bold text-[#23321B] outline-none transition focus:ring-2 focus:ring-[#74A355] md:w-48" placeholder="Cari data..." />
+          </div>
         </div>
 
-        <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden rounded-lg border border-white/50 bg-white/20 shadow-inner">
+        <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden rounded-xl border-2 border-[#D5C988] bg-[#FFFEE6] shadow-inner">
           <table className="w-full table-fixed border-collapse text-left">
-            <thead className="sticky top-0 z-10 bg-[#EFEBA9] text-[#23321B] border-b border-[#E8E2B5] shadow-sm">
-              <tr className="text-[10px] font-black uppercase tracking-wide">
-                <th className="w-[18%] px-1 py-2">Nama</th>
-                <th className="w-[15%] px-1 py-2">User ID</th>
-                <th className="w-[12%] px-1 py-2">Nominal</th>
-                <th className="w-[12%] px-1 py-2">Tipe</th>
-                <th className="w-[12%] px-1 py-2">Bank</th>
-                <th className="w-[12%] px-1 py-2">Saldo Akhir</th>
-                <th className="w-[10%] px-1 py-2">Validasi</th>
-                <th className="w-[9%] px-1 py-2 text-center">Aksi</th>
+            <thead className="sticky top-0 z-10 bg-[#E8E2B5] text-[#23321B] border-b-2 border-[#D5C988] shadow-sm">
+              <tr className="text-[11px] font-black uppercase tracking-wider">
+                <th className="w-[18%] px-3 py-2.5">Nama</th>
+                <th className="w-[15%] px-3 py-2.5">User ID</th>
+                <th className="w-[12%] px-3 py-2.5">Nominal</th>
+                <th className="w-[12%] px-3 py-2.5">Tipe</th>
+                <th className="w-[12%] px-3 py-2.5">Bank</th>
+                <th className="w-[12%] px-3 py-2.5">Saldo Akhir</th>
+                <th className="w-[10%] px-3 py-2.5">Validasi</th>
+                <th className="w-[9%] px-3 py-2.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center text-sm font-black text-slate-500">Belum ada antrean. Input data dari panel atas.</td>
+                  <td colSpan={8} className="px-4 py-16 text-center text-sm font-extrabold text-[#596B4F]">Belum ada antrean. Input data dari panel di atas.</td>
                 </tr>
               ) : filteredRows.map((row, index) => {
                 const rowShiftNo = row.shiftNo || 1;
@@ -985,77 +1001,75 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
                 const isMismatch = !locked && hasSaldo && parseNumber(row.saldoAkhir) !== expectedSaldo;
                 // Nominal di bawah 10.000 (0–9.999) tidak boleh diproses -> User ID *NULL*.
                 const belowMin = parseNumber(row.nominal) < 10000;
-                // Garis GANTI SHIFT muncul juga setelah baris terakhir bila shift
-                // berjalan sudah dibuka (Ganti Shift) tapi belum ada baris baru.
                 const isLastRow = index === filteredRows.length - 1;
                 const showTrailingDivider = isLastRow && !searchTerm.trim() && rowShiftNo < currentShiftNo;
                 const rowClass = locked
-                  ? 'bg-slate-200/60 opacity-70'
-                  : isMismatch ? 'bg-red-50/80 ring-2 ring-inset ring-red-500' : hasUserId ? 'bg-white/90' : 'bg-yellow-100/80';
+                  ? 'bg-slate-200/80 opacity-70'
+                  : isMismatch ? 'bg-rose-100/90 ring-2 ring-inset ring-rose-500' : hasUserId ? 'bg-white' : 'bg-amber-50/90';
 
                 return (
                   <React.Fragment key={row.id}>
                     {showDivider && (
                       <tr>
                         <td colSpan={8} className="p-0">
-                          <div className="flex items-center gap-2 px-3 py-1">
-                            <div className="h-px flex-1 bg-slate-800/60" />
-                            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.25em] text-slate-700">Ganti Shift</span>
-                            <button type="button" onClick={() => toggleUnlockShift(dividerShiftNo)} className={`rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wide transition ${isShiftUnlocked(dividerShiftNo) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white/70 text-slate-600 hover:bg-white'}`}>
+                          <div className="flex items-center gap-3 px-4 py-1.5 bg-[#E8E2B5]/50">
+                            <div className="h-px flex-1 bg-[#D5C988]" />
+                            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.25em] text-[#596B4F]">Ganti Shift</span>
+                            <button type="button" onClick={() => toggleUnlockShift(dividerShiftNo)} className={`rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide transition cursor-pointer ${isShiftUnlocked(dividerShiftNo) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white text-[#23321B] border border-[#D5C988] hover:bg-[#FFFEE6]'}`}>
                               {isShiftUnlocked(dividerShiftNo) ? 'Kunci' : 'Buka Kunci'}
                             </button>
-                            <button type="button" onClick={() => copyShiftSegment(dividerShiftNo)} className="rounded-md bg-emerald-600/90 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white transition hover:bg-emerald-700">
+                            <button type="button" onClick={() => copyShiftSegment(dividerShiftNo)} className="rounded-lg clay-btn-green px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white transition cursor-pointer">
                               Copy Shift {dividerShiftNo}
                             </button>
-                            <div className="h-px flex-1 bg-slate-800/60" />
+                            <div className="h-px flex-1 bg-[#D5C988]" />
                           </div>
                         </td>
                       </tr>
                     )}
-                    <tr className={`${rowClass} transition hover:bg-white`}>
-                      <td className="border-b border-white/60 px-1 py-1.5"><input value={row.nama} disabled={locked} onChange={event => updateRow(row.id, 'nama', event.target.value)} className={tableInputClass} /></td>
-                      <td className="border-b border-white/60 px-1 py-1.5">{belowMin ? (
-                        <span className="block px-2 text-xs font-black text-red-600" title="Nominal di bawah 10.000 — tidak boleh diproses">*NULL*</span>
+                    <tr className={`${rowClass} transition border-b border-[#E8E2B5]/70 hover:bg-[#FDFBD4]`}>
+                      <td className="px-2 py-1.5"><input value={row.nama} disabled={locked} onChange={event => updateRow(row.id, 'nama', event.target.value)} className={tableInputClass} /></td>
+                      <td className="px-2 py-1.5">{belowMin ? (
+                        <span className="block px-2 text-xs font-black text-rose-600" title="Nominal di bawah 10.000 — tidak boleh diproses">*NULL*</span>
                       ) : (
                         <input value={row.userId} disabled={locked} onChange={event => updateRow(row.id, 'userId', event.target.value)} className={tableInputClass} placeholder="opsional" />
                       )}</td>
-                      <td className="border-b border-white/60 px-1 py-1.5"><NominalInput value={row.nominal} disabled={locked} onChange={value => updateRow(row.id, 'nominal', value)} className={tableInputClass} /></td>
-                      <td className="border-b border-white/60 px-1 py-1.5"><select value={row.type} disabled={locked} onChange={event => updateRow(row.id, 'type', event.target.value)} className={tableInputClass}>{TYPE_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}</select></td>
-                      <td className="border-b border-white/60 px-1 py-1.5"><input value={row.bank} disabled={locked} onChange={event => updateRow(row.id, 'bank', event.target.value)} className={tableInputClass} /></td>
-                      <td className="border-b border-white/60 px-1 py-1.5">
-                        <div className="flex items-center gap-0.5">
+                      <td className="px-2 py-1.5"><NominalInput value={row.nominal} disabled={locked} onChange={value => updateRow(row.id, 'nominal', value)} className={tableInputClass} /></td>
+                      <td className="px-2 py-1.5"><select value={row.type} disabled={locked} onChange={event => updateRow(row.id, 'type', event.target.value)} className={tableInputClass}>{TYPE_OPTIONS.map(type => <option key={type} value={type}>{type}</option>)}</select></td>
+                      <td className="px-2 py-1.5"><input value={row.bank} disabled={locked} onChange={event => updateRow(row.id, 'bank', event.target.value)} className={tableInputClass} /></td>
+                      <td className="px-2 py-1.5">
+                        <div className="flex items-center gap-1">
                           <NominalInput value={row.saldoAkhir} disabled={locked} onChange={value => updateRow(row.id, 'saldoAkhir', value)} className={tableInputClass} placeholder={String(expectedSaldo)} sep="," />
-                          <button type="button" onClick={() => copySaldo(row.saldoAkhir)} title="Copy saldo (untuk Ctrl+F di iBanking)" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-amber-500 hover:text-white">
+                          <button type="button" onClick={() => copySaldo(row.saldoAkhir)} title="Copy saldo (untuk Ctrl+F di iBanking)" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[#596B4F] transition hover:bg-[#74A355] hover:text-white cursor-pointer">
                             <Copy className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
-                      <td className="border-b border-white/60 px-1 py-1.5">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${locked ? 'bg-slate-500 text-white' : belowMin ? 'bg-red-600 text-white' : isMismatch ? 'bg-red-600 text-white' : hasUserId ? 'bg-emerald-500 text-white' : 'bg-yellow-400 text-yellow-950'}`}>
+                      <td className="px-2 py-1.5">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${locked ? 'bg-slate-500 text-white' : belowMin ? 'bg-rose-600 text-white' : isMismatch ? 'bg-rose-600 text-white' : hasUserId ? 'bg-[#74A355] text-white' : 'bg-amber-400 text-amber-950'}`}>
                           {locked ? `SHIFT ${rowShiftNo}` : belowMin ? '*NULL*' : isMismatch ? 'ERROR' : hasUserId ? 'SELESAI' : 'PENDING'}
                         </span>
                       </td>
-                      <td className="border-b border-white/60 px-1 py-1.5 text-center">
+                      <td className="px-2 py-1.5 text-center">
                         {locked ? (
                           <Lock className="mx-auto h-3.5 w-3.5 text-slate-400" />
                         ) : (
-                          <button onClick={() => deleteRow(row.id)} className="rounded-md bg-red-500 px-2 py-1 text-[10px] font-black uppercase text-white transition hover:bg-red-600">Hapus</button>
+                          <button onClick={() => deleteRow(row.id)} className="rounded-lg bg-rose-600 px-2.5 py-1 text-[10px] font-black uppercase text-white transition hover:bg-rose-700 cursor-pointer">Hapus</button>
                         )}
                       </td>
                     </tr>
                     {showTrailingDivider && (
                       <tr>
                         <td colSpan={8} className="p-0">
-                          <div className="flex items-center gap-2 px-3 py-1">
-                            <div className="h-px flex-1 bg-slate-800/60" />
-                            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.25em] text-slate-700">Ganti Shift</span>
-                            <button type="button" onClick={() => toggleUnlockShift(rowShiftNo)} className={`rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wide transition ${isShiftUnlocked(rowShiftNo) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white/70 text-slate-600 hover:bg-white'}`}>
+                          <div className="flex items-center gap-3 px-4 py-1.5 bg-[#E8E2B5]/50">
+                            <div className="h-px flex-1 bg-[#D5C988]" />
+                            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.25em] text-[#596B4F]">Ganti Shift</span>
+                            <button type="button" onClick={() => toggleUnlockShift(rowShiftNo)} className={`rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide transition cursor-pointer ${isShiftUnlocked(rowShiftNo) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white text-[#23321B] border border-[#D5C988] hover:bg-[#FFFEE6]'}`}>
                               {isShiftUnlocked(rowShiftNo) ? 'Kunci' : 'Buka Kunci'}
                             </button>
-                            <button type="button" onClick={() => copyShiftSegment(rowShiftNo)} className="rounded-md bg-emerald-600/90 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white transition hover:bg-emerald-700">
+                            <button type="button" onClick={() => copyShiftSegment(rowShiftNo)} className="rounded-lg clay-btn-green px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white transition cursor-pointer">
                               Copy Shift {rowShiftNo}
                             </button>
-                            <div className="h-px flex-1 bg-slate-800/60" />
+                            <div className="h-px flex-1 bg-[#D5C988]" />
                           </div>
                         </td>
                       </tr>
@@ -1068,23 +1082,24 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
         </div>
       </section>
 
-      <section className={`${glassCard} shrink-0 px-ds-md py-ds-sm`}>
-        <div className="grid gap-ds-sm xl:grid-cols-[1fr_auto] xl:items-center">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            <div className="rounded-ds-md bg-white/60 px-3 py-1.5"><p className={labelClass}>Saldo Awal</p><p className="text-sm font-black text-slate-900">{formatNumber(totals.saldoAwal)}</p></div>
-            <div className="rounded-ds-md bg-white/60 px-3 py-1.5"><p className={labelClass}>Deposit</p><p className="text-sm font-black text-emerald-700">{formatNumber(totals.totalDeposit)}</p></div>
-            <div className="rounded-ds-md bg-white/60 px-3 py-1.5"><p className={labelClass}>Transfer</p><p className="text-sm font-black text-red-700">{formatNumber(totals.totalTransfer)}</p></div>
-            <div className="rounded-ds-md bg-white/60 px-3 py-1.5"><p className={labelClass}>Saldo Akhir</p><p className="text-sm font-black text-slate-900">{formatNumber(totals.saldoAkhir)}</p></div>
-            <div className={`rounded-ds-md px-3 py-1.5 ${totals.selisih === 0 ? 'bg-white/60' : 'bg-red-100/90 ring-2 ring-red-500'}`}><p className={labelClass}>Selisih</p><p className={`text-sm font-black ${totals.selisih === 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatNumber(totals.selisih)}</p></div>
+      {/* Bottom Summary & Actions */}
+      <section className={`${glassCard} shrink-0`}>
+        <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-center">
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Saldo Awal</p><p className="text-sm font-black text-[#23321B]">{formatNumber(totals.saldoAwal)}</p></div>
+            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Deposit</p><p className="text-sm font-black text-emerald-700">{formatNumber(totals.totalDeposit)}</p></div>
+            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Transfer</p><p className="text-sm font-black text-rose-700">{formatNumber(totals.totalTransfer)}</p></div>
+            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Saldo Akhir</p><p className="text-sm font-black text-[#23321B]">{formatNumber(totals.saldoAkhir)}</p></div>
+            <div className={`rounded-xl p-2.5 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}><p className={labelClass}>Selisih</p><p className={`text-sm font-black ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p></div>
           </div>
-          <div className="grid gap-ds-sm sm:grid-cols-3 xl:w-[560px]">
-            <button onClick={handleCopyDocTrx} className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white shadow-ds-md transition-all hover:bg-emerald-700">
+          <div className="grid gap-2.5 sm:grid-cols-3 xl:w-[580px]">
+            <button onClick={handleCopyDocTrx} className="clay-btn-green inline-flex items-center justify-center h-11 px-5 rounded-xl text-xs font-extrabold uppercase text-white shadow-md transition-all cursor-pointer">
               Copy To Doc TRX
             </button>
-            <button onClick={handleGantiShift} className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-amber-500 text-white shadow-ds-md transition-all hover:bg-amber-600">
+            <button onClick={handleGantiShift} className="inline-flex items-center justify-center h-11 px-5 rounded-xl text-xs font-extrabold uppercase bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md transition-all hover:brightness-110 cursor-pointer gap-1.5">
               <Lock className="h-4 w-4" /> Ganti Shift
             </button>
-            <button onClick={handleResetShift} className="inline-flex items-center justify-center h-10 px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold bg-red-600 text-white shadow-ds-md transition-all hover:bg-red-700">
+            <button onClick={handleResetShift} className="inline-flex items-center justify-center h-11 px-5 rounded-xl text-xs font-extrabold uppercase bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md transition-all hover:brightness-110 cursor-pointer">
               Reset Tab
             </button>
           </div>
@@ -1216,53 +1231,56 @@ export default function GigaSmartMutasi() {
 
   // ── Lobby view: choose a web (room) before entering its mutasi ──
   return (
-    <div className="w-full flex-1 min-h-0 flex flex-col items-center justify-start overflow-y-auto py-8">
-      <div className="w-full max-w-2xl rounded-ds-2xl border border-white/15 bg-slate-900/70 p-6 shadow-ds-lg backdrop-blur-md flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-ds-md">
-            <Globe className="h-5 w-5 text-white" />
+    <div className="w-full flex-1 min-h-0 flex flex-col items-center justify-start overflow-y-auto py-8 px-4">
+      <div className="w-full max-w-3xl rounded-[2rem] neu-card border-2 border-[#D5C988] bg-[#FDFBD4] p-8 shadow-2xl flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl clay-btn-green shadow-md shrink-0">
+            <Globe className="h-6 w-6 text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-base font-bold text-white">Pilih Web</p>
-            <p className="text-xs text-slate-400">Pilih divisi web untuk masuk ke mutasinya.</p>
+            <h2 className="text-lg font-black uppercase tracking-wide text-[#23321B]">PILIH DIVISI WEB</h2>
+            <p className="text-xs text-[#596B4F] font-semibold mt-0.5">Pilih divisi web atau tambahkan divisi baru untuk mengelola mutasi.</p>
           </div>
           <button
             type="button"
             onClick={refreshWebs}
             disabled={loadingWebs}
-            className="inline-flex h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 text-[11px] font-bold text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#E8E2B5] neu-flat px-3.5 text-xs font-bold text-[#23321B] transition hover:bg-white disabled:opacity-50 cursor-pointer"
             title="Refresh daftar web"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingWebs ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 text-[#74A355] ${loadingWebs ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
           </button>
         </div>
 
         {webs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/20 py-10 text-center text-slate-400">
-            <Globe className="mx-auto mb-2 h-8 w-8 opacity-50" />
-            <p className="text-sm font-semibold">Belum ada web.</p>
-            <p className="text-xs">Tambahkan web pertama di bawah.</p>
+          <div className="rounded-2xl border-2 border-dashed border-[#D5C988] bg-[#FFFEE6] py-12 text-center text-[#596B4F]">
+            <Globe className="mx-auto mb-3 h-10 w-10 opacity-60 text-[#74A355]" />
+            <p className="text-base font-extrabold text-[#23321B]">Belum Ada Web Divisi</p>
+            <p className="text-xs mt-1">Tambahkan divisi web pertama Anda pada formulir di bawah ini.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {webs.map(web => (
               <div key={web.id} className="relative group">
                 <button
                   type="button"
                   onClick={() => selectWeb(web.id)}
-                  className="flex h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/5 text-white transition hover:border-amber-400 hover:bg-amber-500/20"
+                  className="flex h-44 w-full flex-col items-center justify-center gap-3 rounded-2xl neu-card border-2 border-[#D5C988] bg-[#FFFEE6] p-4 text-[#23321B] transition-all hover:border-[#74A355] hover:shadow-xl hover:scale-[1.02] cursor-pointer"
                 >
                   {web.logo ? (
-                    <img src={web.logo} alt="" className="h-24 w-24 rounded-lg object-contain" />
+                    <img src={web.logo} alt="" className="h-20 w-20 rounded-xl object-contain drop-shadow-sm" />
                   ) : (
-                    <Globe className="h-16 w-16 text-amber-400" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8E2B5]/50 text-[#74A355]">
+                      <Globe className="h-10 w-10" />
+                    </div>
                   )}
-                  <span className="px-2 text-center text-base font-black uppercase tracking-wide">{web.name}</span>
+                  <span className="px-2 text-center text-sm font-black uppercase tracking-wider text-[#23321B]">{web.name}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => openEditWeb(web)}
-                  className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/30 text-sky-300 opacity-0 transition group-hover:opacity-100 hover:bg-sky-500 hover:text-white"
+                  className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-xl bg-sky-600 text-white opacity-0 shadow-md transition-all group-hover:opacity-100 hover:bg-sky-700 cursor-pointer"
                   title="Edit nama / logo"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -1270,7 +1288,7 @@ export default function GigaSmartMutasi() {
                 <button
                   type="button"
                   onClick={() => handleDeleteWeb(web)}
-                  className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/30 text-red-400 opacity-0 transition group-hover:opacity-100 hover:bg-red-500 hover:text-white"
+                  className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-xl bg-rose-600 text-white opacity-0 shadow-md transition-all group-hover:opacity-100 hover:bg-rose-700 cursor-pointer"
                   title="Hapus web"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1280,18 +1298,18 @@ export default function GigaSmartMutasi() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 border-t border-white/10 pt-4">
+        <div className="flex items-center gap-3 border-t border-[#E8E2B5] pt-5">
           <input
             value={addingName}
             onChange={(e) => setAddingName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddWeb(); }}
-            placeholder="Nama web baru (mis. WEB A)..."
-            className="h-10 flex-1 rounded-lg border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40"
+            placeholder="Masukkan nama web baru (mis. WEB A)..."
+            className="neu-inset h-11 flex-1 rounded-xl border border-[#E8E2B5] px-4 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]"
           />
           <button
             type="button"
             onClick={handleAddWeb}
-            className="inline-flex h-10 items-center gap-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 text-sm font-semibold text-white shadow-ds-md transition-all hover:shadow-ds-lg"
+            className="clay-btn-green h-11 px-5 rounded-xl text-xs font-extrabold uppercase shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-4 w-4" /> Tambah Web
           </button>
@@ -1301,34 +1319,34 @@ export default function GigaSmartMutasi() {
       <ConfirmDialog dialog={confirmDialog} onCancel={() => setConfirmDialog(null)} onConfirm={() => { const a = confirmDialog?.onConfirm; setConfirmDialog(null); if (a) a(); }} />
 
       {editingWeb && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-ds-md backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-ds-2xl border border-white/15 bg-slate-900 shadow-ds-lg">
-            <div className="h-1.5 bg-sky-500" />
-            <div className="p-5 flex flex-col gap-4">
-              <div className="flex items-start justify-between gap-ds-md">
-                <p className="text-sm font-black uppercase tracking-[0.18em] text-sky-400">Edit Web</p>
-                <button type="button" onClick={() => setEditingWeb(null)} className="rounded-full p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white" aria-label="Tutup"><X className="h-4 w-4" /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border-2 border-[#D5C988] bg-[#FDFBD4] neu-card shadow-2xl">
+            <div className="h-1.5 bg-[#74A355]" />
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex items-start justify-between">
+                <p className="text-sm font-black uppercase tracking-wider text-[#74A355]">Edit Web Divisi</p>
+                <button type="button" onClick={() => setEditingWeb(null)} className="rounded-full p-1.5 text-[#596B4F] transition hover:bg-[#74A355]/10 hover:text-[#23321B]" aria-label="Tutup"><X className="h-4 w-4" /></button>
               </div>
-              <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Nama Web</span>
-                <input value={editName} onChange={e => setEditName(e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400/40" placeholder="Nama web" />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#596B4F]">Nama Web</span>
+                <input value={editName} onChange={e => setEditName(e.target.value)} className="neu-inset h-11 w-full rounded-xl border border-[#E8E2B5] px-3.5 text-xs font-bold text-[#23321B] outline-none focus:ring-2 focus:ring-[#74A355]" placeholder="Nama web" />
               </label>
               <div className="flex items-center gap-3">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5">
-                  {editLogo ? <img src={editLogo} alt="" className="h-full w-full object-contain" /> : <Globe className="h-7 w-7 text-amber-400" />}
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-[#D5C988] bg-[#FFFEE6]">
+                  {editLogo ? <img src={editLogo} alt="" className="h-full w-full object-contain" /> : <Globe className="h-7 w-7 text-[#74A355]" />}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-sky-700">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-extrabold text-white transition hover:bg-sky-700 shadow-md">
                     <ImagePlus className="h-4 w-4" /> Pilih Logo
                     <input type="file" accept="image/*" className="hidden" onChange={e => { handlePickLogo(e.target.files?.[0]); e.target.value = ''; }} />
                   </label>
-                  {editLogo && <button type="button" onClick={() => setEditLogo('')} className="text-left text-[11px] font-bold text-red-400 transition hover:text-red-300">Hapus Logo</button>}
-                  <span className="text-[10px] text-slate-500">PNG/JPG, otomatis dikecilkan.</span>
+                  {editLogo && <button type="button" onClick={() => setEditLogo('')} className="text-left text-[11px] font-extrabold text-rose-600 transition hover:text-rose-700">Hapus Logo</button>}
+                  <span className="text-[10px] text-[#596B4F]">Format PNG/JPG, otomatis di-resize.</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-ds-sm pt-1">
-                <button type="button" onClick={() => setEditingWeb(null)} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-sm font-semibold text-slate-200 transition hover:bg-white/15">Batal</button>
-                <button type="button" onClick={saveEditWeb} disabled={savingEdit} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-sm font-semibold text-white shadow-ds-md transition hover:shadow-ds-lg disabled:opacity-50">{savingEdit && <RefreshCw className="h-4 w-4 animate-spin" />}Simpan</button>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button type="button" onClick={() => setEditingWeb(null)} className="inline-flex h-11 items-center justify-center rounded-xl border border-[#E8E2B5] neu-flat text-xs font-bold text-[#596B4F] transition hover:bg-white">Batal</button>
+                <button type="button" onClick={saveEditWeb} disabled={savingEdit} className="clay-btn-green inline-flex h-11 items-center justify-center gap-2 rounded-xl text-xs font-extrabold text-white shadow-md transition disabled:opacity-50">{savingEdit && <RefreshCw className="h-4 w-4 animate-spin" />}Simpan</button>
               </div>
             </div>
           </div>
