@@ -1060,88 +1060,15 @@ export default function Home() {
               </div>
             )}
 
-            {isWdSection && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                
-                {/* Pill 1: File Dropzone Input Pill */}
-                <div
-                  data-testid="upload-zone"
-                  onClick={() => !file && fileInputRef.current?.click()}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-all border
-                    ${isDragging ? "border-[#74A355] bg-[#74A355]/20 ring-2 ring-[#74A355]" : file ? "border-[#74A355]/50 bg-[#74A355]/10" : "border-[#E8E2B5] hover:border-[#74A355] hover:bg-[#74A355]/5"}`}
-                >
-                  <input
-                    type="file"
-                    accept=".xlsx"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    data-testid="input-file"
-                  />
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#3A592B] text-white flex items-center justify-center shrink-0 shadow-sm">
-                      {file ? <FileSpreadsheet size={16} /> : <Upload size={16} className="animate-bounce" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-extrabold text-[#3A592B] uppercase tracking-wider flex items-center gap-1">
-                        <span>UPLOAD FILE EXCEL</span>
-                        {!file && <span className="px-1.5 py-0.2 rounded bg-[#74A355]/20 text-[#3A592B] text-[9px] font-bold">.XLSX</span>}
-                      </p>
-                      <p className="text-xs font-bold text-[#23321B] truncate">
-                        {isParsing ? "Memproses…" : file ? file.name : "Klik / Seret File di Sini"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {file && !isParsing ? (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); reset(); }}
-                      className="text-[#CC2936] hover:bg-red-100 p-1.5 rounded-lg transition-colors border border-red-200"
-                      data-testid="button-remove-file"
-                      title="Hapus File"
-                    >
-                      <X size={14} />
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold text-white bg-[#3A592B] px-2.5 py-1 rounded-lg shadow-sm border border-[#2B4420] shrink-0">
-                      PILIH FILE
-                    </span>
-                  )}
-                </div>
-
-                {/* Pill 2: Sheet Selector / Multi-Sheet Pill */}
-                <div className="neu-inset rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 border border-[#E8E2B5]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#567C3E] text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <TableProperties size={16} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold text-[#596B4F] uppercase tracking-wider">SHEET AKTIF</p>
-                      <p className="text-xs font-bold text-[#23321B] truncate">
-                        {selectedSheet || (sheetNames.length ? sheetNames[0] : "Sheet 1")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {sheetNames.length > 1 && (
-                    <select
-                      value={selectedSheet}
-                      onChange={(e) => changeSheet(e.target.value)}
-                      className="text-xs font-bold text-[#3A592B] bg-white/80 border border-[#E8E2B5] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
-                    >
-                      {sheetNames.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-              </div>
-            )}
+            {/* Hidden input for file selection */}
+            <input
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              data-testid="input-file"
+            />
 
             {/* Bottom Row: Subtab Segmented Switcher & Clay Action Button */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
@@ -1255,8 +1182,8 @@ export default function Home() {
               
               {/* Header Title Row */}
               {isWdSection && (
-                <div className="flex items-center justify-between gap-4 px-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#23321B]">
                       PRATINJAU DATA TRANSAKSI
                     </h3>
@@ -1264,6 +1191,34 @@ export default function Home() {
                       <span className="px-2.5 py-0.5 rounded-full bg-[#74A355]/20 text-[#74A355] text-[10px] font-mono font-bold">
                         {filteredData.length} / {totalRows}
                       </span>
+                    )}
+
+                    {data && file && (
+                      <div className="flex items-center gap-1.5 bg-[#F6F3C2] px-2.5 py-1 rounded-xl border border-[#E8E2B5] text-[11px] font-bold text-[#23321B]">
+                        <FileSpreadsheet size={13} className="text-[#3A592B]" />
+                        <span className="max-w-[140px] truncate" title={file.name}>{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={reset}
+                          className="text-[#CC2936] hover:bg-red-100 p-0.5 rounded transition-colors ml-0.5"
+                          title="Ganti / Hapus File"
+                          data-testid="button-remove-file"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+
+                    {data && sheetNames.length > 1 && (
+                      <select
+                        value={selectedSheet}
+                        onChange={(e) => changeSheet(e.target.value)}
+                        className="text-xs font-bold text-[#3A592B] bg-white/80 border border-[#E8E2B5] rounded-xl px-2 py-1 focus:outline-none cursor-pointer"
+                      >
+                        {sheetNames.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     )}
                   </div>
 
