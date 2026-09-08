@@ -323,32 +323,32 @@ function PasswordGate({ onAuthed }) {
 
   return (
     <div className="w-full flex-1 min-h-0 flex items-center justify-center py-16">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl neu-card border border-white/80 bg-[#FDFBD4] p-6 shadow-2xl flex flex-col gap-4">
+      <form onSubmit={submit} className="w-full max-w-sm rounded-[2rem] neu-card border-2 border-[#D5C988] bg-[#FDFBD4] p-8 shadow-2xl flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl clay-badge">
-            <Lock className="h-5 w-5 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl clay-btn-green shadow-md shrink-0">
+            <Lock className="h-6 w-6 text-white" />
           </div>
           <div>
-            <p className="text-base font-bold text-[#23321B]">Smart Mutasi Login</p>
-            <p className="text-xs text-[#596B4F]">Masukkan password untuk akses mutasi tersinkron.</p>
+            <p className="text-base font-extrabold uppercase text-[#23321B]">Smart Mutasi Login</p>
+            <p className="text-xs text-[#596B4F] font-medium mt-0.5">Masukkan password untuk akses modul mutasi.</p>
           </div>
         </div>
         <input
           type="password"
           value={pw}
           onChange={(e) => { setPw(e.target.value); setErr(''); }}
-          placeholder="Password..."
+          placeholder="Masukkan password..."
           autoFocus
-          className="h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40"
+          className="neu-inset h-11 w-full rounded-xl border border-[#E8E2B5] px-3.5 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]"
         />
-        {err && <p className="text-xs font-medium text-red-400">{err}</p>}
+        {err && <p className="text-xs font-bold text-red-600">{err}</p>}
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex items-center justify-center h-11 gap-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-ds-md transition-all hover:shadow-ds-lg disabled:opacity-50"
+          className="clay-btn-green w-full h-11 rounded-xl text-xs font-extrabold uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-          {busy ? 'Memeriksa...' : 'Masuk'}
+          <span>{busy ? 'Memeriksa...' : 'Masuk'}</span>
         </button>
       </form>
     </div>

@@ -1,25 +1,13 @@
 // ============================================================================
-// SMART MUTASI sync client.
+// SMART MUTASI sync client with LocalStorage Fallback.
 //
 // Talks to the standalone mutasi-server (see scripts/mutasi-server/server.mjs)
-// which is reverse-proxied at `/mutasi-api` in production and proxied by Vite
-// to localhost:4010 in dev.
-//
-// Responsibilities:
-//   • Hold the shared password ("token") in localStorage after the user enters
-//     it once. Every request carries it as `X-Mutasi-Token`.
-//   • CRUD for "webs" (divisions): list / create / delete.
-//   • Get / save per-web state (the whole SMART MUTASI blob).
-//   • Subscribe to a web's live snapshot stream via SSE for real-time sync.
-//
-// This module is intentionally framework-agnostic (no React) so it can be unit
-// tested and reused. It NEVER throws for network errors in the high-level
-// helpers — it returns a discriminated result so the UI can degrade gracefully
-// instead of crashing the whole app.
+// when available, and gracefully falls back to LocalStorage when offline/standalone.
 // ============================================================================
 
 const API_BASE = "/mutasi-api";
 const TOKEN_STORAGE_KEY = "mutasiSync:token";
+const LOCAL_WEBS_KEY = "mutasiSync:local_webs";
 
 export interface WebEntry {
   id: string;
@@ -37,6 +25,51 @@ export interface WebStatePayload<T = unknown> {
 export type SyncResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: string };
+
+const DEFAULT_LOCAL_WEBS: WebEntry[] = [
+  { id: "giga-1", name: "GIGA 1" },
+];
+
+function getLocalWebs(): WebEntry[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_WEBS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.setItem(LOCAL_WEBS_KEY, JSON.stringify(DEFAULT_LOCAL_WEBS));
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_LOCAL_WEBS;
+}
+
+function setLocalWebs(webs: WebEntry[]): void {
+  try {
+    localStorage.setItem(LOCAL_WEBS_KEY, JSON.stringify(webs));
+  } catch {
+    /* ignore */
+  }
+}
+
+function getLocalState<T>(webId: string): WebStatePayload<T> {
+  try {
+    const raw = localStorage.getItem(`mutasiSync:local_state:${webId}`);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  return { version: 1, state: null };
+}
+
+function setLocalState<T>(webId: string, payload: WebStatePayload<T>): void {
+  try {
+    localStorage.setItem(`mutasiSync:local_state:${webId}`, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
 
 // ── Token (shared password) ──────────────────────────────────────────────────
 
@@ -101,45 +134,96 @@ async function request<T>(
 
 /**
  * Validate the currently-stored token by hitting an authenticated endpoint.
- * Returns true when the token is accepted.
+ * Returns true when the token is accepted or when in local mode.
  */
 export async function validateToken(): Promise<boolean> {
+  const token = getToken();
+  if (!token || !token.trim()) return false;
+
   const result = await listWebs();
-  return result.ok;
+  if (result.ok) return true;
+  if (result.status === 401) return false;
+
+  // Server not connected (status 0, 404, or network error) -> accept entered token for offline mode
+  return token.trim().length > 0;
 }
 
 // ── Webs CRUD ──────────────────────────────────────────────────────────────────
 
 export async function listWebs(): Promise<SyncResult<{ webs: WebEntry[] }>> {
-  return request<{ webs: WebEntry[] }>("/webs", { method: "GET" });
+  const res = await request<{ webs: WebEntry[] }>("/webs", { method: "GET" });
+  if (res.ok) {
+    setLocalWebs(res.data.webs);
+    return res;
+  }
+  if (res.status === 401) return res;
+  return { ok: true, data: { webs: getLocalWebs() } };
 }
 
 export async function createWeb(
   id: string,
   name: string,
 ): Promise<SyncResult<{ webs: WebEntry[] }>> {
-  return request<{ webs: WebEntry[] }>("/webs", {
+  const res = await request<{ webs: WebEntry[] }>("/webs", {
     method: "POST",
     body: JSON.stringify({ id, name }),
   });
+  if (res.ok) {
+    setLocalWebs(res.data.webs);
+    return res;
+  }
+  if (res.status === 401) return res;
+  const webs = getLocalWebs();
+  if (!webs.some((w) => w.id === id)) {
+    webs.push({ id, name });
+    setLocalWebs(webs);
+  }
+  return { ok: true, data: { webs } };
 }
 
 export async function deleteWeb(
   id: string,
 ): Promise<SyncResult<{ webs: WebEntry[] }>> {
-  return request<{ webs: WebEntry[] }>(`/webs/${encodeURIComponent(id)}`, {
+  const res = await request<{ webs: WebEntry[] }>(`/webs/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+  if (res.ok) {
+    setLocalWebs(res.data.webs);
+    try { localStorage.removeItem(`mutasiSync:local_state:${id}`); } catch { /* ignore */ }
+    return res;
+  }
+  if (res.status === 401) return res;
+  const webs = getLocalWebs().filter((w) => w.id !== id);
+  setLocalWebs(webs);
+  try { localStorage.removeItem(`mutasiSync:local_state:${id}`); } catch { /* ignore */ }
+  return { ok: true, data: { webs } };
 }
 
 export async function updateWeb(
   id: string,
   fields: { name?: string; logo?: string },
 ): Promise<SyncResult<{ webs: WebEntry[] }>> {
-  return request<{ webs: WebEntry[] }>(`/webs/${encodeURIComponent(id)}`, {
+  const res = await request<{ webs: WebEntry[] }>(`/webs/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify(fields),
   });
+  if (res.ok) {
+    setLocalWebs(res.data.webs);
+    return res;
+  }
+  if (res.status === 401) return res;
+  const webs = getLocalWebs().map((w) => {
+    if (w.id === id) {
+      return {
+        ...w,
+        ...(fields.name ? { name: fields.name } : {}),
+        ...(fields.logo !== undefined ? { logo: fields.logo } : {}),
+      };
+    }
+    return w;
+  });
+  setLocalWebs(webs);
+  return { ok: true, data: { webs } };
 }
 
 // ── Per-web state ────────────────────────────────────────────────────────────
@@ -147,10 +231,16 @@ export async function updateWeb(
 export async function getState<T = unknown>(
   webId: string,
 ): Promise<SyncResult<WebStatePayload<T>>> {
-  return request<WebStatePayload<T>>(
+  const res = await request<WebStatePayload<T>>(
     `/state?web=${encodeURIComponent(webId)}`,
     { method: "GET" },
   );
+  if (res.ok) {
+    setLocalState(webId, res.data);
+    return res;
+  }
+  if (res.status === 401) return res;
+  return { ok: true, data: getLocalState<T>(webId) };
 }
 
 export async function putState<T = unknown>(
@@ -158,13 +248,24 @@ export async function putState<T = unknown>(
   state: T,
   updatedBy = "",
 ): Promise<SyncResult<{ version: number }>> {
-  return request<{ version: number }>(
+  const res = await request<{ version: number }>(
     `/state?web=${encodeURIComponent(webId)}`,
     {
       method: "PUT",
       body: JSON.stringify({ state, updatedBy }),
     },
   );
+  const version = res.ok ? res.data.version : Date.now();
+  setLocalState(webId, {
+    version,
+    state,
+    updatedAt: new Date().toISOString(),
+    updatedBy,
+  });
+  if (res.ok || res.status !== 401) {
+    return { ok: true, data: { version } };
+  }
+  return res;
 }
 
 // ── SSE live stream ────────────────────────────────────────────────────────────
@@ -173,15 +274,6 @@ export interface StreamHandle {
   close: () => void;
 }
 
-/**
- * Subscribe to a web's live snapshot stream. `onSnapshot` fires with each
- * server-pushed payload (including the initial one on connect). `onError` is
- * called when the connection drops; EventSource auto-reconnects, so this is
- * informational. Returns a handle to close the stream.
- *
- * EventSource cannot set custom headers, so the token is passed as a query
- * param — the server accepts `?token=` for this endpoint only.
- */
 export function subscribeStream<T = unknown>(
   webId: string,
   onSnapshot: (payload: WebStatePayload<T> & { deleted?: boolean }) => void,
@@ -219,7 +311,6 @@ export function subscribeStream<T = unknown>(
   };
 }
 
-/** Build a safe web id from a free-text name (mirrors the server's rule). */
 export function safeWebId(raw: string): string {
   return String(raw || "")
     .trim()
