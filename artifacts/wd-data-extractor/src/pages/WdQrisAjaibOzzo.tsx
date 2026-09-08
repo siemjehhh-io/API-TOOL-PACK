@@ -24,28 +24,63 @@ import * as XLSX from "xlsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IdRangePicker } from "@/components/IdRangePicker";
 
-export function htmlTableToGrid(html: string): string[][] {
-  if (typeof DOMParser === "undefined") return [];
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    const table = doc.querySelector("table");
-    if (!table) {
-      return html
-        .split(/\r?\n/)
-        .map((line) => line.split("\t").map((cell) => cell.trim()))
-        .filter((row) => row.some(Boolean));
+export function htmlTableToGrid(text: string): (string | number)[][] {
+  if (!text || !text.trim()) return [];
+
+  // Parse HTML tables if present
+  if (typeof DOMParser !== "undefined" && (text.includes("<table") || text.includes("<tr"))) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, "text/html");
+      const table = doc.querySelector("table");
+      if (table) {
+        const trs = Array.from(table.querySelectorAll("tr"));
+        const grid = trs
+          .map((tr) =>
+            Array.from(tr.querySelectorAll("th, td")).map((td) => (td.textContent || "").trim())
+          )
+          .filter((row) => row.some(Boolean));
+        if (grid.length > 0) return grid;
+      }
+    } catch {
+      // Fallback to line parsing
     }
-    const rows = Array.from(table.querySelectorAll("tr"));
-    return rows.map((tr) =>
-      Array.from(tr.querySelectorAll("th, td")).map((td) => (td.textContent || "").trim())
-    );
-  } catch {
-    return html
-      .split(/\r?\n/)
-      .map((line) => line.split("\t").map((cell) => cell.trim()))
-      .filter((row) => row.some(Boolean));
   }
+
+  // Parse plain text lines (TSV, CSV, Pipe, or multi-space separated)
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return [];
+
+  const sample = lines.slice(0, 10);
+  const hasTabs = sample.some((l) => l.includes("\t"));
+  const hasPipes = sample.some((l) => l.includes("|"));
+  const hasCommas = sample.some((l) => l.includes(","));
+  const hasMultiSpace = sample.some((l) => /\s{2,}/.test(l));
+
+  let delimiter: string | RegExp = "\t";
+  if (hasTabs) {
+    delimiter = "\t";
+  } else if (hasPipes) {
+    delimiter = "|";
+  } else if (hasCommas) {
+    delimiter = ",";
+  } else if (hasMultiSpace) {
+    delimiter = /\s{2,}/;
+  } else {
+    delimiter = /\s+/;
+  }
+
+  return lines
+    .map((line) =>
+      line
+        .split(delimiter)
+        .map((cell) => cell.trim().replace(/^["']|["']$/g, ""))
+        .filter((cell, idx, arr) => arr.length > 1 || cell.length > 0)
+    )
+    .filter((row) => row.some(Boolean));
 }
 
 function sortByDateAsc<T extends { date?: string; keterangan?: string }>(rows: T[]): T[] {
@@ -182,7 +217,7 @@ export function parseExcelGrid(
   subValue: string = "BOT",
   kodeBankValue: string = "WD QRIS AJAIB"
 ): QrisAjaibOzzoRow[] {
-  if (!grid || grid.length < 2) return [];
+  if (!grid || grid.length === 0) return [];
 
   // 1. Locate header row
   let headerRowIdx = -1;
@@ -200,7 +235,10 @@ export function parseExcelGrid(
         c.includes("nominal") ||
         c.includes("user") ||
         c.includes("player") ||
-        c.includes("rekening")
+        c.includes("rekening") ||
+        c.includes("status") ||
+        c.includes("request") ||
+        c.includes("paid")
     ).length;
 
     if (matchCount >= 2) {
@@ -210,103 +248,158 @@ export function parseExcelGrid(
     }
   }
 
-  if (headerRowIdx === -1) {
-    headerRowIdx = 0;
-    headers = grid[0].map((c) => String(c || "").trim());
+  let colName = -1;
+  let colBank = -1;
+  let colAccNo = -1;
+  let colUser = -1;
+  let colTrxId = -1;
+  let colAmount = -1;
+  let colDate = -1;
+  let colStatus = -1;
+
+  if (headerRowIdx !== -1) {
+    colName = findHeaderIndex(headers, [
+      "player acct name",
+      "account name",
+      "nama account",
+      "nama rekening",
+      "nama pemilik",
+      "nama member",
+      "name",
+      "nama",
+    ]);
+
+    colBank = findHeaderIndex(headers, [
+      "player bank",
+      "payment method",
+      "bank name",
+      "nama bank",
+      "jenis pembayaran",
+      "method",
+      "bank",
+      "provider",
+    ]);
+
+    colAccNo = findHeaderIndex(headers, [
+      "player acct no",
+      "account number",
+      "no rekening",
+      "nomor rekening",
+      "no rek",
+      "number",
+      "rekening",
+    ]);
+
+    colUser = findHeaderIndex(headers, [
+      "player",
+      "user id",
+      "userid",
+      "username",
+      "user",
+      "login",
+      "id member",
+    ]);
+
+    colTrxId = findHeaderIndex(headers, [
+      "transaction id",
+      "trx id",
+      "id transaksi",
+      "ref no",
+      "reference",
+      "keterangan",
+      "sn",
+    ]);
+
+    colAmount = findHeaderIndex(headers, [
+      "total amount",
+      "amount",
+      "nominal",
+      "debit",
+      "withdrawal",
+      "jumlah",
+      "nilai",
+    ]);
+
+    colDate = findHeaderIndex(headers, [
+      "finished date",
+      "transaction date",
+      "tanggal",
+      "date",
+      "waktu",
+      "created at",
+      "request",
+      "paid",
+    ]);
+
+    colStatus = findHeaderIndex(headers, ["status", "keadaan", "state"]);
   }
 
-  const colName = findHeaderIndex(headers, [
-    "player acct name",
-    "account name",
-    "nama account",
-    "nama rekening",
-    "nama pemilik",
-    "nama member",
-    "name",
-    "nama",
-  ]);
+  const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
 
-  const colBank = findHeaderIndex(headers, [
-    "player bank",
-    "payment method",
-    "bank name",
-    "nama bank",
-    "jenis pembayaran",
-    "method",
-    "bank",
-    "provider",
-  ]);
+  // Fallback / Auto-detect column mapping if header is missing or incomplete
+  if (startRow < grid.length) {
+    const sampleRows = grid.slice(startRow, startRow + 10);
 
-  const colAccNo = findHeaderIndex(headers, [
-    "player acct no",
-    "account number",
-    "no rekening",
-    "nomor rekening",
-    "no rek",
-    "number",
-    "rekening",
-  ]);
+    // Find bank column index if not set
+    if (colBank === -1) {
+      for (const row of sampleRows) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] || "").toUpperCase();
+          if (KNOWN_BANKS.some((b) => cellStr.includes(b))) {
+            colBank = c;
+            break;
+          }
+        }
+        if (colBank !== -1) break;
+      }
+    }
 
-  const colUser = findHeaderIndex(headers, [
-    "player",
-    "user id",
-    "userid",
-    "username",
-    "user",
-    "login",
-    "id member",
-  ]);
-
-  const colTrxId = findHeaderIndex(headers, [
-    "transaction id",
-    "trx id",
-    "id transaksi",
-    "ref no",
-    "reference",
-    "keterangan",
-    "sn",
-  ]);
-
-  const colAmount = findHeaderIndex(headers, [
-    "total amount",
-    "amount",
-    "nominal",
-    "debit",
-    "withdrawal",
-    "jumlah",
-    "nilai",
-  ]);
-
-  const colDate = findHeaderIndex(headers, [
-    "finished date",
-    "transaction date",
-    "tanggal",
-    "date",
-    "waktu",
-    "created at",
-    "request",
-    "paid",
-  ]);
-
-  const colStatus = findHeaderIndex(headers, ["status", "keadaan", "state"]);
+    // Infer remaining columns based on bank column index or standard layouts
+    if (colBank === 3) {
+      // Standard OZZO 14-col layout: Request(0), Paid(1), Player(2), Bank(3), Name(4), AccNo(5), ..., TrxId(8), Amount(9), Status(10)
+      if (colDate === -1) colDate = 0;
+      if (colUser === -1) colUser = 2;
+      if (colName === -1) colName = 4;
+      if (colAccNo === -1) colAccNo = 5;
+      if (colTrxId === -1) colTrxId = 8;
+      if (colAmount === -1) colAmount = 9;
+      if (colStatus === -1) colStatus = 10;
+    } else if (colBank === 1) {
+      // Standard 8-col layout: Name(0), Bank(1), AccNo(2), User(3), TrxId(4), Amount(5), Date(6), Status(7)
+      if (colName === -1) colName = 0;
+      if (colAccNo === -1) colAccNo = 2;
+      if (colUser === -1) colUser = 3;
+      if (colTrxId === -1) colTrxId = 4;
+      if (colAmount === -1) colAmount = 5;
+      if (colDate === -1) colDate = 6;
+      if (colStatus === -1) colStatus = 7;
+    } else {
+      const maxCols = Math.max(...sampleRows.map((r) => r.length), 0);
+      if (colName === -1 && maxCols > 0) colName = 0;
+      if (colAccNo === -1 && maxCols > 1) colAccNo = 1;
+      if (colUser === -1 && maxCols > 2) colUser = 2;
+      if (colTrxId === -1 && maxCols > 3) colTrxId = 3;
+      if (colAmount === -1 && maxCols > 4) colAmount = 4;
+    }
+  }
 
   const results: QrisAjaibOzzoRow[] = [];
 
-  for (let r = headerRowIdx + 1; r < grid.length; r++) {
+  for (let r = startRow; r < grid.length; r++) {
     const row = grid[r];
     if (!row || row.length === 0) continue;
 
-    const rawName = colName !== -1 ? String(row[colName] || "").trim() : "";
-    const rawBank = colBank !== -1 ? String(row[colBank] || "").trim() : "";
-    const rawAccNo = colAccNo !== -1 ? String(row[colAccNo] || "").trim() : "";
-    const rawUser = colUser !== -1 ? String(row[colUser] || "").trim() : "";
-    const rawTrxId = colTrxId !== -1 ? String(row[colTrxId] || "").trim() : "";
-    const rawAmtVal = colAmount !== -1 ? row[colAmount] : "";
-    const rawDate = colDate !== -1 ? String(row[colDate] || "").trim() : "";
-    const rawStatus = colStatus !== -1 ? String(row[colStatus] || "").trim() : "SUCCESS";
+    const rawName = colName !== -1 && colName < row.length ? String(row[colName] || "").trim() : "";
+    const rawBank = colBank !== -1 && colBank < row.length ? String(row[colBank] || "").trim() : "";
+    const rawAccNo = colAccNo !== -1 && colAccNo < row.length ? String(row[colAccNo] || "").trim() : "";
+    const rawUser = colUser !== -1 && colUser < row.length ? String(row[colUser] || "").trim() : "";
+    const rawTrxId = colTrxId !== -1 && colTrxId < row.length ? String(row[colTrxId] || "").trim() : "";
+    const rawAmtVal = colAmount !== -1 && colAmount < row.length ? row[colAmount] : "";
+    const rawDate = colDate !== -1 && colDate < row.length ? String(row[colDate] || "").trim() : "";
+    const rawStatus = colStatus !== -1 && colStatus < row.length ? String(row[colStatus] || "").trim() : "SUCCESS";
 
     const rowText = row.map((c) => String(c || "")).join(" ");
-    if (!rawName && !rawAccNo && !rawAmtVal && !rawTrxId) continue;
+    if (!rawName && !rawAccNo && !rawAmtVal && !rawTrxId && !rowText.trim()) continue;
 
     // Format Name
     let nama = rawName.toUpperCase();
@@ -379,7 +472,7 @@ export function parseExcelGrid(
         deposit: "",
         withdrawal,
         dpPulsa: "",
-        keterangan: rawTrxId || `QRIS-${r}`,
+        keterangan: rawTrxId || `QRIS-${r + 1}`,
         kodeBank: kodeBankValue || "WD QRIS AJAIB",
         saldoAkhir: "",
         jamInput,
@@ -403,8 +496,6 @@ export default function WdQrisAjaibOzzo() {
   const [parsedRows, setParsedRows] = useState<QrisAjaibOzzoRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [isCopied13, setIsCopied13] = useState(false);
-  const [isReversed, setIsReversed] = useState(false);
   const [showRawMatrix, setShowRawMatrix] = useState(false);
   const [copiedRowIdx, setCopiedRowIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -456,11 +547,9 @@ export default function WdQrisAjaibOzzo() {
       setIsProcessing(true);
       let rows: QrisAjaibOzzoRow[] = [];
 
-      if (text.includes("\t") || text.includes("<table") || text.includes("<tr")) {
-        const grid = htmlTableToGrid(text);
-        if (grid.length > 0) {
-          rows = parseExcelGrid(grid, customSub, customBank);
-        }
+      const grid = htmlTableToGrid(text);
+      if (grid.length > 0) {
+        rows = parseExcelGrid(grid, customSub, customBank);
       }
 
       setParsedRows(rows);
@@ -544,8 +633,8 @@ export default function WdQrisAjaibOzzo() {
   }, [parsedRows, startIdQuery, startMatch, endIdQuery, endMatch]);
 
   const displayRows = useMemo(() => {
-    return isReversed ? [...rangeRows].reverse() : rangeRows;
-  }, [rangeRows, isReversed]);
+    return [...rangeRows].reverse();
+  }, [rangeRows]);
 
   const totalAmount = useMemo(() => {
     return displayRows.reduce((sum, r) => sum + r.rawAmount, 0);
@@ -561,25 +650,9 @@ export default function WdQrisAjaibOzzo() {
     navigator.clipboard.writeText(tsvContent).then(() => {
       setIsCopied(true);
       toast.success(
-        `✅ ${displayRows.length} baris dicopy ke Doc TRX! (10 Kolom A-J siap paste).`
+        `✅ ${displayRows.length} baris dicopy ke Doc TRX! (Siap paste).`
       );
       setTimeout(() => setIsCopied(false), 2500);
-    });
-  };
-
-  const handleCopyTSV13 = () => {
-    if (displayRows.length === 0) {
-      toast.error("Belum ada data untuk di-copy.");
-      return;
-    }
-
-    const tsvContent = displayRows.map((r) => rowToArr(r).join("\t")).join("\n");
-    navigator.clipboard.writeText(tsvContent).then(() => {
-      setIsCopied13(true);
-      toast.success(
-        `✅ ${displayRows.length} baris WD disalin! (13 Kolom A-M siap paste).`
-      );
-      setTimeout(() => setIsCopied13(false), 2500);
     });
   };
 
@@ -846,7 +919,7 @@ export default function WdQrisAjaibOzzo() {
                   }`}
                 >
                   {isCopied ? <Check size={16} /> : <Copy size={16} />}
-                  <span>{isCopied ? "BERHASIL DISALIN!" : "SALIN KE DOC TRX (10 KOLOM A-J)"}</span>
+                  <span>{isCopied ? "BERHASIL DISALIN!" : "SALIN KE DOC TRX"}</span>
                 </button>
 
                 <button
@@ -861,30 +934,6 @@ export default function WdQrisAjaibOzzo() {
                 >
                   <Download size={16} />
                   <span>Export Excel</span>
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsReversed((v) => !v)}
-                  disabled={displayRows.length === 0}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E8E2B5] neu-flat text-xs font-black text-[#596B4F] hover:text-[#23321B] hover:bg-white transition cursor-pointer"
-                  title="Balik urutan baris atas/bawah"
-                >
-                  <ArrowUpDown size={14} className="text-[#74A355]" />
-                  <span>Urutan: {isReversed ? "Terbalik (Reverse)" : "Asli (Original)"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyTSV13}
-                  disabled={displayRows.length === 0}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E8E2B5] neu-flat text-xs font-black text-[#596B4F] hover:text-[#74A355] hover:bg-white transition cursor-pointer"
-                  title="Salin lengkap 13 kolom (A-M)"
-                >
-                  <Copy size={12} />
-                  <span>{isCopied13 ? "Tersalin 13 Kolom!" : "Salin 13 Kolom (A-M)"}</span>
                 </button>
               </div>
             </div>
@@ -909,7 +958,7 @@ export default function WdQrisAjaibOzzo() {
               className="clay-btn-green px-3.5 py-1.5 rounded-xl text-xs font-black text-white hover:brightness-110 flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Copy size={13} />
-              <span>Salin Semua (10 Kolom A-J)</span>
+              <span>Salin Ke Doc TRX</span>
             </button>
           </div>
 

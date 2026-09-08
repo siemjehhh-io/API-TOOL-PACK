@@ -104,4 +104,53 @@ describe("WdQrisAjaibOzzo — Excel & Grid Parser", () => {
     expect(results[0].keterangan).toBe("215092654");
     expect(results[0].kodeBank).toBe("WD QRIS AJAIB");
   });
+
+  it("parses raw Excel data pasted WITHOUT headers", () => {
+    const gridWithoutHeaders = [
+      [
+        "06-09-2026 04:33:36",
+        "06-09-2026 04:33:42",
+        "Falireva",
+        "BNI",
+        "Roberth",
+        "1919245590",
+        "PG-1",
+        "Merchant-1",
+        215092654,
+        100000,
+        "Approve",
+        "b2c-1",
+        "System",
+        "06-09-2026 04:33:36",
+      ],
+      [
+        "06-09-2026 05:12:10",
+        "06-09-2026 05:12:15",
+        "Hardi88",
+        "BCA",
+        "Hardi",
+        "883019283",
+        "PG-2",
+        "Merchant-2",
+        215092655,
+        500000,
+        "Approve",
+        "b2c-2",
+        "System",
+        "06-09-2026 05:12:10",
+      ],
+    ];
+
+    const results = parseExcelGrid(gridWithoutHeaders, "BOT", "WD QRIS AJAIB");
+    expect(results).toHaveLength(2);
+    expect(results[0].nama).toBe("ROBERTH");
+    expect(results[0].nomorRekening).toBe("BNI 1919245590");
+    expect(results[0].userId).toBe("Falireva");
+    expect(results[0].withdrawal).toBe("100,000");
+
+    expect(results[1].nama).toBe("HARDI");
+    expect(results[1].nomorRekening).toBe("BCA 883019283");
+    expect(results[1].userId).toBe("Hardi88");
+    expect(results[1].withdrawal).toBe("500,000");
+  });
 });
