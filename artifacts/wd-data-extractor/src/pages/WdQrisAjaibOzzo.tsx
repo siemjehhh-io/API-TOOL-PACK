@@ -10,6 +10,8 @@ import {
   Eraser,
   FileSpreadsheet,
   FileText,
+  Flag,
+  FlagOff,
   ListOrdered,
   Loader2,
   QrCode,
@@ -19,7 +21,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IdRangePicker } from "@/components/IdRangePicker";
 
 export function htmlTableToGrid(html: string): string[][] {
   if (typeof DOMParser === "undefined") return [];
@@ -406,6 +409,12 @@ export default function WdQrisAjaibOzzo() {
   const [copiedRowIdx, setCopiedRowIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Range boundary search queries & match indices
+  const [startIdQuery, setStartIdQuery] = useState("");
+  const [startMatchIdx, setStartMatchIdx] = useState(0);
+  const [endIdQuery, setEndIdQuery] = useState("");
+  const [endMatchIdx, setEndMatchIdx] = useState(0);
+
   // File Upload Handler (.xlsx, .xls, .csv)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -476,13 +485,71 @@ export default function WdQrisAjaibOzzo() {
     setParsedRows((prev) => prev.map((r) => ({ ...r, kodeBank: newBank })));
   };
 
+  // Range boundary search matches
+  const findIdMatches = useCallback(
+    (query: string): { row: number; id: string }[] => {
+      if (!parsedRows.length) return [];
+      const trimmed = query.trim().toLowerCase();
+      if (!trimmed) return [];
+      const matches: { row: number; id: string }[] = [];
+      for (let i = 0; i < parsedRows.length; i += 1) {
+        const r = parsedRows[i];
+        if (
+          r.userId.toLowerCase().includes(trimmed) ||
+          r.nama.toLowerCase().includes(trimmed) ||
+          r.keterangan.toLowerCase().includes(trimmed) ||
+          r.nomorRekening.toLowerCase().includes(trimmed)
+        ) {
+          matches.push({ row: i + 1, id: r.userId || r.nama || r.keterangan });
+        }
+      }
+      return matches;
+    },
+    [parsedRows]
+  );
+
+  const startMatches = useMemo(() => findIdMatches(startIdQuery), [findIdMatches, startIdQuery]);
+  const endMatches = useMemo(() => findIdMatches(endIdQuery), [findIdMatches, endIdQuery]);
+
+  useEffect(() => {
+    if (startMatchIdx >= startMatches.length) setStartMatchIdx(0);
+  }, [startMatches.length, startMatchIdx]);
+
+  useEffect(() => {
+    if (endMatchIdx >= endMatches.length) setEndMatchIdx(0);
+  }, [endMatches.length, endMatchIdx]);
+
+  const startMatch = startMatches.length ? startMatches[Math.min(startMatchIdx, startMatches.length - 1)] : null;
+  const endMatch = endMatches.length ? endMatches[Math.min(endMatchIdx, endMatches.length - 1)] : null;
+
+  const rangeRows = useMemo(() => {
+    if (!parsedRows.length) return [];
+    const startTrimmed = startIdQuery.trim();
+    const endTrimmed = endIdQuery.trim();
+
+    if (!startTrimmed && !endTrimmed) return parsedRows;
+
+    let startIdx = 0;
+    let endIdx = parsedRows.length - 1;
+
+    if (startTrimmed && startMatch) {
+      startIdx = startMatch.row;
+    }
+    if (endTrimmed && endMatch) {
+      endIdx = endMatch.row - 1;
+    }
+
+    if (startIdx > endIdx) return [];
+    return parsedRows.slice(Math.max(0, startIdx), Math.min(parsedRows.length, endIdx + 1));
+  }, [parsedRows, startIdQuery, startMatch, endIdQuery, endMatch]);
+
   const displayRows = useMemo(() => {
-    return isReversed ? [...parsedRows].reverse() : parsedRows;
-  }, [parsedRows, isReversed]);
+    return isReversed ? [...rangeRows].reverse() : rangeRows;
+  }, [rangeRows, isReversed]);
 
   const totalAmount = useMemo(() => {
-    return parsedRows.reduce((sum, r) => sum + r.rawAmount, 0);
-  }, [parsedRows]);
+    return displayRows.reduce((sum, r) => sum + r.rawAmount, 0);
+  }, [displayRows]);
 
   const handleCopyDocTrx = () => {
     if (displayRows.length === 0) {
@@ -558,6 +625,10 @@ export default function WdQrisAjaibOzzo() {
     setInputText("");
     setFileName(null);
     setParsedRows([]);
+    setStartIdQuery("");
+    setStartMatchIdx(0);
+    setEndIdQuery("");
+    setEndMatchIdx(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
     toast.info("Area input dan hasil telah dibersihkan.");
   };
@@ -617,7 +688,7 @@ export default function WdQrisAjaibOzzo() {
         </div>
       </div>
 
-      {/* ── INPUT SECTION (FILE UPLOAD + TEXTAREA FALLBACK) ── */}
+      {/* ── INPUT SECTION (FILE UPLOAD + SUMMARY & RANGE CONTROLS) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Upload & Textarea */}
         <div className="lg:col-span-6 flex flex-col gap-4">
@@ -676,7 +747,7 @@ export default function WdQrisAjaibOzzo() {
                 value={inputText}
                 onChange={onTextChange}
                 placeholder="Atau paste langsung data baris tabel penarikan QRIS AJAIB OZZO di sini..."
-                rows={4}
+                rows={3}
                 className="w-full p-4 rounded-2xl neu-inset border border-[#E8E2B5] text-[#23321B] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#74A355] resize-y transition-all shadow-inner leading-relaxed"
               />
               {isProcessing && (
@@ -689,7 +760,7 @@ export default function WdQrisAjaibOzzo() {
           </div>
         </div>
 
-        {/* Right: Summary Box */}
+        {/* Right: Summary Box & Range Picker */}
         <div className="lg:col-span-6 flex flex-col gap-4">
           <div className="p-5 rounded-2xl neu-card border-2 border-[#D5C988] bg-[#FDFBD4] flex flex-col gap-4 shadow-md">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
@@ -701,7 +772,7 @@ export default function WdQrisAjaibOzzo() {
               <div className="p-3.5 rounded-xl border border-[#D5C988] bg-[#FFFEE6] flex flex-col">
                 <span className="text-[10px] uppercase font-black text-[#596B4F]">Total Tiket</span>
                 <span className="text-xl font-black text-[#23321B] mt-1 font-mono">
-                  {parsedRows.length} <span className="text-xs font-normal text-[#596B4F]">baris</span>
+                  {displayRows.length} <span className="text-xs font-normal text-[#596B4F]">baris</span>
                 </span>
               </div>
 
@@ -727,15 +798,47 @@ export default function WdQrisAjaibOzzo() {
               </div>
             </div>
 
+            {/* Range Pickers: ID Awal & ID Akhir */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <IdRangePicker
+                label="ID AWAL"
+                accent="emerald"
+                icon={<Flag size={12} />}
+                query={startIdQuery}
+                onQueryChange={setStartIdQuery}
+                matches={startMatches}
+                matchIdx={startMatchIdx}
+                onCycle={(dir) => setStartMatchIdx((prev) => (prev + dir + startMatches.length) % (startMatches.length || 1))}
+                onClear={() => { setStartIdQuery(""); setStartMatchIdx(0); }}
+                inputCls="neu-inset rounded-lg border border-[#E8E2B5] bg-[#FFFEE6] text-[#23321B]"
+                testidPrefix="start"
+                excludeMarked
+              />
+
+              <IdRangePicker
+                label="ID AKHIR"
+                accent="rose"
+                icon={<FlagOff size={12} />}
+                query={endIdQuery}
+                onQueryChange={setEndIdQuery}
+                matches={endMatches}
+                matchIdx={endMatchIdx}
+                onCycle={(dir) => setEndMatchIdx((prev) => (prev + dir + endMatches.length) % (endMatches.length || 1))}
+                onClear={() => { setEndIdQuery(""); setEndMatchIdx(0); }}
+                inputCls="neu-inset rounded-lg border border-[#E8E2B5] bg-[#FFFEE6] text-[#23321B]"
+                testidPrefix="end"
+              />
+            </div>
+
             {/* Action Buttons */}
             <div className="flex flex-col gap-2.5 pt-2">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <button
                   type="button"
                   onClick={handleCopyDocTrx}
-                  disabled={parsedRows.length === 0}
+                  disabled={displayRows.length === 0}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 cursor-pointer shadow-md ${
-                    parsedRows.length > 0
+                    displayRows.length > 0
                       ? isCopied
                         ? "bg-emerald-600 text-white"
                         : "clay-btn-green text-white"
@@ -749,9 +852,9 @@ export default function WdQrisAjaibOzzo() {
                 <button
                   type="button"
                   onClick={handleDownloadExcel}
-                  disabled={parsedRows.length === 0}
+                  disabled={displayRows.length === 0}
                   className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs sm:text-sm border transition-all cursor-pointer ${
-                    parsedRows.length > 0
+                    displayRows.length > 0
                       ? "neu-flat border border-[#74A355]/40 text-[#74A355] hover:bg-[#74A355]/10"
                       : "neu-flat border border-[#E8E2B5] text-[#596B4F]/50 cursor-not-allowed"
                   }`}
@@ -765,7 +868,7 @@ export default function WdQrisAjaibOzzo() {
                 <button
                   type="button"
                   onClick={() => setIsReversed((v) => !v)}
-                  disabled={parsedRows.length === 0}
+                  disabled={displayRows.length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E8E2B5] neu-flat text-xs font-black text-[#596B4F] hover:text-[#23321B] hover:bg-white transition cursor-pointer"
                   title="Balik urutan baris atas/bawah"
                 >
@@ -776,7 +879,7 @@ export default function WdQrisAjaibOzzo() {
                 <button
                   type="button"
                   onClick={handleCopyTSV13}
-                  disabled={parsedRows.length === 0}
+                  disabled={displayRows.length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E8E2B5] neu-flat text-xs font-black text-[#596B4F] hover:text-[#74A355] hover:bg-white transition cursor-pointer"
                   title="Salin lengkap 13 kolom (A-M)"
                 >
