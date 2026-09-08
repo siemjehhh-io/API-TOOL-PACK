@@ -137,4 +137,48 @@ In Progess
     expect(results[1].dpPulsa).toBe("4EN06a9eee15ad4ff");
     expect(results[1].jamInput).toBe("00:02:13");
   });
+
+  it("parses user's newest raw input sample (muhammad nahwan faisal and muhammad aprilianto)", () => {
+    const rawInput = `1\t2026-09-09 00:13:21
+103.138.55.129
+Game Wallet\t00GZO06aa042319d2dc
+muhammad nahwan faisal / DANA
+085821779612
+First Time
+nahwan09
+E-wallet / DANA\t
+muhammad nahwan faisal
+085821779612
+In Progess
+150,000.00
+
+2\t2026-09-09 00:13:56
+182.8.183.139
+Game Wallet\t0125U06aa04254059fb
+muhammad aprilianto / GOPAY
+085750061959
+aprilkun
+E-wallet / GOPAY\t
+muhammad aprilianto
+085750061959
+In Progess
+400,000.00`;
+
+    const results = parseGigaWdText(rawInput, "BOT");
+    expect(results).toHaveLength(2);
+
+    // Entry 1
+    expect(results[0].nama).toBe("MUHAMMAD NAHWAN FAISAL");
+    expect(results[0].nomorRekening).toBe("DANA 085821779612");
+    expect(results[0].userId).toBe("nahwan09");
+    expect(results[0].withdrawal).toBe("150,000");
+    expect(results[0].dpPulsa).toBe("GZO06aa042319d2dc");
+
+    // Entry 2
+    expect(results[1].nama).toBe("MUHAMMAD APRILIANTO");
+    expect(results[1].nomorRekening).toBe("GOPAY 085750061959");
+    expect(results[1].userId).toBe("aprilkun");
+    expect(results[1].withdrawal).toBe("400,000");
+    expect(results[1].dpPulsa).toBe("25U06aa04254059fb");
+  });
 });

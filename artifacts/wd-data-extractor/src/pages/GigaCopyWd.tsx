@@ -200,6 +200,14 @@ export function detectBrandFromText(text: string): "API22" | "PIN88" | "UNKNOWN"
   if (lower.includes("dgaabaf")) return "PIN88";
   if (lower.includes("giga5-ns3-admin.net") || lower.includes("giga5")) return "API22";
   if (lower.includes("giga2-ns3-admin.net") || lower.includes("giga2")) return "PIN88";
+  
+  const trxMatch = text.match(/\b(0[0-9][0-9A-Za-z]{15,22})\b/);
+  if (trxMatch) {
+    const trxId = trxMatch[1];
+    if (trxId.startsWith("00")) return "PIN88";
+    if (/^0[1-9]/.test(trxId)) return "API22";
+  }
+
   if (lower.includes("01aau") || lower.includes("01j9g") || lower.includes("01j91") || lower.includes("01hgv") || lower.includes("01j5l")) return "API22";
   if (lower.includes("00mwm") || lower.includes("009f1") || lower.includes("0072z") || lower.includes("00hzs")) return "PIN88";
   return "UNKNOWN";
@@ -280,8 +288,9 @@ function parseAccountInfo(
   let bankName = "";
   let accNo = "";
 
-  // 1. Scan for line with slash and bank name: e.g. "arifin / SEABANK901721838243" or "apip / DANA081235908910"
-  for (const rawLine of lines) {
+  // 1. Scan for line with slash and bank name: e.g. "muhammad nahwan faisal / DANA" or "ahmad salim / SEABANK901721838243"
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
     const lineWithoutUrl = rawLine.replace(/https?:\/\/\S+/gi, "").replace(/[\[\]]/g, "").trim();
     if (!lineWithoutUrl) continue;
     if (lineWithoutUrl.toLowerCase().includes("game wallet")) continue;
@@ -312,6 +321,15 @@ function parseAccountInfo(
         if (!accNo) {
           const digitMatch = right.match(/(\d{6,25})/);
           if (digitMatch) accNo = digitMatch[1].trim();
+        }
+
+        // If accNo is still missing, check next line for account digits
+        if (!accNo && lines[i + 1]) {
+          const nextClean = lines[i + 1].replace(/https?:\/\/\S+/gi, "").replace(/[\[\]]/g, "").trim();
+          const nextDigitMatch = nextClean.match(/^(\d{6,25})$/);
+          if (nextDigitMatch) {
+            accNo = nextDigitMatch[1];
+          }
         }
 
         if (nama && (bankName || accNo)) break;
@@ -520,7 +538,8 @@ function isBlockStartLine(line: string, nextLine: string): boolean {
     return (
       /\d{4}-\d{2}-\d{2}/.test(nextLine) ||
       /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(nextLine) ||
-      /Game\s*Wallet/i.test(nextLine)
+      /Game\s*Wallet/i.test(nextLine) ||
+      /0[0-9][0-9A-Za-z]{15,22}/.test(nextLine)
     );
   }
   // Case 2: Row number combined with tab/space and date/IP/Game Wallet on the same line, e.g. "1\t2026-09-08 00:01:38" or "2\t114.10.99.187"
@@ -528,8 +547,17 @@ function isBlockStartLine(line: string, nextLine: string): boolean {
     return (
       /\d{4}-\d{2}-\d{2}/.test(trimmed) ||
       /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(trimmed) ||
-      /Game\s*Wallet/i.test(trimmed)
+      /Game\s*Wallet/i.test(trimmed) ||
+      /0[0-9][0-9A-Za-z]{15,22}/.test(trimmed)
     );
+  }
+  // Case 3: Line starting directly with date/time e.g. "2026-09-09 00:13:21"
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(trimmed)) {
+    return true;
+  }
+  // Case 4: Line starting directly with IP address
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed)) {
+    return true;
   }
   return false;
 }
@@ -675,7 +703,7 @@ export default function GigaCopyWd() {
       setIsProcessing(true);
 
       let rows: GigaWdRow[] = [];
-      if (text.includes("<table") || text.includes("<tr") || text.includes("\t")) {
+      if (text.includes("<table") || text.includes("<tr")) {
         const grid = htmlTableToGrid(text);
         if (grid.length > 0) {
           rows = parseGigaWdGrid(grid, customSub);
@@ -684,6 +712,13 @@ export default function GigaCopyWd() {
 
       if (rows.length === 0) {
         rows = parseGigaWdText(text, customSub);
+      }
+
+      if (rows.length === 0 && text.includes("\t")) {
+        const grid = htmlTableToGrid(text);
+        if (grid.length > 0) {
+          rows = parseGigaWdGrid(grid, customSub);
+        }
       }
 
       // Chronological sort if dates are present
