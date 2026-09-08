@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { X, Globe, Plus, Trash2, RefreshCw, WifiOff, Pencil, ImagePlus, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { X, Lock, Globe, Plus, Trash2, RefreshCw, WifiOff, Pencil, ImagePlus, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import {
   listWebs,
   createWeb,
