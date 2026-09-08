@@ -3,6 +3,8 @@ import {
   ArrowUpDown,
   Building2,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   Eraser,
@@ -400,6 +402,7 @@ export default function WdQrisAjaibOzzo() {
   const [isCopied, setIsCopied] = useState(false);
   const [isCopied13, setIsCopied13] = useState(false);
   const [isReversed, setIsReversed] = useState(false);
+  const [showRawMatrix, setShowRawMatrix] = useState(false);
   const [copiedRowIdx, setCopiedRowIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -786,100 +789,24 @@ export default function WdQrisAjaibOzzo() {
         </div>
       </div>
 
-      {/* ── STEP 1: RAW EXCEL MATRIX TABLE ── */}
+      {/* ── STEP 1: SPREADSHEET TSV OUTPUT TABLE (KOLOM A S/D J) — FEATURED MAIN TABLE ── */}
       {displayRows.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
-              <TableProperties size={14} className="text-[#74A355]" />
-              <span>STEP 1: TABEL HASIL IMPORT EXCEL (RAW MATRIX)</span>
-            </h3>
-            <span className="text-xs text-[#74A355] font-mono font-black">
-              {displayRows.length} baris terdeteksi {isReversed && "(Dibalik)"}
-            </span>
-          </div>
-
-          <div className="w-full overflow-x-auto rounded-2xl neu-card border-2 border-[#D5C988] bg-[#FDFBD4] shadow-md">
-            <table className="w-full text-left text-xs text-[#23321B] border-collapse font-mono">
-              <thead>
-                <tr className="bg-[#E8E2B5] border-b border-[#D5C988] text-[11px] font-black text-[#23321B] uppercase tracking-wider">
-                  <th className="py-3 px-3 text-center w-10">No.</th>
-                  <th className="py-3 px-3">Date / Request</th>
-                  <th className="py-3 px-3">Transaction ID / SN</th>
-                  <th className="py-3 px-3">Nama Member / Rekening</th>
-                  <th className="py-3 px-3">User ID</th>
-                  <th className="py-3 px-3">Payment Method</th>
-                  <th className="py-3 px-3 text-right">Total Amount (WD)</th>
-                  <th className="py-3 px-3 text-center w-16">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E2B5]">
-                {displayRows.map((row, idx) => (
-                  <tr
-                    key={`ajaib-${row.keterangan}-${idx}`}
-                    className="hover:bg-[#FFFEE6] transition-colors font-sans"
-                  >
-                    <td className="py-3 px-3 text-center font-mono text-[#596B4F] text-[11px] font-black">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-[#23321B] whitespace-nowrap">
-                      {row.date || "-"}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-[#74A355] whitespace-nowrap font-black">
-                      {row.keterangan || "-"}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-black text-[#23321B] uppercase">{row.nama || "-"}</div>
-                      <div className="text-[11px] font-mono text-[#74A355] font-black">
-                        {row.nomorRekening || "-"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-black text-[#74A355] whitespace-nowrap">
-                      {row.userId || "-"}
-                    </td>
-                    <td className="py-3 px-3 text-[#596B4F] whitespace-nowrap text-[11px] font-extrabold">
-                      {row.paymentMethod || "-"}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-[#74A355] whitespace-nowrap text-sm">
-                      {row.withdrawal}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleCopySingleRow(row, idx)}
-                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                          copiedRowIdx === idx
-                            ? "bg-[#74A355] border-[#74A355] text-white"
-                            : "neu-flat border-[#E8E2B5] text-[#596B4F] hover:text-[#23321B]"
-                        }`}
-                        title="Copy Baris Ini (Doc TRX)"
-                      >
-                        {copiedRowIdx === idx ? <Check size={13} /> : <Copy size={13} />}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 2: SPREADSHEET TSV OUTPUT TABLE (KOLOM A S/D J) ── */}
-      {displayRows.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#596B4F] flex items-center gap-2">
-              <ListOrdered size={14} className="text-[#74A355]" />
-              <span>STEP 2: PREVIEW OUTPUT SPREADSHEET (KOLOM A S/D J)</span>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#23321B] flex items-center gap-2">
+              <ListOrdered size={16} className="text-[#74A355]" />
+              <span>HASIL OUTPUT SPREADSHEET (KOLOM A S/D J)</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#74A355] text-white shadow-sm">
+                UTAMA / FINAL
+              </span>
             </h3>
             <button
               type="button"
               onClick={handleCopyDocTrx}
-              className="text-xs font-black text-[#74A355] hover:underline flex items-center gap-1.5 cursor-pointer"
+              className="clay-btn-green px-3.5 py-1.5 rounded-xl text-xs font-black text-white hover:brightness-110 flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
-              <Copy size={12} />
-              <span>Salin Semua Baris (10 Kolom A-J)</span>
+              <Copy size={13} />
+              <span>Salin Semua (10 Kolom A-J)</span>
             </button>
           </div>
 
@@ -957,6 +884,82 @@ export default function WdQrisAjaibOzzo() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ── STEP 2: RAW EXCEL MATRIX TABLE (COMPACT / COLLAPSIBLE SECONDARY VIEW) ── */}
+      {displayRows.length > 0 && (
+        <div className="flex flex-col gap-2 pt-2 border-t border-[#D5C988]/50">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowRawMatrix((v) => !v)}
+              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#596B4F] hover:text-[#23321B] transition cursor-pointer"
+            >
+              <TableProperties size={14} className="text-[#74A355]" />
+              <span>DATA MENTAH EXCEL (RAW MATRIX)</span>
+              <span className="text-[10px] font-bold text-[#596B4F] bg-[#E8E2B5] px-2 py-0.5 rounded-full">
+                {displayRows.length} baris
+              </span>
+              {showRawMatrix ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRawMatrix((v) => !v)}
+              className="text-[11px] font-extrabold text-[#74A355] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              {showRawMatrix ? "Ciutkan Tampilan" : "Pratinjau Data Mentah (Scroll Box)"}
+            </button>
+          </div>
+
+          {showRawMatrix && (
+            <div className="w-full max-h-52 overflow-y-auto rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-1 shadow-inner">
+              <table className="w-full text-left text-[11px] text-[#23321B] border-collapse font-mono">
+                <thead>
+                  <tr className="bg-[#E8E2B5]/70 border-b border-[#D5C988] text-[10px] font-black text-[#23321B] uppercase tracking-wider">
+                    <th className="py-1.5 px-2 text-center w-8">No.</th>
+                    <th className="py-1.5 px-2">Date / Request</th>
+                    <th className="py-1.5 px-2">Transaction ID / SN</th>
+                    <th className="py-1.5 px-2">Nama Member / Rekening</th>
+                    <th className="py-1.5 px-2">User ID</th>
+                    <th className="py-1.5 px-2">Payment Method</th>
+                    <th className="py-1.5 px-2 text-right">Amount (WD)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8E2B5]/40">
+                  {displayRows.map((row, idx) => (
+                    <tr
+                      key={`ajaib-raw-${row.keterangan}-${idx}`}
+                      className="hover:bg-[#FDFBD4] transition-colors font-sans"
+                    >
+                      <td className="py-1.5 px-2 text-center font-mono text-[#596B4F] text-[10px]">
+                        {idx + 1}
+                      </td>
+                      <td className="py-1.5 px-2 font-mono text-[10px] text-[#23321B] whitespace-nowrap">
+                        {row.date || "-"}
+                      </td>
+                      <td className="py-1.5 px-2 font-mono text-[10px] text-[#74A355] whitespace-nowrap font-bold">
+                        {row.keterangan || "-"}
+                      </td>
+                      <td className="py-1.5 px-2 whitespace-nowrap">
+                        <span className="font-bold text-[#23321B] uppercase">{row.nama || "-"}</span>{" "}
+                        <span className="text-[10px] font-mono text-[#74A355]">({row.nomorRekening})</span>
+                      </td>
+                      <td className="py-1.5 px-2 font-mono font-bold text-[#74A355] whitespace-nowrap text-[10px]">
+                        {row.userId || "-"}
+                      </td>
+                      <td className="py-1.5 px-2 text-[#596B4F] whitespace-nowrap text-[10px]">
+                        {row.paymentMethod || "-"}
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono font-bold text-[#74A355] whitespace-nowrap text-[11px]">
+                        {row.withdrawal}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
