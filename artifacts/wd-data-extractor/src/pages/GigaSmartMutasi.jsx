@@ -785,7 +785,7 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
   }, [setQueueForActive]);
 
   const glassCard = 'neu-card border-2 border-[#D5C988] bg-[#FDFBD4] rounded-2xl shadow-md p-4';
-  const labelClass = 'text-[10px] font-black uppercase tracking-[0.18em] text-[#596B4F]';
+  const labelClass = 'text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap truncate';
   const inputClass = 'neu-inset h-9 w-full rounded-xl border border-[#E8E2B5] px-3 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]';
   const tableInputClass = 'h-8 w-full min-w-0 rounded-lg border-none bg-transparent px-2 text-xs font-bold text-[#23321B] outline-none transition focus:bg-white focus:ring-1 focus:ring-[#74A355]';
 
@@ -936,7 +936,7 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-xl clay-btn-green text-xs font-black text-white shadow-sm shrink-0">3</span>
             <p className="whitespace-nowrap text-xs font-black uppercase tracking-wider text-[#23321B]">3. Cek Hasil Antrean</p>
-            <span className="rounded-xl clay-badge px-3 py-1 text-xs font-black text-white shadow-sm">SHIFT {currentShiftNo}</span>
+            <span className="inline-flex items-center justify-center rounded-xl bg-[#74A355] text-white px-3.5 py-1 text-xs font-black uppercase tracking-wider shrink-0 whitespace-nowrap shadow-sm">SHIFT {currentShiftNo}</span>
             <button
               type="button"
               onClick={() => setStatusOpen(o => !o)}
@@ -1086,11 +1086,11 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
       <section className={`${glassCard} shrink-0`}>
         <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-center">
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
-            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Saldo Awal</p><p className="text-sm font-black text-[#23321B]">{formatNumber(totals.saldoAwal)}</p></div>
-            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Deposit</p><p className="text-sm font-black text-emerald-700">{formatNumber(totals.totalDeposit)}</p></div>
-            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Transfer</p><p className="text-sm font-black text-rose-700">{formatNumber(totals.totalTransfer)}</p></div>
-            <div className="rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5"><p className={labelClass}>Saldo Akhir</p><p className="text-sm font-black text-[#23321B]">{formatNumber(totals.saldoAkhir)}</p></div>
-            <div className={`rounded-xl p-2.5 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}><p className={labelClass}>Selisih</p><p className={`text-sm font-black ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p></div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Saldo Awal</p><p className="text-xs sm:text-sm font-black text-[#23321B] truncate">{formatNumber(totals.saldoAwal)}</p></div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Deposit</p><p className="text-xs sm:text-sm font-black text-emerald-700 truncate">{formatNumber(totals.totalDeposit)}</p></div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Transfer</p><p className="text-xs sm:text-sm font-black text-rose-700 truncate">{formatNumber(totals.totalTransfer)}</p></div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Saldo Akhir</p><p className="text-xs sm:text-sm font-black text-[#23321B] truncate">{formatNumber(totals.saldoAkhir)}</p></div>
+            <div className={`flex flex-col justify-between rounded-xl p-2.5 min-w-0 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}><p className={labelClass}>Selisih</p><p className={`text-xs sm:text-sm font-black truncate ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p></div>
           </div>
           <div className="grid gap-2.5 sm:grid-cols-3 xl:w-[580px]">
             <button onClick={handleCopyDocTrx} className="clay-btn-green inline-flex items-center justify-center h-11 px-5 rounded-xl text-xs font-extrabold uppercase text-white shadow-md transition-all cursor-pointer">
