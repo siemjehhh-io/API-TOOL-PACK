@@ -883,13 +883,13 @@ export default function Home() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                navigator.clipboard.writeText("https://apitool.gwk.web.id");
-                toast.success("Domain apitool.gwk.web.id berhasil disalin!");
+                navigator.clipboard.writeText("https://apigroup-tools.vercel.app");
+                toast.success("Domain apigroup-tools.vercel.app berhasil disalin!");
               }}
               className="text-[11px] text-white/80 hover:text-[#D9B038] font-mono font-bold tracking-wide transition-colors cursor-pointer flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-full border border-white/10"
               title="Klik untuk menyalin domain"
             >
-              <span>apitool.gwk.web.id</span>
+              <span>apigroup-tools.vercel.app</span>
               <Copy size={11} className="opacity-70" />
             </motion.button>
           </div>
