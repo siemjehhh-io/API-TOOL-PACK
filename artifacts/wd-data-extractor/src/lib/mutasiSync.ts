@@ -75,9 +75,9 @@ function setLocalState<T>(webId: string, payload: WebStatePayload<T>): void {
 
 export function getToken(): string {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY) || "";
+    return localStorage.getItem(TOKEN_STORAGE_KEY) || "default";
   } catch {
-    return "";
+    return "default";
   }
 }
 
@@ -133,19 +133,10 @@ async function request<T>(
 // ── Auth probe ─────────────────────────────────────────────────────────────────
 
 /**
- * Validate the currently-stored token by hitting an authenticated endpoint.
- * Returns true when the token is accepted or when in local mode.
+ * Validate token — returns true by default so Smart Mutasi is open without password.
  */
 export async function validateToken(): Promise<boolean> {
-  const token = getToken();
-  if (!token || !token.trim()) return false;
-
-  const result = await listWebs();
-  if (result.ok) return true;
-  if (result.status === 401) return false;
-
-  // Server not connected (status 0, 404, or network error) -> accept entered token for offline mode
-  return token.trim().length > 0;
+  return true;
 }
 
 // ── Webs CRUD ──────────────────────────────────────────────────────────────────
@@ -156,7 +147,6 @@ export async function listWebs(): Promise<SyncResult<{ webs: WebEntry[] }>> {
     setLocalWebs(res.data.webs);
     return res;
   }
-  if (res.status === 401) return res;
   return { ok: true, data: { webs: getLocalWebs() } };
 }
 
@@ -172,7 +162,6 @@ export async function createWeb(
     setLocalWebs(res.data.webs);
     return res;
   }
-  if (res.status === 401) return res;
   const webs = getLocalWebs();
   if (!webs.some((w) => w.id === id)) {
     webs.push({ id, name });
@@ -192,7 +181,6 @@ export async function deleteWeb(
     try { localStorage.removeItem(`mutasiSync:local_state:${id}`); } catch { /* ignore */ }
     return res;
   }
-  if (res.status === 401) return res;
   const webs = getLocalWebs().filter((w) => w.id !== id);
   setLocalWebs(webs);
   try { localStorage.removeItem(`mutasiSync:local_state:${id}`); } catch { /* ignore */ }
@@ -211,7 +199,6 @@ export async function updateWeb(
     setLocalWebs(res.data.webs);
     return res;
   }
-  if (res.status === 401) return res;
   const webs = getLocalWebs().map((w) => {
     if (w.id === id) {
       return {
@@ -239,7 +226,6 @@ export async function getState<T = unknown>(
     setLocalState(webId, res.data);
     return res;
   }
-  if (res.status === 401) return res;
   return { ok: true, data: getLocalState<T>(webId) };
 }
 
@@ -262,10 +248,7 @@ export async function putState<T = unknown>(
     updatedAt: new Date().toISOString(),
     updatedBy,
   });
-  if (res.ok || res.status !== 401) {
-    return { ok: true, data: { version } };
-  }
-  return res;
+  return { ok: true, data: { version } };
 }
 
 // ── SSE live stream ────────────────────────────────────────────────────────────

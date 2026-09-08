@@ -1,11 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { X, Lock, Globe, Plus, Trash2, RefreshCw, WifiOff, Pencil, ImagePlus, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { X, Globe, Plus, Trash2, RefreshCw, WifiOff, Pencil, ImagePlus, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import {
-  getToken,
-  setToken,
-  clearToken,
-  validateToken,
   listWebs,
   createWeb,
   deleteWeb,
@@ -296,64 +292,7 @@ const ConfirmDialog = ({ dialog, onCancel, onConfirm }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Password gate — the shared password IS the token. Once entered & validated
-// it's stored in localStorage so the user doesn't re-enter every visit.
-// ─────────────────────────────────────────────────────────────────────────────
-function PasswordGate({ onAuthed }) {
-  const [pw, setPw] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
 
-  const submit = useCallback(async (event) => {
-    event.preventDefault();
-    if (!pw.trim()) { setErr('Masukkan password.'); return; }
-    setBusy(true);
-    setErr('');
-    setToken(pw.trim());
-    const ok = await validateToken();
-    setBusy(false);
-    if (ok) {
-      onAuthed();
-    } else {
-      clearToken();
-      setErr('Password salah atau server tidak terhubung.');
-    }
-  }, [pw, onAuthed]);
-
-  return (
-    <div className="w-full flex-1 min-h-0 flex items-center justify-center py-16">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-[2rem] neu-card border-2 border-[#D5C988] bg-[#FDFBD4] p-8 shadow-2xl flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl clay-btn-green shadow-md shrink-0">
-            <Lock className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="text-base font-extrabold uppercase text-[#23321B]">Smart Mutasi Login</p>
-            <p className="text-xs text-[#596B4F] font-medium mt-0.5">Masukkan password untuk akses modul mutasi.</p>
-          </div>
-        </div>
-        <input
-          type="password"
-          value={pw}
-          onChange={(e) => { setPw(e.target.value); setErr(''); }}
-          placeholder="Masukkan password..."
-          autoFocus
-          className="neu-inset h-11 w-full rounded-xl border border-[#E8E2B5] px-3.5 text-xs font-bold text-[#23321B] outline-none transition placeholder:text-[#596B4F]/60 focus:ring-2 focus:ring-[#74A355]"
-        />
-        {err && <p className="text-xs font-bold text-red-600">{err}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="clay-btn-green w-full h-11 rounded-xl text-xs font-extrabold uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-        >
-          {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-          <span>{busy ? 'Memeriksa...' : 'Masuk'}</span>
-        </button>
-      </form>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The actual mutasi workspace for ONE web. Mounted with key={webId} so that
@@ -1158,11 +1097,9 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Top-level: auth gate → web selector → workspace.
+// Top-level: web selector → workspace.
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GigaSmartMutasi() {
-  const [authed, setAuthed] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
   const [webs, setWebs] = useState([]);
   const [selectedWeb, setSelectedWeb] = useState('');
   const [loadingWebs, setLoadingWebs] = useState(false);
@@ -1174,19 +1111,6 @@ export default function GigaSmartMutasi() {
   const [editLogo, setEditLogo] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // On mount: if a token is already stored, validate it silently.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (getToken()) {
-        const ok = await validateToken();
-        if (!cancelled && ok) setAuthed(true);
-      }
-      if (!cancelled) setCheckingAuth(false);
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   const refreshWebs = useCallback(async () => {
     setLoadingWebs(true);
     const result = await listWebs();
@@ -1196,17 +1120,14 @@ export default function GigaSmartMutasi() {
       // Don't auto-enter a web — the lobby lets the user pick explicitly.
       // Just drop the selection if the previously selected web no longer exists.
       setSelectedWeb(prev => (prev && result.data.webs.some(w => w.id === prev) ? prev : ''));
-    } else if (result.status === 401) {
-      clearToken();
-      setAuthed(false);
     } else {
       toast.error('Gagal memuat daftar web (server tidak terhubung?).');
     }
   }, []);
 
   useEffect(() => {
-    if (authed) refreshWebs();
-  }, [authed, refreshWebs]);
+    refreshWebs();
+  }, [refreshWebs]);
 
   const selectWeb = useCallback((id) => {
     setSelectedWeb(id);
@@ -1223,8 +1144,6 @@ export default function GigaSmartMutasi() {
       setWebs(result.data.webs || []);
       setAddingName('');
       toast.success(`Web "${name}" ditambahkan. Klik untuk masuk.`);
-    } else if (result.status === 401) {
-      clearToken(); setAuthed(false);
     } else {
       toast.error('Gagal menambah web.');
     }
@@ -1243,48 +1162,12 @@ export default function GigaSmartMutasi() {
           setWebs(result.data.webs || []);
           setSelectedWeb(prev => (prev === web.id ? (result.data.webs[0]?.id || '') : prev));
           toast.success(`Web "${web.name}" dihapus.`);
-        } else if (result.status === 401) {
-          clearToken(); setAuthed(false);
         } else {
           toast.error('Gagal menghapus web.');
         }
       },
     });
   }, []);
-
-  const logout = useCallback(() => {
-    clearToken();
-    setAuthed(false);
-    setWebs([]);
-    setSelectedWeb('');
-  }, []);
-
-  // Auto logout ketika diam (idle) di halaman pemilihan web
-  useEffect(() => {
-    if (!authed || selectedWeb) return;
-
-    const timeoutMs = 60000; // 60 detik
-    let timer;
-
-    const resetTimer = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        logout();
-        toast.info('Sesi di halaman pemilihan web berakhir karena tidak ada aktivitas.');
-      }, timeoutMs);
-    };
-
-    resetTimer();
-
-    const events = ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll'];
-    const resetHandler = () => resetTimer();
-    events.forEach(evt => window.addEventListener(evt, resetHandler));
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      events.forEach(evt => window.removeEventListener(evt, resetHandler));
-    };
-  }, [authed, selectedWeb, logout]);
 
   const openEditWeb = useCallback((web) => {
     setEditingWeb(web);
@@ -1311,24 +1194,10 @@ export default function GigaSmartMutasi() {
       setWebs(result.data.webs || []);
       setEditingWeb(null);
       toast.success('Web diperbarui.');
-    } else if (result.status === 401) {
-      clearToken(); setAuthed(false);
     } else {
       toast.error('Gagal memperbarui web.');
     }
   }, [editingWeb, editName, editLogo]);
-
-  if (checkingAuth) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <RefreshCw className="h-5 w-5 animate-spin text-amber-400" />
-      </div>
-    );
-  }
-
-  if (!authed) {
-    return <PasswordGate onAuthed={() => setAuthed(true)} />;
-  }
 
   const selectedWebObj = webs.find(w => w.id === selectedWeb);
 
@@ -1365,14 +1234,6 @@ export default function GigaSmartMutasi() {
             title="Refresh daftar web"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loadingWebs ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 text-[11px] font-bold text-slate-300 transition hover:bg-white/10"
-            title="Keluar akun (lupakan password di browser ini)"
-          >
-            <Lock className="h-3.5 w-3.5" /> Keluar Akun
           </button>
         </div>
 
