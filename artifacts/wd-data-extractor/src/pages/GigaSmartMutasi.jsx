@@ -717,10 +717,19 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
 
   const expectedSaldoByRow = useMemo(() => {
     const map = new Map();
-    let runningSaldo = totals.saldoAwal;
+    let currentBase = totals.saldoAwal;
     queueList.forEach(row => {
-      runningSaldo += row.type === 'DP' ? parseNumber(row.nominal) : -parseNumber(row.nominal);
-      map.set(row.id, runningSaldo);
+      const delta = row.type === 'DP' ? parseNumber(row.nominal) : -parseNumber(row.nominal);
+      const expected = currentBase + delta;
+      map.set(row.id, expected);
+
+      // Re-sync base saldo for subsequent rows: if row has an explicit mutasi saldo, use it!
+      const hasActual = String(row.saldoAkhir || '').trim() !== '';
+      if (hasActual) {
+        currentBase = parseNumber(row.saldoAkhir);
+      } else {
+        currentBase = expected;
+      }
     });
     return map;
   }, [queueList, totals.saldoAwal]);
