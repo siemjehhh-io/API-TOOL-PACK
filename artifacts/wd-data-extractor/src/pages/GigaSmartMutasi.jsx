@@ -1190,11 +1190,26 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
       <section className={`${glassCard} shrink-0`}>
         <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-center">
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Saldo Awal</p><p className="text-xs sm:text-sm font-black text-[#23321B] truncate">{formatNumber(totals.saldoAwal)}</p></div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Deposit</p><p className="text-xs sm:text-sm font-black text-emerald-700 truncate">{formatNumber(totals.totalDeposit)}</p></div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Transfer</p><p className="text-xs sm:text-sm font-black text-rose-700 truncate">{formatNumber(totals.totalTransfer)}</p></div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2.5 min-w-0"><p className={labelClass}>Saldo Akhir</p><p className="text-xs sm:text-sm font-black text-[#23321B] truncate">{formatNumber(totals.saldoAkhir)}</p></div>
-            <div className={`flex flex-col justify-between rounded-xl p-2.5 min-w-0 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}><p className={labelClass}>Selisih</p><p className={`text-xs sm:text-sm font-black truncate ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p></div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Saldo Awal</p>
+              <p className="text-xs sm:text-sm font-black text-[#23321B] whitespace-nowrap">{formatNumber(totals.saldoAwal)}</p>
+            </div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Deposit</p>
+              <p className="text-xs sm:text-sm font-black text-emerald-700 whitespace-nowrap">{formatNumber(totals.totalDeposit)}</p>
+            </div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Transfer</p>
+              <p className="text-xs sm:text-sm font-black text-rose-700 whitespace-nowrap">{formatNumber(totals.totalTransfer)}</p>
+            </div>
+            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Saldo Akhir</p>
+              <p className="text-xs sm:text-sm font-black text-[#23321B] whitespace-nowrap">{formatNumber(totals.saldoAkhir)}</p>
+            </div>
+            <div className={`flex flex-col justify-between rounded-xl p-2 sm:p-2.5 min-w-0 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Selisih</p>
+              <p className={`text-xs sm:text-sm font-black whitespace-nowrap ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p>
+            </div>
           </div>
           <div className="grid gap-2.5 sm:grid-cols-3 xl:w-[580px]">
             <button onClick={handleCopyDocTrx} className="clay-btn-green inline-flex items-center justify-center h-11 px-5 rounded-xl text-xs font-extrabold uppercase text-white shadow-md transition-all cursor-pointer">
