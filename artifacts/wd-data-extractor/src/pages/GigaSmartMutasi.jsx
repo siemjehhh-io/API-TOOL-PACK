@@ -1189,26 +1189,26 @@ function MutasiWorkspace({ webId, webName, webLogo, onExit }) {
       {/* Bottom Summary & Actions */}
       <section className={`${glassCard} shrink-0`}>
         <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-center">
-          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Saldo Awal</p>
-              <p className="text-xs sm:text-sm font-black text-[#23321B] whitespace-nowrap">{formatNumber(totals.saldoAwal)}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="flex flex-col justify-center rounded-xl border border-[#D5C988] bg-[#FFFEE6] px-3.5 py-2.5 shadow-sm min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase text-[#596B4F] tracking-wide leading-none">Saldo Awal</span>
+              <span className="text-xs sm:text-sm font-mono font-black text-[#23321B] mt-2 leading-none">{formatNumber(totals.saldoAwal)}</span>
             </div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Deposit</p>
-              <p className="text-xs sm:text-sm font-black text-emerald-700 whitespace-nowrap">{formatNumber(totals.totalDeposit)}</p>
+            <div className="flex flex-col justify-center rounded-xl border border-[#D5C988] bg-[#FFFEE6] px-3.5 py-2.5 shadow-sm min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase text-[#596B4F] tracking-wide leading-none">Deposit</span>
+              <span className="text-xs sm:text-sm font-mono font-black text-emerald-700 mt-2 leading-none">{formatNumber(totals.totalDeposit)}</span>
             </div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Transfer</p>
-              <p className="text-xs sm:text-sm font-black text-rose-700 whitespace-nowrap">{formatNumber(totals.totalTransfer)}</p>
+            <div className="flex flex-col justify-center rounded-xl border border-[#D5C988] bg-[#FFFEE6] px-3.5 py-2.5 shadow-sm min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase text-[#596B4F] tracking-wide leading-none">Transfer</span>
+              <span className="text-xs sm:text-sm font-mono font-black text-rose-700 mt-2 leading-none">{formatNumber(totals.totalTransfer)}</span>
             </div>
-            <div className="flex flex-col justify-between rounded-xl border border-[#D5C988] bg-[#FFFEE6] p-2 sm:p-2.5 min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Saldo Akhir</p>
-              <p className="text-xs sm:text-sm font-black text-[#23321B] whitespace-nowrap">{formatNumber(totals.saldoAkhir)}</p>
+            <div className="flex flex-col justify-center rounded-xl border border-[#D5C988] bg-[#FFFEE6] px-3.5 py-2.5 shadow-sm min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase text-[#596B4F] tracking-wide leading-none">Saldo Akhir</span>
+              <span className="text-xs sm:text-sm font-mono font-black text-[#23321B] mt-2 leading-none">{formatNumber(totals.saldoAkhir)}</span>
             </div>
-            <div className={`flex flex-col justify-between rounded-xl p-2 sm:p-2.5 min-w-0 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}>
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#596B4F] whitespace-nowrap">Selisih</p>
-              <p className={`text-xs sm:text-sm font-black whitespace-nowrap ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</p>
+            <div className={`flex flex-col justify-center rounded-xl px-3.5 py-2.5 shadow-sm min-w-0 ${totals.selisih === 0 ? 'border border-[#D5C988] bg-[#FFFEE6]' : 'border-2 border-rose-500 bg-rose-50'}`}>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase text-[#596B4F] tracking-wide leading-none">Selisih</span>
+              <span className={`text-xs sm:text-sm font-mono font-black mt-2 leading-none ${totals.selisih === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNumber(totals.selisih)}</span>
             </div>
           </div>
           <div className="grid gap-2.5 sm:grid-cols-3 xl:w-[580px]">
