@@ -310,6 +310,41 @@ BET Details
       expect(result.tickets[1].memberWinFormatted).toBe("1,312,500");
     });
 
+    it("parses SPORT - WBET tickets with hyphens in game titles", () => {
+      const FIXTURE_SPORT_WBET = `1	SPORT - WBET
+Ticket : 168819326
+2026-09-12 13:17:58	ITALY SERIE A - CORNERS
+BET Details
+2026-09-13 00:50:08	20,000,000.00	20,000,000.00	0.00	WIN	12,600,000.00
+0.00	-10,080,000.00
+0.00
+0.00	-2,520,000.00
+0.00	80%	0.000%	103.175.51.153
+2	SPORT - WBET
+Ticket : 168825293
+2026-09-12 13:40:11	SOCCER - CORNER
+BET Details
+2026-09-13 01:25:36	6,535,000.00	6,535,000.00	0.00	WIN	4,639,850.00
+0.00	-3,711,880.00
+0.00
+0.00	-927,970.00
+0.00	80%	0.000%	103.175.51.153`;
+
+      const result = parseCheckPusat(FIXTURE_SPORT_WBET);
+      expect(result.tickets).toHaveLength(2);
+      expect(result.tickets[0].category).toBe("SPORT");
+      expect(result.tickets[0].provider).toBe("WBET");
+      expect(result.tickets[0].ticketId).toBe("168819326");
+      expect(result.tickets[0].game).toBe("ITALY SERIE A - CORNERS");
+      expect(result.tickets[0].memberWinFormatted).toBe("12,600,000");
+
+      expect(result.tickets[1].category).toBe("SPORT");
+      expect(result.tickets[1].provider).toBe("WBET");
+      expect(result.tickets[1].ticketId).toBe("168825293");
+      expect(result.tickets[1].game).toBe("SOCCER - CORNER");
+      expect(result.tickets[1].memberWinFormatted).toBe("4,639,850");
+    });
+
     it("extracts ticket id, category, provider, game, member win", () => {
       const result = parseCheckPusat(FIXTURE_NINE_PGSOFT_WINS);
       const first = result.tickets.find(

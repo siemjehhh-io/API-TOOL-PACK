@@ -114,14 +114,18 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
   if (!rawText || typeof rawText !== "string" || !rawText.trim()) return result;
 
   let chunks: string[] = [];
-  const rowPattern = /(?:^|\r?\n|\b|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s*(\d{1,4})?\s*((?:SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*[A-Za-z0-9]+)/gi;
+  const catKeywords = "LIVE\\s+CASINO|SPORT|SPORTS|SLOT|SLOTS|LIVE|CASINO|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES|EGAMES|ESPORT|ESPORTS|P2P|FISHING|VIRTUAL|MINIGAME|MINIGAMES|POKER";
+  const rowPattern = new RegExp(
+    '(?:^|\\r?\\n|\\b|\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s*(\\d{1,4})?\\s*((?:' + catKeywords + ')\\s*-\\s*[A-Za-z0-9]+)',
+    'gi'
+  );
   const matchIndices: number[] = [];
   let m: RegExpExecArray | null;
 
   while ((m = rowPattern.exec(rawText)) !== null) {
     // If matched after IP, advance index to where the row index/category begins
     const matchStr = m[0];
-    const catIdx = matchStr.search(/(?:\d{1,4}\s*)?(?:SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*/i);
+    const catIdx = matchStr.search(new RegExp('(?:\\d{1,4}\\s*)?(?:' + catKeywords + ')\\s*-\\s*', 'i'));
     matchIndices.push(m.index + (catIdx > 0 ? catIdx : 0));
   }
 
@@ -139,7 +143,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
     }
     if (ticketIndices.length > 0) {
       for (let i = 0; i < ticketIndices.length; i++) {
-        const start = ticketIndices[i];
+        const start = i === 0 ? 0 : ticketIndices[i];
         const end = i + 1 < ticketIndices.length ? ticketIndices[i + 1] : rawText.length;
         chunks.push(rawText.slice(start, end).trim());
       }
@@ -158,7 +162,7 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
 
     let category = "SLOT";
     let provider = "PGSOFT";
-    const catMatch = chunk.match(/\b(SLOT|LIVE|CASINO|SPORTS|TABLE|CARD|ARCADE|LOTTERY|OTHER|E-GAMES)\s*-\s*([A-Za-z0-9]+)/i);
+    const catMatch = chunk.match(new RegExp('\\b(' + catKeywords + ')\\s*-\\s*([A-Za-z0-9]+)', 'i'));
     if (catMatch) {
       category = catMatch[1].trim().toUpperCase();
       provider = catMatch[2].trim().toUpperCase();
@@ -175,12 +179,12 @@ export function parseCheckPusatRows(rawText: string): CheckPusatParseResult {
     const confirmedTime = dateMatches.length > 1 ? dateMatches[dateMatches.length - 1][1] : transTime;
 
     let gameName = "";
-    const gameMatch1 = chunk.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
+    const gameMatch1 = chunk.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*([A-Za-z0-9\s\-\/\:\.\,\'\&]+?)\s*BET\s*Details/i);
     if (gameMatch1 && gameMatch1[1].trim()) {
       gameName = gameMatch1[1].trim();
     }
     if (!gameName) {
-      const gameMatch2 = chunk.match(/Ticket\s*:\s*[A-Za-z0-9_\-]+\s*(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?\s*([A-Za-z0-9\s]+?)\s*BET\s*Details/i);
+      const gameMatch2 = chunk.match(/Ticket\s*:\s*[A-Za-z0-9_\-]+\s*(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?\s*([A-Za-z0-9\s\-\/\:\.\,\'\&]+?)\s*BET\s*Details/i);
       if (gameMatch2 && gameMatch2[1].trim()) {
         gameName = gameMatch2[1].trim();
       }
